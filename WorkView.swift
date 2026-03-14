@@ -118,13 +118,13 @@ class WorkManager: ObservableObject {
                 let boosted = taxed * BoostManager.shared.boosterMultiplier()
                 TimeEngine.shared.addTime(boosted)
                 GameState.shared.recordEarning(boosted)
-                lastCompletedJobMessage = "Handelse! \(jobType.name) avkortad.\nIntjanat: \(TimeEngine.shortFormatted(boosted)) (efter skatt + risk)"
+                lastCompletedJobMessage = "Händelse! \(jobType.name) avkortad.\nIntjänat: \(TimeEngine.shortFormatted(boosted)) (efter skatt + risk)"
             } else {
                 let taxed = earnings * (1 - GameState.shared.currentZone.taxRate)
                 let boosted = taxed * BoostManager.shared.boosterMultiplier()
                 TimeEngine.shared.addTime(boosted)
                 GameState.shared.recordEarning(boosted)
-                lastCompletedJobMessage = "\(jobType.name) klar!\nIntjanat: \(TimeEngine.shortFormatted(boosted)) (efter skatt)"
+                lastCompletedJobMessage = "\(jobType.name) klar!\nIntjänat: \(TimeEngine.shortFormatted(boosted)) (efter skatt)"
             }
 
             MissionsManager.incrementProgress("jobs_completed", by: 1)
@@ -287,7 +287,7 @@ struct WorkView: View {
             Button("Avbryt", role: .cancel) {}
         } message: {
             if let job = selectedJob {
-                Text("'\(job.name)' tar \(formatDuration(job.durationSeconds)).\nForvantad nettolön: ~\(TimeEngine.shortFormatted(job.netEarnings(for: gameState.currentZone)))")
+                Text("'\(job.name)' tar \(formatDuration(job.durationSeconds)).\nFörväntat nettolön: ~\(TimeEngine.shortFormatted(job.netEarnings(for: gameState.currentZone)))")
             }
         }
         .alert("Jobb Klart!", isPresented: $workManager.showJobComplete) {
@@ -374,7 +374,7 @@ struct ActiveJobCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("PAGAENDE JOBB")
+                Text("PÅGÅENDE JOBB")
                     .font(.system(size: 11, weight: .bold, design: .monospaced))
                     .foregroundColor(.green)
                 Spacer()

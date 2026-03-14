@@ -123,14 +123,14 @@ struct ZoneProfile: Equatable {
 
     var description: String {
         switch name {
-        case "Duskline":    return "Startzonen. Skattefri och trygg. Perfekt for nybörjare. Knappt möjligt att ga plus."
-        case "Midgrey":     return "Lag skatt och första steget mot okad frihet. Boosts tillgangliga."
-        case "Risefield":   return "Stegbonus aktiveras. Passiv inkomst borjar ticka. En dynamisk zon."
-        case "Aetherpoint": return "Kasino oppnar. Passiva bonussekunder. Reducerade appkostnader."
+        case "Duskline":    return "Startzonen. Skattefri och trygg. Perfekt för nybörjare. Knappt möjligt att gå plus."
+        case "Midgrey":     return "Låg skatt och första steget mot ökad frihet. Boosts tillgängliga."
+        case "Risefield":   return "Stegbonus aktiveras. Passiv inkomst börjar ticka. En dynamisk zon."
+        case "Aetherpoint": return "Kasino öppnar. Passiva bonussekunder. Reducerade appkostnader."
         case "Novalux":     return "Stark boosteffekt och passiv inkomst. Avancerad zon med risk."
-        case "Vaultum":     return "Skyddad zon med balans mellan kostnad och beloning. Hog skatt."
-        case "Solara":      return "Ultimat zon. Maxade förmaner men 50% skatt. Bara de starkaste overlever."
-        default:            return "Okand zon."
+        case "Vaultum":     return "Skyddad zon med balans mellan kostnad och belöning. Hög skatt."
+        case "Solara":      return "Ultimat zon. Maxade förmåner men 50% skatt. Bara de starkaste överlever."
+        default:            return "Okänd zon."
         }
     }
 }

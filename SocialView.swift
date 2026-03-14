@@ -16,7 +16,7 @@ struct NPCPlayer: Identifiable {
 
     static let all: [NPCPlayer] = [
         NPCPlayer(id: UUID(), name: "Viktor R.", zone: "Duskline", avatar: "😐",
-                  bio: "Fabriksarbetare. Alltid lite knapp pa tid. Palitlig nog.",
+                  bio: "Fabriksarbetare. Alltid lite knapp pa tid. Pålitlig nog.",
                   balance: 3600 * 8, loanInterestRate: 0.15, reliability: 0.80, lastSeen: "2h sedan"),
         NPCPlayer(id: UUID(), name: "Mara D.", zone: "Midgrey", avatar: "🧐",
                   bio: "Revisor. Noggrant bokford. Betalar alltid tillbaka.",
@@ -70,7 +70,7 @@ class SocialManager: ObservableObject {
     /// Lend time to an NPC player
     func lendToNPC(_ npc: NPCPlayer, amount: TimeInterval, days: Int) -> Bool {
         guard TimeEngine.shared.deductTime(amount) else {
-            alertMessage = "Otillracklig tid for overforing."
+            alertMessage = "Otillräcklig tid for overforing."
             showAlert = true
             return false
         }
@@ -94,11 +94,11 @@ class SocialManager: ObservableObject {
             let taxed = repayment * (1 - GameState.shared.currentZone.taxRate)
             TimeEngine.shared.addTime(taxed)
             GameState.shared.recordEarning(taxed - loan.principal)
-            alertMessage = "\(npc.name) betalade tillbaka!\n+\(TimeEngine.shortFormatted(taxed)) (efter skatt)\nRanta: +\(TimeEngine.shortFormatted(loan.interest))"
+            alertMessage = "\(npc.name) betalade tillbaka!\n+\(TimeEngine.shortFormatted(taxed)) (efter skatt)\nRänta: +\(TimeEngine.shortFormatted(loan.interest))"
             transferHistory.append((npc.name, taxed, Date()))
         } else {
             // NPC defaults — lose principal
-            alertMessage = "\(npc.name) betalade INTE tillbaka.\nDu forlorade \(TimeEngine.shortFormatted(loan.principal))."
+            alertMessage = "\(npc.name) betalade INTE tillbaka.\nDu förlorade \(TimeEngine.shortFormatted(loan.principal))."
         }
         activeLoans.remove(at: idx)
         saveLoans()
@@ -140,7 +140,7 @@ struct SocialView: View {
                             .font(.system(size: 22, weight: .bold, design: .monospaced))
                             .foregroundColor(.white)
                             .padding(.top, 60)
-                        Text("Lend tid. Tjana ranta. Riskera allt.")
+                        Text("Lend tid. Tjäna ränta. Riskera allt.")
                             .font(.system(size: 12, design: .monospaced))
                             .foregroundColor(.white.opacity(0.4))
                     }
@@ -149,7 +149,7 @@ struct SocialView: View {
                     HStack(spacing: 12) {
                         Image(systemName: "info.circle")
                             .foregroundColor(.cyan)
-                        Text("Alla transfers kostar 10% natverksskatt utover zonens skatt.")
+                        Text("Alla transfers kostar 10% nätverksskatt utöver zonens skatt.")
                             .font(.system(size: 11, design: .monospaced))
                             .foregroundColor(.white.opacity(0.6))
                     }
@@ -161,7 +161,7 @@ struct SocialView: View {
                     // Active loans
                     if !social.activeLoans.isEmpty {
                         VStack(spacing: 10) {
-                            Text("AKTIVA LAN")
+                            Text("AKTIVA LÅN")
                                 .font(.system(size: 12, weight: .bold, design: .monospaced))
                                 .foregroundColor(.yellow)
                                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -233,11 +233,11 @@ struct NPCCard: View {
                     .foregroundColor(.white.opacity(0.5))
                     .lineLimit(2)
                 HStack(spacing: 16) {
-                    Label(String(format: "Ranta: %.0f%%/man", npc.loanInterestRate * 100),
+                    Label(String(format: "Ränta: %.0f%%/man", npc.loanInterestRate * 100),
                           systemImage: "percent")
                         .font(.system(size: 10, design: .monospaced))
                         .foregroundColor(.yellow)
-                    Label(String(format: "Palitlighet: %.0f%%", npc.reliability * 100),
+                    Label(String(format: "Pålitlighet: %.0f%%", npc.reliability * 100),
                           systemImage: "checkmark.shield")
                         .font(.system(size: 10, design: .monospaced))
                         .foregroundColor(npc.reliability > 0.8 ? .green : .orange)
@@ -267,10 +267,10 @@ struct LoanCard: View {
                 Text(loan.npcName)
                     .font(.system(size: 13, weight: .bold, design: .monospaced))
                     .foregroundColor(.white)
-                Text("Utlanat: \(TimeEngine.shortFormatted(loan.principal))")
+                Text("Utlånat: \(TimeEngine.shortFormatted(loan.principal))")
                     .font(.system(size: 11, design: .monospaced))
                     .foregroundColor(.white.opacity(0.6))
-                Text("Forfaller om \(max(0, loan.dueDays - Int(loan.daysElapsed)))d | Total: \(TimeEngine.shortFormatted(loan.totalDue))")
+                Text("Förfaller om \(max(0, loan.dueDays - Int(loan.daysElapsed)))d | Total: \(TimeEngine.shortFormatted(loan.totalDue))")
                     .font(.system(size: 11, design: .monospaced))
                     .foregroundColor(.yellow)
             }
@@ -313,7 +313,7 @@ struct LendSheetView: View {
                         Image(systemName: "xmark").foregroundColor(.white)
                     }
                     Spacer()
-                    Text("LAN TILL \(npc.name.uppercased())")
+                    Text("LÅN TILL \(npc.name.uppercased())")
                         .font(.system(size: 16, weight: .bold, design: .monospaced))
                         .foregroundColor(.white)
                     Spacer()
@@ -324,14 +324,14 @@ struct LendSheetView: View {
                 Text(npc.avatar).font(.system(size: 60))
 
                 VStack(spacing: 8) {
-                    Text("Manadlig ranta: \(Int(npc.loanInterestRate * 100))%")
+                    Text("Månatlig ränta: \(Int(npc.loanInterestRate * 100))%")
                         .font(.system(size: 14, design: .monospaced))
                         .foregroundColor(.yellow)
-                    Text(String(format: "Palitlighet: %.0f%%", npc.reliability * 100))
+                    Text(String(format: "Pålitlighet: %.0f%%", npc.reliability * 100))
                         .font(.system(size: 13, design: .monospaced))
                         .foregroundColor(npc.reliability > 0.8 ? .green : .orange)
                     if npc.reliability < 0.7 {
-                        Text("Hog risk for utebliven aterbetalning!")
+                        Text("Hög risk för utebliven återbetalning!")
                             .font(.system(size: 11, design: .monospaced))
                             .foregroundColor(.red)
                     }
@@ -357,17 +357,17 @@ struct LendSheetView: View {
                         }
                     }
 
-                    Text("Forvantad aterbetalning: \(TimeEngine.shortFormatted(projectedReturn))")
+                    Text("Förväntad återbetalning: \(TimeEngine.shortFormatted(projectedReturn))")
                         .font(.system(size: 13, weight: .bold, design: .monospaced))
                         .foregroundColor(.green)
-                    Text("(+\(TimeEngine.shortFormatted(projectedReturn - lendAmount)) i ranta)")
+                    Text("(+\(TimeEngine.shortFormatted(projectedReturn - lendAmount)) i ränta)")
                         .font(.system(size: 11, design: .monospaced))
                         .foregroundColor(.green.opacity(0.6))
                 }
                 .padding(.horizontal)
 
                 Button(action: onConfirm) {
-                    Text("BEKRAFTA LAN")
+                    Text("BEKRÄFTA LÅN")
                         .font(.system(size: 16, weight: .bold, design: .monospaced))
                         .foregroundColor(.black)
                         .frame(maxWidth: .infinity)
