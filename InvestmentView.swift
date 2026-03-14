@@ -160,7 +160,7 @@ struct InvestmentView: View {
                         }
                         Divider().background(Color.white.opacity(0.1)).frame(height: 44)
                         VStack(spacing: 4) {
-                            Text("KRASCHRISIK")
+                            Text("KRASHRISK")
                                 .font(.system(size: 9, weight: .bold, design: .monospaced))
                                 .foregroundColor(.white.opacity(0.35))
                             Text("5%/v")

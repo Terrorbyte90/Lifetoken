@@ -179,11 +179,9 @@ class TimekeeperEventManager: ObservableObject {
         switch event {
         case .timekeeperStop:
             if accepted {
-                // Betala böter — förlora tid
                 let fine = TimeInterval.random(in: 600...3600)
                 TimeEngine.shared.deductTime(fine)
             } else {
-                // Fly — liten chans att slippa, annars dubbla böter
                 if Double.random(in: 0...1) < 0.3 {
                     // Lyckades fly
                 } else {
@@ -192,12 +190,20 @@ class TimekeeperEventManager: ObservableObject {
                 }
             }
         case .minuteManRaid:
-            if accepted {
-                // Ge tid till rånaren
+            // Kolla om spelaren har Minutman-sköld
+            if ShopManager.shared.hasMinutemanShield() {
+                ShopManager.shared.consumeMinutemanShield()
+                // Skölden blockerar — ingen tid stjäls
+            } else if accepted {
                 let stolen = TimeInterval.random(in: 300...1800)
                 TimeEngine.shared.deductTime(stolen)
+            } else {
+                // Kämpa emot — 40% chans att undkomma utan förlust
+                if Double.random(in: 0...1) > 0.4 {
+                    let stolen = TimeInterval.random(in: 600...2400)
+                    TimeEngine.shared.deductTime(stolen)
+                }
             }
-            // Avvisa = samma risk som fly ovan
         case .strangerGift:
             if accepted {
                 // Ta emot gåvan
