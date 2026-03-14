@@ -281,13 +281,17 @@ struct WorkView: View {
         .alert("Starta jobb?", isPresented: $showConfirm) {
             Button("Starta") {
                 if let job = selectedJob {
-                    _ = workManager.startJob(job)
+                    let success = workManager.startJob(job)
+                    if success {
+                        let gen = UIImpactFeedbackGenerator(style: .heavy)
+                        gen.impactOccurred()
+                    }
                 }
             }
             Button("Avbryt", role: .cancel) {}
         } message: {
             if let job = selectedJob {
-                Text("'\(job.name)' tar \(formatDuration(job.durationSeconds)).\nFörväntat nettolön: ~\(TimeEngine.shortFormatted(job.netEarnings(for: gameState.currentZone)))")
+                Text("'\(job.name)' tar \(formatDuration(job.durationSeconds)).\nFörväntad nettolön: ~\(TimeEngine.shortFormatted(job.netEarnings(for: gameState.currentZone)))")
             }
         }
         .alert("Jobb Klart!", isPresented: $workManager.showJobComplete) {
@@ -371,37 +375,71 @@ struct ActiveJobCard: View {
     @State private var progress: Double = 0
     @State private var tickTimer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
+    private var jobName: String {
+        WorkManager.shared.allJobs.first(where: { $0.id == job.jobId })?.name ?? "Pågående jobb"
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("PÅGÅENDE JOBB")
-                    .font(.system(size: 11, weight: .bold, design: .monospaced))
-                    .foregroundColor(.green)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("PÅGÅENDE JOBB")
+                        .font(.system(size: 9, weight: .bold, design: .monospaced))
+                        .foregroundColor(.green.opacity(0.7))
+                    Text(jobName)
+                        .font(.system(size: 14, weight: .bold, design: .monospaced))
+                        .foregroundColor(.white)
+                }
                 Spacer()
-                Button("Avbryt", action: onCancel)
-                    .font(.system(size: 11, design: .monospaced))
-                    .foregroundColor(.red.opacity(0.7))
+                Button {
+                    let gen = UIImpactFeedbackGenerator(style: .medium)
+                    gen.impactOccurred()
+                    onCancel()
+                } label: {
+                    Text("Avbryt")
+                        .font(.system(size: 11, design: .monospaced))
+                        .foregroundColor(.red.opacity(0.7))
+                }
             }
 
-            ProgressView(value: progress)
-                .progressViewStyle(LinearProgressViewStyle(tint: .green))
-                .onReceive(tickTimer) { _ in progress = job.progress }
+            VStack(spacing: 6) {
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+                        Capsule().fill(Color.white.opacity(0.08)).frame(height: 7)
+                        Capsule()
+                            .fill(LinearGradient(
+                                gradient: Gradient(colors: [.green.opacity(0.7), .green]),
+                                startPoint: .leading, endPoint: .trailing
+                            ))
+                            .frame(width: geo.size.width * progress, height: 7)
+                    }
+                }
+                .frame(height: 7)
+                .onReceive(tickTimer) { _ in
+                    withAnimation(.linear(duration: 0.5)) { progress = job.progress }
+                }
+                .onAppear { progress = job.progress }
 
-            HStack {
-                Text("\(Int(progress * 100))% klar")
-                    .font(.system(size: 12, design: .monospaced))
-                    .foregroundColor(.white.opacity(0.6))
-                Spacer()
-                Text("Klar om: \(TimeEngine.shortFormatted(job.timeRemaining))")
-                    .font(.system(size: 12, weight: .bold, design: .monospaced))
-                    .foregroundColor(.yellow)
+                HStack {
+                    Text("\(Int(progress * 100))% klar")
+                        .font(.system(size: 11, design: .monospaced))
+                        .foregroundColor(.white.opacity(0.5))
+                    Spacer()
+                    HStack(spacing: 4) {
+                        Image(systemName: "clock")
+                            .font(.system(size: 10))
+                            .foregroundColor(.yellow.opacity(0.7))
+                        Text(TimeEngine.shortFormatted(job.timeRemaining))
+                            .font(.system(size: 12, weight: .bold, design: .monospaced))
+                            .foregroundColor(.yellow)
+                    }
+                }
             }
-            .onAppear { progress = job.progress }
         }
-        .padding()
-        .background(Color.green.opacity(0.08))
-        .cornerRadius(14)
-        .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.green.opacity(0.3), lineWidth: 1))
+        .padding(16)
+        .background(Color.green.opacity(0.07))
+        .clipShape(RoundedRectangle(cornerRadius: 14))
+        .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.green.opacity(0.25), lineWidth: 1))
         .padding(.horizontal)
     }
 }

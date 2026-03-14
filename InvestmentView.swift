@@ -94,7 +94,7 @@ class InvestmentManager: ObservableObject {
         }
         investments = newInvestments
         saveInvestments()
-        crashMessage = "Marknadskrasch! Dina investeringar forlorade \(Int(lossFactor * 100))% av sitt varde."
+        crashMessage = "Marknadskrasch! Dina investeringar förlorade \(Int(lossFactor * 100))% av sitt värde."
         showCrashAlert = true
     }
 
@@ -124,115 +124,158 @@ struct InvestmentView: View {
 
     let maturityOptions = [1, 3, 7, 14, 30, 90]
 
+    private var dailyRate: Double { InvestmentManager.dailyRate(for: gameState.currentZone) }
+    private var projected: TimeInterval {
+        investAmount * pow(1 + dailyRate, Double(maturityDays))
+    }
+    private var profit: TimeInterval { projected - investAmount }
+    private var taxedProfit: TimeInterval { profit * (1 - gameState.currentZone.taxRate) }
+
     var body: some View {
         ZStack {
             Color.black.ignoresSafeArea()
             ScrollView {
                 VStack(spacing: 20) {
-                    Text("TIME BANK")
-                        .font(.system(size: 24, weight: .bold, design: .monospaced))
-                        .foregroundColor(.white)
-                        .padding(.top, 40)
 
-                    // Rate display
-                    VStack(spacing: 8) {
-                        Text("DAGLIG RANTA")
+                    // Header
+                    VStack(spacing: 4) {
+                        Text("TIME BANK")
+                            .font(.system(size: 24, weight: .bold, design: .monospaced))
+                            .foregroundColor(.white)
+                            .padding(.top, 60)
+                        Text("Zon: \(gameState.currentZone.name)")
                             .font(.system(size: 11, design: .monospaced))
-                            .foregroundColor(.white.opacity(0.4))
-                        Text(String(format: "%.1f%%", InvestmentManager.dailyRate(for: gameState.currentZone) * 100))
-                            .font(.system(size: 36, weight: .bold, design: .monospaced))
-                            .foregroundColor(.green)
-                        Text("Marknaden kan krascha (5% chans/vecka)")
-                            .font(.system(size: 11, design: .monospaced))
-                            .foregroundColor(.red.opacity(0.7))
+                            .foregroundColor(.white.opacity(0.35))
                     }
+
+                    // Räntevisning
+                    HStack(spacing: 20) {
+                        VStack(spacing: 4) {
+                            Text("DAGLIG RÄNTA")
+                                .font(.system(size: 9, weight: .bold, design: .monospaced))
+                                .foregroundColor(.white.opacity(0.35))
+                            Text(String(format: "%.1f%%", dailyRate * 100))
+                                .font(.system(size: 30, weight: .bold, design: .monospaced))
+                                .foregroundColor(.green)
+                        }
+                        Divider().background(Color.white.opacity(0.1)).frame(height: 44)
+                        VStack(spacing: 4) {
+                            Text("KRASCHRISIK")
+                                .font(.system(size: 9, weight: .bold, design: .monospaced))
+                                .foregroundColor(.white.opacity(0.35))
+                            Text("5%/v")
+                                .font(.system(size: 30, weight: .bold, design: .monospaced))
+                                .foregroundColor(.red.opacity(0.8))
+                        }
+                        Divider().background(Color.white.opacity(0.1)).frame(height: 44)
+                        VStack(spacing: 4) {
+                            Text("AKTIVA")
+                                .font(.system(size: 9, weight: .bold, design: .monospaced))
+                                .foregroundColor(.white.opacity(0.35))
+                            Text("\(investMgr.investments.count)")
+                                .font(.system(size: 30, weight: .bold, design: .monospaced))
+                                .foregroundColor(.cyan)
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
                     .padding()
-                    .background(Color.green.opacity(0.06))
-                    .cornerRadius(14)
+                    .background(Color.white.opacity(0.04))
+                    .clipShape(RoundedRectangle(cornerRadius: 14))
                     .padding(.horizontal)
 
-                    // New investment form
-                    VStack(spacing: 14) {
+                    // Ny investering
+                    VStack(spacing: 16) {
                         Text("NY INVESTERING")
-                            .font(.system(size: 12, weight: .bold, design: .monospaced))
-                            .foregroundColor(.white.opacity(0.5))
+                            .font(.system(size: 11, weight: .bold, design: .monospaced))
+                            .foregroundColor(.white.opacity(0.4))
                             .frame(maxWidth: .infinity, alignment: .leading)
 
                         VStack(spacing: 6) {
-                            Text("Belopp: \(TimeEngine.shortFormatted(investAmount))")
-                                .font(.system(size: 14, design: .monospaced))
-                                .foregroundColor(.yellow)
+                            HStack {
+                                Text("Belopp")
+                                    .font(.system(size: 11, design: .monospaced))
+                                    .foregroundColor(.white.opacity(0.4))
+                                Spacer()
+                                Text(TimeEngine.shortFormatted(investAmount))
+                                    .font(.system(size: 14, weight: .bold, design: .monospaced))
+                                    .foregroundColor(.yellow)
+                            }
                             Slider(value: $investAmount,
                                    in: 3600...max(3601, min(engine.balance * 0.8, 86400 * 365)),
                                    step: 3600)
-                                .accentColor(.green)
+                                .tint(.green)
                         }
 
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text("Loptid:")
-                                .font(.system(size: 12, design: .monospaced))
-                                .foregroundColor(.white.opacity(0.6))
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Löptid:")
+                                .font(.system(size: 11, design: .monospaced))
+                                .foregroundColor(.white.opacity(0.5))
                             HStack(spacing: 8) {
                                 ForEach(maturityOptions, id: \.self) { days in
-                                    Button("\(days)d") {
-                                        maturityDays = days
-                                    }
-                                    .font(.system(size: 12, weight: .bold, design: .monospaced))
-                                    .foregroundColor(maturityDays == days ? .black : .white)
-                                    .padding(.horizontal, 10).padding(.vertical, 6)
-                                    .background(maturityDays == days ? Color.green : Color.white.opacity(0.1))
-                                    .cornerRadius(8)
+                                    Button("\(days)d") { maturityDays = days }
+                                        .font(.system(size: 12, weight: .bold, design: .monospaced))
+                                        .foregroundColor(maturityDays == days ? .black : .white)
+                                        .padding(.horizontal, 10).padding(.vertical, 6)
+                                        .background(maturityDays == days ? Color.green : Color.white.opacity(0.1))
+                                        .clipShape(RoundedRectangle(cornerRadius: 8))
                                 }
                             }
                         }
 
-                        // Projection
-                        let projected = investAmount * pow(1 + InvestmentManager.dailyRate(for: gameState.currentZone), Double(maturityDays))
-                        let profit = projected - investAmount
-                        let taxedProfit = profit * (1 - gameState.currentZone.taxRate)
-                        HStack {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text("Prognos efter \(maturityDays) dagar:")
-                                    .font(.system(size: 11, design: .monospaced))
+                        // Prognos
+                        HStack(spacing: 16) {
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text("Prognos (\(maturityDays) d)")
+                                    .font(.system(size: 10, design: .monospaced))
                                     .foregroundColor(.white.opacity(0.4))
                                 Text(TimeEngine.shortFormatted(projected))
                                     .font(.system(size: 16, weight: .bold, design: .monospaced))
                                     .foregroundColor(.white)
-                                Text("+\(TimeEngine.shortFormatted(taxedProfit)) (efter skatt)")
-                                    .font(.system(size: 12, design: .monospaced))
-                                    .foregroundColor(.green)
                             }
                             Spacer()
+                            VStack(alignment: .trailing, spacing: 3) {
+                                Text("Vinst (efter skatt)")
+                                    .font(.system(size: 10, design: .monospaced))
+                                    .foregroundColor(.white.opacity(0.4))
+                                Text("+\(TimeEngine.shortFormatted(taxedProfit))")
+                                    .font(.system(size: 16, weight: .bold, design: .monospaced))
+                                    .foregroundColor(.green)
+                            }
                         }
 
                         Button {
                             showConfirm = true
                         } label: {
-                            Text("INVESTERA \(TimeEngine.shortFormatted(investAmount))")
-                                .font(.system(size: 14, weight: .bold, design: .monospaced))
-                                .foregroundColor(.black)
-                                .frame(maxWidth: .infinity)
-                                .padding()
-                                .background(investAmount <= engine.balance ? Color.green : Color.gray)
-                                .cornerRadius(12)
+                            HStack(spacing: 8) {
+                                Image(systemName: "chart.bar.fill")
+                                Text("INVESTERA \(TimeEngine.shortFormatted(investAmount))")
+                                    .font(.system(size: 14, weight: .bold, design: .monospaced))
+                            }
+                            .foregroundColor(.black)
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(investAmount <= engine.balance ? Color.green : Color.gray.opacity(0.4))
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
                         }
                         .disabled(investAmount > engine.balance)
                     }
                     .padding()
                     .background(Color.white.opacity(0.04))
-                    .cornerRadius(14)
+                    .clipShape(RoundedRectangle(cornerRadius: 14))
                     .padding(.horizontal)
 
-                    // Active investments
+                    // Aktiva investeringar
                     if !investMgr.investments.isEmpty {
                         VStack(spacing: 10) {
                             Text("AKTIVA INVESTERINGAR")
-                                .font(.system(size: 12, weight: .bold, design: .monospaced))
-                                .foregroundColor(.white.opacity(0.5))
+                                .font(.system(size: 11, weight: .bold, design: .monospaced))
+                                .foregroundColor(.white.opacity(0.4))
                                 .frame(maxWidth: .infinity, alignment: .leading)
 
                             ForEach(investMgr.investments) { inv in
                                 InvestmentCard(investment: inv) {
+                                    let gen = UINotificationFeedbackGenerator()
+                                    gen.notificationOccurred(.success)
                                     investMgr.withdraw(inv)
                                 }
                             }
@@ -244,13 +287,13 @@ struct InvestmentView: View {
                 }
             }
         }
-        .alert("Bekrafta Investering", isPresented: $showConfirm) {
+        .alert("Bekräfta Investering", isPresented: $showConfirm) {
             Button("Investera") {
                 _ = investMgr.invest(amount: investAmount, maturityDays: maturityDays, zone: gameState.currentZone)
             }
             Button("Avbryt", role: .cancel) {}
         } message: {
-            Text("Investera \(TimeEngine.shortFormatted(investAmount)) i \(maturityDays) dagar?\nPengarna ar lasta under loptiden.")
+            Text("Investera \(TimeEngine.shortFormatted(investAmount)) i \(maturityDays) dagar?\nPengarna är låsta under löptiden.")
         }
         .alert("Marknadskrasch!", isPresented: $investMgr.showCrashAlert) {
             Button("OK") {}
@@ -262,51 +305,78 @@ struct InvestmentCard: View {
     let investment: Investment
     let onWithdraw: () -> Void
 
+    private var maturityFraction: Double {
+        min(1.0, investment.ageInDays / Double(investment.maturityDays))
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 10) {
+            // Övre rad — insats/värde
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Insats: \(TimeEngine.shortFormatted(investment.amount))")
                         .font(.system(size: 13, weight: .bold, design: .monospaced))
                         .foregroundColor(.white)
-                    Text("Daglig ranta: \(String(format: "%.1f", investment.dailyRate * 100))%")
-                        .font(.system(size: 11, design: .monospaced))
-                        .foregroundColor(.green)
+                    Text("Ränta: \(String(format: "%.1f", investment.dailyRate * 100))%/dag")
+                        .font(.system(size: 10, design: .monospaced))
+                        .foregroundColor(.green.opacity(0.8))
                 }
                 Spacer()
                 VStack(alignment: .trailing, spacing: 2) {
                     Text(TimeEngine.shortFormatted(investment.currentValue))
-                        .font(.system(size: 14, weight: .bold, design: .monospaced))
+                        .font(.system(size: 15, weight: .bold, design: .monospaced))
                         .foregroundColor(.yellow)
                     Text("+\(TimeEngine.shortFormatted(investment.profit))")
-                        .font(.system(size: 11, design: .monospaced))
+                        .font(.system(size: 10, design: .monospaced))
                         .foregroundColor(.green)
                 }
             }
 
+            // Löptids-progress-bar
+            VStack(spacing: 4) {
+                HStack {
+                    Text("Löptid")
+                        .font(.system(size: 9, design: .monospaced))
+                        .foregroundColor(.white.opacity(0.3))
+                    Spacer()
+                    Text("\(String(format: "%.1f", investment.ageInDays)) / \(investment.maturityDays) dagar")
+                        .font(.system(size: 9, design: .monospaced))
+                        .foregroundColor(.white.opacity(0.4))
+                }
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+                        Capsule().fill(Color.white.opacity(0.07)).frame(height: 5)
+                        Capsule()
+                            .fill(investment.isMatured ? Color.green : Color.cyan.opacity(0.7))
+                            .frame(width: geo.size.width * maturityFraction, height: 5)
+                    }
+                }
+                .frame(height: 5)
+            }
+
+            // Knapp
             HStack {
-                Text("Alder: \(String(format: "%.1f", investment.ageInDays)) / \(investment.maturityDays) dagar")
-                    .font(.system(size: 11, design: .monospaced))
-                    .foregroundColor(.white.opacity(0.5))
                 Spacer()
                 if investment.isMatured {
-                    Button("TA UT") { onWithdraw() }
+                    Button("TA UT →") { onWithdraw() }
                         .font(.system(size: 12, weight: .bold, design: .monospaced))
                         .foregroundColor(.black)
-                        .padding(.horizontal, 12).padding(.vertical, 6)
+                        .padding(.horizontal, 14).padding(.vertical, 7)
                         .background(Color.green)
-                        .cornerRadius(8)
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
                 } else {
                     Button("TIDIG UTTAG") { onWithdraw() }
                         .font(.system(size: 11, design: .monospaced))
-                        .foregroundColor(.yellow)
+                        .foregroundColor(.yellow.opacity(0.7))
                 }
             }
         }
-        .padding(12)
+        .padding(14)
         .background(Color.white.opacity(0.05))
-        .cornerRadius(12)
-        .overlay(RoundedRectangle(cornerRadius: 12)
-            .stroke(investment.isMatured ? Color.green.opacity(0.4) : Color.white.opacity(0.08), lineWidth: 1))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(investment.isMatured ? Color.green.opacity(0.5) : Color.white.opacity(0.07), lineWidth: 1)
+        )
     }
 }
