@@ -8,6 +8,7 @@ struct DashboardView: View {
     @State private var showOnboarding = !UserDefaults.standard.bool(forKey: "hasLaunched")
     @State private var showTimeMarket = false
     @State private var showZoneMap = false
+    @State private var showInvestment = false
     @State private var currentQuoteIndex: Int = 0
     @State private var quoteTimer = Timer.publish(every: 30, on: .main, in: .common).autoconnect()
     @State private var pulseScale: CGFloat = 1.0
@@ -156,9 +157,10 @@ struct DashboardView: View {
                         .padding(.horizontal)
                     }
 
-                    // Shortcut buttons
-                    HStack(spacing: 12) {
-                        ShortcutButton(icon: "cart.fill", label: "Tidsmarknad") { showTimeMarket = true }
+                    // Shortcut buttons — 3-kolumns grid
+                    HStack(spacing: 10) {
+                        ShortcutButton(icon: "cart.fill", label: "Marknad") { showTimeMarket = true }
+                        ShortcutButton(icon: "chart.bar.fill", label: "Time Bank") { showInvestment = true }
                         ShortcutButton(icon: "map.fill", label: "Zonkarta") { showZoneMap = true }
                     }
                     .padding(.horizontal)
@@ -190,12 +192,23 @@ struct DashboardView: View {
                 }
             }
         }
-        .onAppear { gameState.updateZone() }
+        .onAppear {
+            gameState.updateZone()
+            gameState.checkLoginStreak()
+        }
         .fullScreenCover(isPresented: $showOnboarding) { OnboardingView(showOnboarding: $showOnboarding) }
         .sheet(isPresented: $showTimeMarket) {
             TimeMarketView(timeRemaining: .constant(engine.balance), currentZone: gameState.currentZone)
+                .presentationDetents([.large])
         }
-        .sheet(isPresented: $showZoneMap) { ZoneVisual() }
+        .sheet(isPresented: $showInvestment) {
+            InvestmentView()
+                .presentationDetents([.large])
+        }
+        .sheet(isPresented: $showZoneMap) {
+            ZoneVisual()
+                .presentationDetents([.large])
+        }
         .alert("Streak Bonus!", isPresented: $gameState.showStreakBonus) {
             Button("Tack!", role: .cancel) {}
         } message: { Text(gameState.streakBonusMessage) }
@@ -225,65 +238,82 @@ struct ArmClockView: View {
         return .green
     }
 
+    private var statusLabel: String {
+        if balance <= 0 { return "TIMED OUT" }
+        if balance < 3600 { return "KRITISKT — TJÄNA TID NU" }
+        if balance < 21600 { return "VARNING — UNDER 6 TIMMAR" }
+        if balance < 86400 { return "LÅGT — UNDER 24 TIMMAR" }
+        return "AKTIV"
+    }
+
+    private var fraction: Double { min(1.0, balance / 86400) }
+
     var body: some View {
-        VStack(spacing: 12) {
-            // Övre rad — "handleden"
-            HStack {
-                VStack(spacing: 2) {
-                    Text("◄ ARM KLOCKA ►")
-                        .font(.system(size: 9, weight: .bold, design: .monospaced))
-                        .foregroundColor(.white.opacity(0.2))
-                    // Bioluminescent arm-linje (inspirerad av filmen)
-                    RoundedRectangle(cornerRadius: 3)
+        VStack(spacing: 14) {
+
+            // Statuslinje — bioluminescerande arm-linje
+            VStack(spacing: 6) {
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(urgencyGlow)
+                        .frame(width: 5, height: 5)
+                        .shadow(color: urgencyGlow, radius: 4)
+                    Text(statusLabel)
+                        .font(.system(size: 9, weight: .semibold, design: .monospaced))
+                        .foregroundColor(urgencyGlow.opacity(0.9))
+                    Spacer()
+                    Text("IN TIME")
+                        .font(.system(size: 8, weight: .bold, design: .monospaced))
+                        .foregroundColor(.white.opacity(0.12))
+                        .tracking(3)
+                }
+
+                // Bioluminescent linje
+                ZStack(alignment: .leading) {
+                    Capsule()
+                        .fill(Color.white.opacity(0.06))
+                        .frame(height: 5)
+                    Capsule()
                         .fill(LinearGradient(
-                            gradient: Gradient(colors: [urgencyGlow.opacity(0.1), urgencyGlow.opacity(0.5), urgencyGlow.opacity(0.1)]),
+                            gradient: Gradient(colors: [urgencyGlow.opacity(0.5), urgencyGlow, urgencyGlow.opacity(0.7)]),
                             startPoint: .leading, endPoint: .trailing
                         ))
-                        .frame(height: 6)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 3)
-                                .stroke(urgencyGlow.opacity(0.6), lineWidth: 1)
-                        )
+                        .frame(width: max(0, CGFloat(fraction)) * UIScreen.main.bounds.width - 64, height: 5)
+                        .shadow(color: urgencyGlow.opacity(0.5), radius: 4)
                 }
             }
 
             // Huvud-klocka
-            Text(balance <= 0 ? "TIMED OUT" : TimeEngine.formatted(balance))
-                .font(.system(size: balance <= 0 ? 38 : 48, weight: .bold, design: .monospaced))
+            Text(balance <= 0 ? "00:00:00" : TimeEngine.formatted(balance))
+                .font(.system(size: balance <= 0 ? 38 : 50, weight: .bold, design: .monospaced))
                 .foregroundColor(clockColor)
                 .scaleEffect(pulseScale)
-                .animation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true), value: balance < 3600)
-                .shadow(color: urgencyGlow.opacity(0.4), radius: 8, x: 0, y: 0)
+                .animation(
+                    balance < 3600
+                        ? .easeInOut(duration: 0.7).repeatForever(autoreverses: true)
+                        : .default,
+                    value: pulseScale
+                )
+                .shadow(color: urgencyGlow.opacity(balance < 3600 ? 0.6 : 0.25), radius: 12)
+                .frame(maxWidth: .infinity, alignment: .center)
 
-            // Progress-bar — visar hur nära döden man är
-            if balance > 0 {
-                let fraction = min(1.0, balance / 86400) // 24h = full
-                GeometryReader { geo in
-                    ZStack(alignment: .leading) {
-                        RoundedRectangle(cornerRadius: 3)
-                            .fill(Color.white.opacity(0.07))
-                        RoundedRectangle(cornerRadius: 3)
-                            .fill(LinearGradient(
-                                gradient: Gradient(colors: [clockColor.opacity(0.6), clockColor]),
-                                startPoint: .leading, endPoint: .trailing
-                            ))
-                            .frame(width: geo.size.width * fraction)
-                    }
-                }
-                .frame(height: 5)
-
-                Text(balance < 86400 ? "VARNING: Mindre än 24h kvar" : "Tid kvar tills kritiskt läge: \(TimeEngine.shortFormatted(max(0, balance - 86400)))")
-                    .font(.system(size: 10, design: .monospaced))
-                    .foregroundColor(balance < 21600 ? .red.opacity(0.9) : .white.opacity(0.3))
+            // Sekundärt — dagar/total
+            if balance >= 86400 {
+                let days = Int(balance) / 86400
+                let hours = (Int(balance) % 86400) / 3600
+                Text("\(days) dag\(days == 1 ? "" : "ar") \(hours) tim kvar")
+                    .font(.system(size: 11, design: .monospaced))
+                    .foregroundColor(.white.opacity(0.3))
             }
         }
-        .padding(16)
+        .padding(18)
         .background(Color.white.opacity(0.04))
-        .cornerRadius(16)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
         .overlay(
             RoundedRectangle(cornerRadius: 16)
-                .stroke(urgencyGlow.opacity(balance < 3600 ? 0.5 : 0.15), lineWidth: 1)
+                .stroke(urgencyGlow.opacity(balance < 3600 ? 0.55 : 0.12), lineWidth: 1)
         )
+        .shadow(color: urgencyGlow.opacity(balance < 3600 ? 0.15 : 0), radius: 20)
     }
 }
 
@@ -312,18 +342,34 @@ struct ShortcutButton: View {
     let label: String
     let action: () -> Void
 
+    @State private var pressed = false
+
     var body: some View {
-        Button(action: action) {
-            HStack(spacing: 8) {
+        Button(action: {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            action()
+        }) {
+            VStack(spacing: 5) {
                 Image(systemName: icon)
-                Text(label).font(.system(size: 13, weight: .medium, design: .monospaced))
+                    .font(.system(size: 18))
+                    .foregroundColor(.white.opacity(0.8))
+                Text(label)
+                    .font(.system(size: 10, weight: .medium, design: .monospaced))
+                    .foregroundColor(.white.opacity(0.6))
+                    .lineLimit(1)
             }
             .frame(maxWidth: .infinity)
-            .padding(10)
-            .background(Color.white.opacity(0.08))
-            .cornerRadius(10)
-            .foregroundColor(.white)
+            .padding(.vertical, 12)
+            .background(Color.white.opacity(0.07))
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.white.opacity(0.06), lineWidth: 1))
+            .scaleEffect(pressed ? 0.96 : 1.0)
+            .animation(.spring(response: 0.2), value: pressed)
         }
+        .simultaneousGesture(DragGesture(minimumDistance: 0)
+            .onChanged { _ in pressed = true }
+            .onEnded { _ in pressed = false }
+        )
     }
 }
 

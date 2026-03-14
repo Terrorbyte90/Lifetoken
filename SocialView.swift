@@ -244,12 +244,12 @@ struct NPCCard: View {
                 }
             }
 
-            Button("LAN", action: onLend)
+            Button("LÅN", action: onLend)
                 .font(.system(size: 11, weight: .bold, design: .monospaced))
                 .foregroundColor(.black)
                 .padding(.horizontal, 10).padding(.vertical, 8)
                 .background(Color.green)
-                .cornerRadius(8)
+                .clipShape(RoundedRectangle(cornerRadius: 8))
         }
         .padding(12)
         .background(Color.white.opacity(0.06))
