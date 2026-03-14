@@ -5,6 +5,8 @@ struct DashboardView: View {
     @ObservedObject private var gameState     = GameState.shared
     @ObservedObject private var incomeManager = IncomeManager.shared
     @ObservedObject private var shop          = ShopManager.shared
+    @ObservedObject private var zoneManager   = ZoneManager.shared
+    @ObservedObject private var inflation     = InflationManager.shared
 
     @State private var showOnboarding = !UserDefaults.standard.bool(forKey: "hasLaunched")
     @State private var showTimeMarket = false
@@ -102,6 +104,24 @@ struct DashboardView: View {
                         .onChange(of: engine.balance) { newVal in
                             pulseScale = newVal < 3600 ? 1.05 : 1.0
                         }
+
+                    // ════════════════════════════════════════
+                    // ZON-STATUS KORT — aktuell zon, inflation, nästa zon
+                    // ════════════════════════════════════════
+                    ZoneStatusCard(
+                        zone: zoneManager.currentZone,
+                        nextZone: zoneManager.nextZone,
+                        inflation: inflation,
+                        canMigrate: zoneManager.canMigrateToNext(),
+                        onMigrate: {
+                            let result = zoneManager.migrateToNextZone()
+                            if !result.success {
+                                // Feedback om misslyckad migration visas i ZoneVisual
+                            }
+                        },
+                        onViewMap: { showZoneMap = true }
+                    )
+                    .padding(.horizontal)
 
                     if engine.cheatingDetected {
                         HStack(spacing: 8) {
@@ -448,6 +468,219 @@ struct ShopShortcutButton: View {
             .onChanged { _ in pressed = true }
             .onEnded { _ in pressed = false }
         )
+    }
+}
+
+// MARK: - Zone Status Card — Dashboard zonkort
+
+struct ZoneStatusCard: View {
+    let zone: ZoneProfile
+    let nextZone: ZoneProfile?
+    let inflation: InflationManager
+    let canMigrate: Bool
+    let onMigrate: () -> Void
+    let onViewMap: () -> Void
+
+    @State private var borderPhase: CGFloat = 0
+    @State private var glowPulse = false
+    @State private var showMigrateAlert = false
+    @State private var migrateMessage = ""
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // ── Topp: nuvarande zon ──
+            VStack(spacing: 12) {
+                HStack(spacing: 10) {
+                    // Zon-ikon med pulsande ring
+                    ZStack {
+                        Circle()
+                            .stroke(zone.color.opacity(glowPulse ? 0.7 : 0.2), lineWidth: 1.5)
+                            .frame(width: 44, height: 44)
+                            .animation(.easeInOut(duration: 2).repeatForever(autoreverses: true), value: glowPulse)
+                        Circle()
+                            .fill(zone.color.opacity(0.15))
+                            .frame(width: 38, height: 38)
+                        Image(systemName: zone.zoneIcon)
+                            .font(.system(size: 17))
+                            .foregroundColor(zone.color)
+                    }
+
+                    VStack(alignment: .leading, spacing: 3) {
+                        HStack(spacing: 6) {
+                            Text("DIN ZON")
+                                .font(.system(size: 9, weight: .bold, design: .monospaced))
+                                .foregroundColor(.white.opacity(0.3))
+                            Text(zone.name.uppercased())
+                                .font(.system(size: 14, weight: .bold, design: .monospaced))
+                                .foregroundColor(zone.color)
+                        }
+                        Text(zone.description)
+                            .font(.system(size: 10, design: .monospaced))
+                            .foregroundColor(.white.opacity(0.45))
+                            .lineLimit(1)
+                    }
+
+                    Spacer()
+
+                    Button(action: onViewMap) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "map.fill")
+                                .font(.system(size: 10))
+                            Text("Karta")
+                                .font(.system(size: 10, weight: .bold, design: .monospaced))
+                        }
+                        .foregroundColor(zone.color.opacity(0.85))
+                        .padding(.horizontal, 10).padding(.vertical, 5)
+                        .background(zone.color.opacity(0.12))
+                        .clipShape(Capsule())
+                    }
+                }
+
+                // Stats row
+                HStack(spacing: 0) {
+                    ZoneQuickStat(label: "SKATT", value: "\(Int(zone.taxRate * 100))%", color: .yellow)
+                    Divider().background(Color.white.opacity(0.08)).frame(height: 30)
+                    ZoneQuickStat(label: "JOBB", value: "x\(String(format: "%.1f", zone.workMultiplier))", color: .green)
+                    Divider().background(Color.white.opacity(0.08)).frame(height: 30)
+                    ZoneQuickStat(label: "KASINO", value: zone.casinoAccess ? "Ja" : "Nej", color: zone.casinoAccess ? .cyan : .gray)
+                    Divider().background(Color.white.opacity(0.08)).frame(height: 30)
+                    ZoneQuickStat(label: "BOOSTS", value: "\(zone.maxActiveBoosts)", color: .purple)
+                }
+                .background(Color.black.opacity(0.2))
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+
+                // Inflation indicator
+                HStack(spacing: 6) {
+                    Image(systemName: inflation.severity.icon)
+                        .font(.system(size: 11))
+                        .foregroundColor(inflation.severity.color)
+                    Text("Inflation \(inflation.percentLabel)")
+                        .font(.system(size: 11, weight: .bold, design: .monospaced))
+                        .foregroundColor(inflation.severity.color)
+                    Text("•")
+                        .foregroundColor(.white.opacity(0.2))
+                    Text("\(inflation.daysLabel) i zonen")
+                        .font(.system(size: 11, design: .monospaced))
+                        .foregroundColor(.white.opacity(0.5))
+                    Spacer()
+                    Text(inflation.severity.label)
+                        .font(.system(size: 9, weight: .black, design: .monospaced))
+                        .foregroundColor(.black)
+                        .padding(.horizontal, 6).padding(.vertical, 2)
+                        .background(inflation.severity.color)
+                        .clipShape(Capsule())
+                }
+            }
+            .padding(14)
+
+            // ── Nästa zon ──
+            if let next = nextZone {
+                Divider().background(zone.color.opacity(0.15))
+
+                HStack(spacing: 10) {
+                    Image(systemName: next.zoneIcon)
+                        .font(.system(size: 14))
+                        .foregroundColor(.white.opacity(0.35))
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack(spacing: 5) {
+                            Text("NÄSTA:")
+                                .font(.system(size: 9, weight: .bold, design: .monospaced))
+                                .foregroundColor(.white.opacity(0.3))
+                            Text(next.name)
+                                .font(.system(size: 12, weight: .bold, design: .monospaced))
+                                .foregroundColor(.white.opacity(0.7))
+                        }
+                        Text("x\(String(format: "%.1f", next.workMultiplier)) jobb • \(Int(next.taxRate * 100))% skatt")
+                            .font(.system(size: 10, design: .monospaced))
+                            .foregroundColor(.white.opacity(0.3))
+                    }
+
+                    Spacer()
+
+                    if canMigrate {
+                        Button(action: {
+                            let result = ZoneManager.shared.migrateToNextZone()
+                            migrateMessage = result.message
+                            showMigrateAlert = true
+                        }) {
+                            HStack(spacing: 5) {
+                                Image(systemName: "arrow.up.circle.fill")
+                                    .font(.system(size: 12))
+                                Text("Flytta — \(TimeEngine.shortFormatted(next.entryCostSeconds))")
+                                    .font(.system(size: 11, weight: .bold, design: .monospaced))
+                            }
+                            .foregroundColor(.black)
+                            .padding(.horizontal, 12).padding(.vertical, 7)
+                            .background(next.color)
+                            .clipShape(Capsule())
+                        }
+                    } else {
+                        Text("\(TimeEngine.shortFormatted(next.entryCostSeconds)) krävs")
+                            .font(.system(size: 10, design: .monospaced))
+                            .foregroundColor(.orange.opacity(0.7))
+                    }
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
+            }
+        }
+        .background(
+            ZStack {
+                Color.white.opacity(0.04)
+                LinearGradient(
+                    gradient: Gradient(colors: [zone.color.opacity(0.08), Color.clear]),
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            }
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(
+                    AngularGradient(
+                        gradient: Gradient(colors: [
+                            zone.color.opacity(0.7),
+                            zone.color.opacity(0.15),
+                            zone.color.opacity(0.5),
+                            zone.color.opacity(0.1),
+                            zone.color.opacity(0.7)
+                        ]),
+                        center: .center,
+                        angle: .degrees(borderPhase)
+                    ),
+                    lineWidth: 1.5
+                )
+        )
+        .shadow(color: zone.color.opacity(0.15), radius: 12, y: 4)
+        .onAppear {
+            glowPulse = true
+            withAnimation(.linear(duration: 6).repeatForever(autoreverses: false)) {
+                borderPhase = 360
+            }
+        }
+        .alert("Zonmigration", isPresented: $showMigrateAlert) {
+            Button("OK") {}
+        } message: { Text(migrateMessage) }
+    }
+}
+
+struct ZoneQuickStat: View {
+    let label: String
+    let value: String
+    let color: Color
+    var body: some View {
+        VStack(spacing: 2) {
+            Text(label)
+                .font(.system(size: 8, design: .monospaced))
+                .foregroundColor(.white.opacity(0.3))
+            Text(value)
+                .font(.system(size: 11, weight: .bold, design: .monospaced))
+                .foregroundColor(color)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 6)
     }
 }
 
