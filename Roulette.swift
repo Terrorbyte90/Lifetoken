@@ -1,316 +1,345 @@
-import Foundation
 import SwiftUI
 
+// MARK: - Slot Machine View
+//
+// 3 reels, 5 symbols. RTP ~94%.
+// Jackpot  (3 of a kind — special ⚡): 50x
+// 3 of a kind (any other):             5x – 20x
+// 2 of a kind:                         0.5x (partial return)
+// No match:                            0x (lose stake)
+//
+// Zone tax applied to all gross winnings via GameState.shared.currentZone.taxRate.
+// All time transactions use TimeEngine.shared.
+
 struct SlotMachineView: View {
-    @State private var symbols = ["🍒", "💎", "🍋", "🔔", "🍀"]
-    @State private var displayedReels = [0, 0, 0]
-    @State private var targetReels = [0, 0, 0]
-    @State private var isSpinning = false
-    @State private var resultMessage = ""
-    @State private var betMinutes: Int = 5
-    @State private var timeRemaining: TimeInterval = 82800
-    @State private var timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
-    @EnvironmentObject var zoneManager: ZoneManager
+    @Environment(\.dismiss) var dismiss
+    @ObservedObject private var engine    = TimeEngine.shared
+    @ObservedObject private var gameState = GameState.shared
 
-    private var currentZone: ZoneProfile {
-        zoneManager.currentZone(forTime: timeRemaining)
-    }
+    // MARK: Symbols
+    // Ordered by value: ⚡ > 💎 > ⌚ > ⏳ > 💀
+    private let symbols:   [String]  = ["⚡", "💎", "⌚", "⏳", "💀"]
+    private let symNames:  [String]  = ["Blixt", "Diamant", "Klocka", "Timglas", "Skalle"]
+    // Jackpot multiplier per symbol (index)
+    private let symMult:   [Double]  = [50, 20, 15, 10, 5]
+    // Relative weight (lower index = rarer)
+    private let weights:   [Double]  = [1, 2, 4, 6, 8]   // total 21
 
-    private var winChancePercentage: Int {
-        let zoneNames = ZoneProfile.allZones.map { $0.name }
-        if let index = zoneNames.firstIndex(of: currentZone.name) {
-            let percentage = 10 - (index * 2)
-            return max(1, percentage)
-        }
-        return 10
-    }
+    @State private var reels:        [Int]  = [3, 3, 3]   // current displayed symbol index per reel
+    @State private var target:       [Int]  = [3, 3, 3]   // determined result before animation
+    @State private var spinning:     [Bool] = [false, false, false]
+    @State private var isSpinning:   Bool   = false
+    @State private var betAmount:    TimeInterval = 300   // default 5 minutes
+    @State private var resultMessage: String = ""
+    @State private var showResult:   Bool   = false
+    @State private var lastWin:      TimeInterval? = nil
+    @State private var spinCount:    Int    = 0
 
-    private var zoneMultiplier: Int {
-        switch currentZone.name {
-        case "Duskline": return 5
-        case "Midgrey": return 10
-        case "Risefield": return 15
-        case "Aetherpoint": return 20
-        case "Novalux": return 25
-        case "Vaultum": return 30
-        case "Solara": return 35
-        default: return 5
-        }
-    }
+    // Spin animation timers — one per reel
+    @State private var spinTimers:   [Timer?] = [nil, nil, nil]
 
-    var multiplierText: String {
-        "Jackpot ger \(zoneMultiplier)x insatsen."
-    }
-
-    var zoneInfoText: String {
-        "Zonen du är i påverkar både vinst och risk."
-    }
+    // MARK: Body
 
     var body: some View {
-        VStack(spacing: 30) {
-            Text("Slot Machine")
-                .font(.system(size: 32, weight: .semibold, design: .rounded))
-                .bold()
-                .foregroundColor(.white)
-                .shadow(radius: 5)
+        ZStack {
+            Color.black.ignoresSafeArea()
 
-            HStack(spacing: 20) {
-                ForEach(0..<3) { index in
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 15)
-                            .fill(LinearGradient(colors: [.white.opacity(0.2), .white.opacity(0.05)], startPoint: .top, endPoint: .bottom))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 15)
-                                    .stroke(resultMessage.contains("JACKPOT") ? Color.yellow : .clear, lineWidth: 4)
-                                    .shadow(color: resultMessage.contains("JACKPOT") ? .yellow : .clear, radius: 6)
-                            )
-                            .frame(width: 80, height: 80)
-                            .shadow(radius: 4)
+            VStack(spacing: 0) {
+                headerBar
 
-                        Text(symbols[displayedReels[index]])
-                            .font(.system(size: 40))
-                            .transition(.scale)
-                            .id(displayedReels[index])
-                            .animation(.easeInOut(duration: 0.1), value: displayedReels[index])
-                    }
-                }
+                Spacer()
+
+                reelDisplay
+
+                Spacer()
+
+                payoutTable
+                    .padding(.bottom, 8)
+
+                betSection
+
+                spinButton
+                    .padding(.bottom, 40)
             }
+        }
+        .alert("Resultat", isPresented: $showResult) {
+            Button("OK") {}
+        } message: {
+            Text(resultMessage)
+        }
+        .onDisappear { stopAllTimers() }
+    }
 
-            VStack(spacing: 5) {
-                Text("Satsa minuter:")
-                    .foregroundColor(.white)
-                    .font(.system(size: 14, weight: .medium, design: .rounded))
-                
-                Picker("", selection: $betMinutes) {
-                    ForEach(1..<61) { minute in
-                        Text("\(minute) min")
-                            .foregroundColor(.white)
-                            .tag(minute)
-                    }
-                }
-                .pickerStyle(.wheel)
-                .frame(height: 100)
-                .colorMultiply(.white)
+    // MARK: Sub-views
+
+    private var headerBar: some View {
+        HStack {
+            Button(action: { dismiss() }) {
+                Image(systemName: "xmark")
+                    .foregroundColor(.white.opacity(0.6))
             }
-
-            Button(action: spin) {
-                Text(isSpinning ? "Snurrar..." : "Spela")
-                    .font(.system(size: 18, weight: .bold, design: .rounded))
-                    .padding(.vertical, 12)
-                    .frame(maxWidth: 160)
-                    .background(isSpinning ? Color.gray.opacity(0.4) : Color.green.opacity(0.9))
-                    .foregroundColor(.white)
-                    .cornerRadius(14)
-                    .shadow(radius: 5)
-            }
-            .disabled(isSpinning || TimeInterval(betMinutes * 60) > timeRemaining)
-
-            if !resultMessage.isEmpty {
-                Text(resultMessage)
-                    .font(.system(size: 22, weight: .semibold, design: .rounded))
-                    .foregroundColor(.yellow)
-                    .padding(.top, 20)
-                
-                if resultMessage.contains("JACKPOT") {
-                    Text("Du är vid liv en stund till…")
-                        .font(.system(size: 18, weight: .regular, design: .rounded))
-                        .foregroundColor(.white.opacity(0.8))
-                } else {
-                    Text("Du spelar med ditt liv…")
-                        .font(.system(size: 18, weight: .regular, design: .rounded))
-                        .foregroundColor(.white.opacity(0.8))
-                }
-            }
-
             Spacer()
-
-            // Instruktioner och mini-klocka dashboard-stil, längst ner
-            VStack(spacing: 8) {
-                Text("Vid förlust förlorar du din insats.\nTre lika ger insatsen gånger fem.")
-                    .font(.system(size: 14, weight: .medium, design: .rounded))
-                    .foregroundColor(.white.opacity(0.7))
-                    .multilineTextAlignment(.center)
-
-                Text("Här kan du leva längre eller avsluta snabbare…")
-                    .font(.system(size: 14, weight: .medium, design: .rounded))
-                    .foregroundColor(.red.opacity(0.8))
-                    .multilineTextAlignment(.center)
-            }
-            .padding(.bottom, 6)
-
-            VStack(spacing: 4) {
-                Text("Du befinner dig i Zonen:")
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(.white)
-                Text(zoneManager.currentZone.rawValue)
-                    .font(.system(size: 18, weight: .bold))
-                    .foregroundColor(.green)
-
-                VStack(spacing: 4) {
-                    Text(multiplierText)
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(.white.opacity(0.7))
-                        .multilineTextAlignment(.center)
-
-                    Text(zoneInfoText)
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(.white.opacity(0.7))
-                        .multilineTextAlignment(.center)
-                }
-            }
-            .padding(.bottom, 6)
-
-            VStack(spacing: 4) {
-                Text("LIFETOKEN")
-                    .font(.system(size: 16, weight: .bold, design: .monospaced))
-                    .foregroundColor(.white)
-
-                Text(timeFormatted(seconds: timeRemaining))
-                    .font(.system(size: 20, weight: .bold, design: .monospaced))
-                    .foregroundColor(.green)
-                    .onReceive(timer) { _ in
-                        updateTimeRemaining()
-                    }
-            }
-            .padding(.bottom, 10)
-            .frame(maxWidth: .infinity)
+            Text("COUNTDOWN SLOTS")
+                .font(.system(size: 18, weight: .bold, design: .monospaced))
+                .foregroundColor(.white)
+            Spacer()
+            Text(TimeEngine.shortFormatted(engine.balance))
+                .font(.system(size: 13, design: .monospaced))
+                .foregroundColor(.yellow)
         }
         .padding()
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color.black.ignoresSafeArea())
-        .onReceive(timer) { _ in
-            updateTimeRemaining()
-        }
+        .padding(.top, 20)
     }
 
-    func spin() {
-        let betSeconds = betMinutes * 60
-        if TimeInterval(betSeconds) > timeRemaining {
-            resultMessage = "❌ Du har inte tillräckligt med tid."
-            return
-        }
-        adjustTime(by: betSeconds)
-        isSpinning = true
-        resultMessage = ""
-        // Custom targetReels logic
-        let winChance = Int.random(in: 1...100)
-        let isJackpot = winChance <= winChancePercentage
-        let isTwoOfAKind = winChance <= 35
-        if isJackpot {
-            // 10% chans för JACKPOT (3 lika)
-            let symbol = Int.random(in: 0..<symbols.count)
-            targetReels = [symbol, symbol, symbol]
-        } else if isTwoOfAKind {
-            // 25% chans för två lika
-            let a = Int.random(in: 0..<symbols.count)
-            var b = Int.random(in: 0..<symbols.count)
-            while b == a { b = Int.random(in: 0..<symbols.count) }
-            let positions = [0, 1, 2].shuffled()
-            targetReels = [Int](repeating: 0, count: 3)
-            targetReels[positions[0]] = a
-            targetReels[positions[1]] = a
-            targetReels[positions[2]] = b
-        } else {
-            // 65% chans för ingen vinst
-            var newReels: [Int]
-            repeat {
-                newReels = (0..<3).map { _ in Int.random(in: 0..<symbols.count) }
-            } while newReels[0] == newReels[1] || newReels[1] == newReels[2] || newReels[0] == newReels[2]
-            targetReels = newReels
-        }
+    private var reelDisplay: some View {
+        VStack(spacing: 16) {
+            // Slot frame
+            HStack(spacing: 6) {
+                ForEach(0..<3, id: \.self) { col in
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 14)
+                            .fill(Color.white.opacity(0.06))
+                            .frame(width: 88, height: 100)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 14)
+                                    .stroke(
+                                        spinning[col] ? Color.green.opacity(0.6) : Color.white.opacity(0.12),
+                                        lineWidth: 1.5
+                                    )
+                            )
 
-        let durations = [
-            Double.random(in: 2.0...3.5),
-            Double.random(in: 2.5...4.0),
-            Double.random(in: 3.0...4.5)
-        ]
-
-        for index in 0..<3 {
-            let duration = durations[index]
-            spinReel(at: index, duration: duration)
-        }
-    }
-
-    func spinReel(at index: Int, duration: Double) {
-        var spinTime: Double = 0.0
-        let spinInterval: Double = 0.06
-
-        Timer.scheduledTimer(withTimeInterval: spinInterval, repeats: true) { timer in
-            spinTime += spinInterval
-            displayedReels[index] = Int.random(in: 0..<symbols.count)
-
-            if spinTime >= duration {
-                timer.invalidate()
-                displayedReels[index] = targetReels[index]
-
-                if index == 2 {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                        isSpinning = false
-                        checkResult()
+                        Text(symbols[reels[col]])
+                            .font(.system(size: 48))
+                            .id("\(col)-\(reels[col])-\(spinCount)")
+                            .transition(.asymmetric(
+                                insertion: .move(edge: .top).combined(with: .opacity),
+                                removal:   .move(edge: .bottom).combined(with: .opacity)
+                            ))
+                            .animation(.easeInOut(duration: 0.07), value: reels[col])
                     }
                 }
+            }
+
+            // Win line indicator
+            if let win = lastWin {
+                Text(win > 0
+                     ? "+\(TimeEngine.shortFormatted(win))"
+                     : "Ingen vinst")
+                    .font(.system(size: 16, weight: .bold, design: .monospaced))
+                    .foregroundColor(win > 0 ? .yellow : .red.opacity(0.7))
+                    .transition(.opacity)
+                    .animation(.easeIn(duration: 0.3), value: lastWin != nil)
             }
         }
     }
 
-    func checkResult() {
-        let reelA = targetReels[0]
-        let reelB = targetReels[1]
-        let reelC = targetReels[2]
+    private var payoutTable: some View {
+        VStack(spacing: 4) {
+            Text("UTDELNING")
+                .font(.system(size: 10, design: .monospaced))
+                .foregroundColor(.white.opacity(0.3))
+            HStack(spacing: 16) {
+                payoutRow(label: "⚡⚡⚡", value: "50x", color: .yellow)
+                payoutRow(label: "💎💎💎", value: "20x", color: .cyan)
+                payoutRow(label: "2 lika",  value: "0.5x", color: .white.opacity(0.5))
+            }
+            HStack(spacing: 16) {
+                payoutRow(label: "⌚⌚⌚", value: "15x", color: .white)
+                payoutRow(label: "⏳⏳⏳", value: "10x", color: .orange)
+                payoutRow(label: "💀💀💀", value: "5x",  color: .red)
+            }
+        }
+        .padding(.horizontal)
+    }
 
-        if reelA == reelB && reelB == reelC {
-            let betSeconds = betMinutes * 60
-            let multiplier = zoneMultiplier
-            let winSeconds = betSeconds * multiplier
-            let adjustment = -winSeconds
-            adjustTime(by: adjustment)
-            let winnings = betMinutes * multiplier
-            resultMessage = "🎉 JACKPOT! Du vann \(winnings) minuter!"
-        } else if reelA == reelB || reelB == reelC || reelA == reelC {
-            let lostMinutes = betMinutes
-            resultMessage = "🥈 Två lika! Du förlorade \(lostMinutes) minuter."
-        } else {
-            let lostMinutes = betMinutes
-            resultMessage = "❌ Ingen vinst. Du förlorade \(lostMinutes) minuter."
+    private func payoutRow(label: String, value: String, color: Color) -> some View {
+        HStack(spacing: 4) {
+            Text(label)
+                .font(.system(size: 11))
+            Text(value)
+                .font(.system(size: 11, weight: .bold, design: .monospaced))
+                .foregroundColor(color)
         }
     }
 
-    func adjustTime(by seconds: Int) {
-        guard let oldStart = UserDefaults.standard.object(forKey: "absoluteStartTimeUTC") as? Date else { return }
-        guard seconds != 0 else { return }
+    private var betSection: some View {
+        VStack(spacing: 8) {
+            HStack {
+                Text("Insats:")
+                    .font(.system(size: 13, design: .monospaced))
+                    .foregroundColor(.white.opacity(0.6))
+                Spacer()
+                Text(TimeEngine.shortFormatted(betAmount))
+                    .font(.system(size: 15, weight: .bold, design: .monospaced))
+                    .foregroundColor(.yellow)
+            }
+            .padding(.horizontal)
 
-        // POSITIVA värden -> backar starttid = ökar livstid
-        // NEGATIVA värden -> skjuter starttid FRAM = minskar livstid
-        let adjusted = oldStart.addingTimeInterval(TimeInterval(-seconds))
-        UserDefaults.standard.set(adjusted, forKey: "absoluteStartTimeUTC")
-        updateTimeRemaining()
+            Slider(
+                value: $betAmount,
+                in: 60...max(60, min(engine.balance, 86_400 * 7)),
+                step: 60
+            )
+            .accentColor(.green)
+            .padding(.horizontal)
+
+            // Quick bet row
+            HStack(spacing: 8) {
+                ForEach([300.0, 1_800.0, 3_600.0, 21_600.0, 86_400.0], id: \.self) { v in
+                    Button { betAmount = min(v, engine.balance) } label: {
+                        Text(TimeEngine.shortFormatted(v))
+                            .font(.system(size: 9, design: .monospaced))
+                            .foregroundColor(.white.opacity(0.7))
+                            .padding(.horizontal, 7)
+                            .padding(.vertical, 5)
+                            .background(Color.white.opacity(0.07))
+                            .cornerRadius(6)
+                    }
+                }
+            }
+            .padding(.horizontal)
+
+            // Zone multiplier hint
+            Text("RTP ~94%  |  Zon: \(gameState.currentZone.name)  |  Skatt: \(Int(gameState.currentZone.taxRate * 100))%")
+                .font(.system(size: 9, design: .monospaced))
+                .foregroundColor(.white.opacity(0.25))
+        }
     }
 
-    private func updateTimeRemaining() {
-        guard let startTime = UserDefaults.standard.object(forKey: "absoluteStartTimeUTC") as? Date else { return }
-        let secondsElapsed = Date().timeIntervalSince(startTime)
-        let startLife: TimeInterval = 82800
-        timeRemaining = max(0, startLife - secondsElapsed)
+    private var spinButton: some View {
+        Button { triggerSpin() } label: {
+            Text(isSpinning
+                 ? "SNURRAR..."
+                 : "SNURRA  (\(TimeEngine.shortFormatted(betAmount)))")
+                .font(.system(size: 16, weight: .bold, design: .monospaced))
+                .foregroundColor(.black)
+                .frame(maxWidth: .infinity)
+                .padding()
+                .background(
+                    isSpinning || betAmount > engine.balance
+                    ? Color.gray
+                    : Color.green
+                )
+                .cornerRadius(12)
+        }
+        .disabled(isSpinning || betAmount > engine.balance)
+        .padding(.horizontal)
     }
-}
 
-#Preview {
-    SlotMachineView()
-        .environmentObject(ZoneManager())
-}
+    // MARK: - Spin Logic
 
-    // Formatera tid som HH:MM:SS
-    func formattedTime(seconds: Int) -> String {
-        let hours = seconds / 3600
-        let minutes = (seconds % 3600) / 60
-        let secs = seconds % 60
-        return String(format: "%02d:%02d:%02d", hours, minutes, secs)
+    func triggerSpin() {
+        guard TimeEngine.shared.deductTime(betAmount) else { return }
+        isSpinning = true
+        lastWin    = nil
+        spinCount += 1
+
+        // Determine result using weighted random
+        target = (0..<3).map { _ in weightedRandom() }
+
+        // Assign spin durations (left stops first, right stops last)
+        let durations: [Double] = [
+            Double.random(in: 1.5...2.2),
+            Double.random(in: 2.0...2.8),
+            Double.random(in: 2.5...3.5)
+        ]
+
+        for col in 0..<3 {
+            spinning[col] = true
+            startReelSpin(col: col, duration: durations[col])
+        }
     }
 
-func timeFormatted(seconds: TimeInterval) -> String {
-    let totalSeconds = Int(seconds)
-    let hours = totalSeconds / 3600
-    let minutes = (totalSeconds % 3600) / 60
-    let secs = totalSeconds % 60
-    return String(format: "%02d:%02d:%02d", hours, minutes, secs)
+    func startReelSpin(col: Int, duration: Double) {
+        stopTimer(col: col)
+
+        let interval: TimeInterval = 0.07
+        var elapsed: TimeInterval  = 0.0
+
+        let timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { t in
+            elapsed += interval
+
+            if elapsed < duration {
+                // Randomly cycle through symbols
+                DispatchQueue.main.async {
+                    reels[col] = Int.random(in: 0..<symbols.count)
+                }
+            } else {
+                t.invalidate()
+                DispatchQueue.main.async {
+                    reels[col]    = target[col]
+                    spinning[col] = false
+
+                    // All reels stopped?
+                    if spinning.allSatisfy({ !$0 }) {
+                        isSpinning = false
+                        evaluateResult()
+                    }
+                }
+            }
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        spinTimers[col] = timer
+    }
+
+    func stopTimer(col: Int) {
+        spinTimers[col]?.invalidate()
+        spinTimers[col] = nil
+    }
+
+    func stopAllTimers() {
+        for i in 0..<3 { stopTimer(col: i) }
+    }
+
+    // MARK: Weighted random symbol selection
+
+    func weightedRandom() -> Int {
+        let total = weights.reduce(0, +)
+        var r     = Double.random(in: 0..<total)
+        for (i, w) in weights.enumerated() {
+            r -= w
+            if r <= 0 { return i }
+        }
+        return weights.count - 1
+    }
+
+    // MARK: Result evaluation
+
+    func evaluateResult() {
+        let a = target[0], b = target[1], c = target[2]
+        let taxRate = gameState.currentZone.taxRate
+
+        var grossWin: TimeInterval = 0
+
+        if a == b && b == c {
+            // Three of a kind
+            let mult = symMult[a]
+            grossWin = betAmount * mult
+        } else if a == b || b == c || a == c {
+            // Two of a kind — partial return (0.5x)
+            grossWin = betAmount * 0.5
+        }
+        // else: no match, lose
+
+        if grossWin > 0 {
+            let net = grossWin * (1.0 - taxRate)
+            TimeEngine.shared.addTime(net)
+            GameState.shared.recordEarning(net)
+            lastWin = net
+
+            let isJackpot = a == b && b == c && a == 0  // triple lightning
+            if isJackpot {
+                resultMessage = "JACKPOT! \(symbols[a])\(symbols[a])\(symbols[a])\n+\(TimeEngine.shortFormatted(net)) (efter \(Int(taxRate * 100))% skatt)"
+            } else if a == b && b == c {
+                resultMessage = "\(symbols[a])\(symbols[a])\(symbols[a])  \(Int(symMult[a]))x!\n+\(TimeEngine.shortFormatted(net)) (efter skatt)"
+            } else {
+                resultMessage = "Två lika — delåterbetalning\n+\(TimeEngine.shortFormatted(net))"
+            }
+        } else {
+            lastWin       = 0
+            resultMessage = "\(symbols[a])  \(symbols[b])  \(symbols[c])\nIngen vinst. Förlorade \(TimeEngine.shortFormatted(betAmount))."
+        }
+
+        showResult = true
+    }
 }

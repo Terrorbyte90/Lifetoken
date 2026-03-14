@@ -1,229 +1,308 @@
 import SwiftUI
 
-
 struct DashboardView: View {
+    @ObservedObject private var engine = TimeEngine.shared
+    @ObservedObject private var gameState = GameState.shared
     @ObservedObject private var incomeManager = IncomeManager.shared
+
     @State private var showOnboarding = !UserDefaults.standard.bool(forKey: "hasLaunched")
-    @State private var selectedTimeZone = TimeZone.current.identifier
-    @State private var username = ""
-    @State private var timeRemaining: TimeInterval = 82800
-    @State private var timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
-    @State private var currentZone: ZoneProfile? = nil
+    @State private var showTimeMarket = false
+    @State private var showZoneMap = false
     @State private var currentQuoteIndex: Int = 0
     @State private var quoteTimer = Timer.publish(every: 30, on: .main, in: .common).autoconnect()
-    @State private var showTimeMarket = false
-    @State private var earnedToday: TimeInterval = 0
-    @State private var payoutTime: String = ""
-    @State private var showZoneMap = false
+    @State private var pulseScale: CGFloat = 1.0
+    @State private var showCheatingAlert = false
+
     let quotes = [
-        "⏳ Du förlorar 1 sekund varje sekund. Tjäna tillbaka dem genom att röra på dig.",
-        "👟 Varje 7 steg ger dig 1 sekund livstid. Gå för att fortsätta leva.",
-        "💡 Din tid är din valuta. Använd den klokt.",
-        "🔥 Zoner låser upp fördelar – ju längre du överlever, desto starkare blir du.",
-        "🛒 Boosts kan dubbla din inkomst. Använd dem rätt.",
-        "📅 Dagens intjänade sekunder räknas varje natt klockan 00:00.",
-        "🏃‍♂️ 7000 steg? Det är 1000 extra sekunder – varje dag räknas."
+        "Du forlorar 1 sekund varje sekund. Tjana tillbaka dem.",
+        "Varje 7 steg ger dig 1 sekund livstid.",
+        "Din tid ar din valuta. Anvand den klokt.",
+        "Zoner laser upp fordelar – ju langre du overlever, desto starkare.",
+        "Boosts kan dubbla din inkomst. Anvand dem ratt.",
+        "Daglig inloggning ger streak-bonus.",
+        "Kasino finns i rikare zoner. Odds gynnar alltid huset.",
+        "Investera tid i Time Bank – men marknaden kraschar ibland.",
+        "Minutmannen ar ute pa gatorna. Vakta din tid."
     ]
 
     var body: some View {
         ZStack {
-            VStack(spacing: 24) {
-                Text("LIFETOKEN")
-                    .font(.system(size: 28, weight: .bold, design: .monospaced))
-                    .foregroundColor(.white)
-                    .padding(.top, 80)
+            Color.black.ignoresSafeArea()
 
-                Text(timeFormatted(seconds: timeRemaining))
-                    .font(.system(size: 48, weight: .bold, design: .monospaced))
-                    .foregroundColor(.green)
-                    .onReceive(timer) { _ in
-                        updateTimeRemaining()
-                    }
-
-                Text("Användare: \(UserDefaults.standard.string(forKey: "username") ?? "–")")
-                    .font(.system(size: 18, weight: .medium, design: .monospaced))
-                    .foregroundColor(.white.opacity(0.8))
-                
-                Text("Zon: \(currentZone?.name ?? "-")")
-                    .font(.system(size: 16, weight: .medium, design: .monospaced))
-                    .foregroundColor(.white.opacity(0.6))
-
-                if !BoostManager.shared.getActiveBoosts().isEmpty {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Aktiva boosts:")
-                            .font(.system(size: 14, weight: .medium, design: .monospaced))
-                            .foregroundColor(.green)
-
-                        ForEach(BoostManager.shared.getActiveBoosts(), id: \.self) { boost in
-                            Text("• \(boost)")
-                                .font(.system(size: 12, weight: .regular, design: .monospaced))
+            ScrollView {
+                VStack(spacing: 20) {
+                    // Header
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("LIFETOKEN")
+                                .font(.system(size: 28, weight: .bold, design: .monospaced))
                                 .foregroundColor(.white)
+                            Text(gameState.username.isEmpty ? "Okand" : gameState.username)
+                                .font(.system(size: 14, design: .monospaced))
+                                .foregroundColor(.white.opacity(0.5))
+                        }
+                        Spacer()
+                        VStack(alignment: .trailing, spacing: 2) {
+                            Text(gameState.currentZone.name)
+                                .font(.system(size: 14, weight: .bold, design: .monospaced))
+                                .foregroundColor(.green)
+                            Text("Streak: \(gameState.loginStreakDays) dagar")
+                                .font(.system(size: 11, design: .monospaced))
+                                .foregroundColor(.yellow)
                         }
                     }
                     .padding(.horizontal)
-                }
+                    .padding(.top, 60)
 
+                    // ══════════════════════════════
+                    // MAIN CLOCK — DO NOT CHANGE FONT
+                    // ══════════════════════════════
+                    VStack(spacing: 8) {
+                        Text(engine.balance <= 0 ? "TIMED OUT" : TimeEngine.formatted(engine.balance))
+                            .font(.system(size: 48, weight: .bold, design: .monospaced))
+                            .foregroundColor(clockColor)
+                            .scaleEffect(pulseScale)
+                            .animation(.easeInOut(duration: 0.5).repeatForever(autoreverses: true), value: engine.balance < 3600)
+                            .onAppear { if engine.balance < 3600 { pulseScale = 1.05 } }
+                            .onChange(of: engine.balance) { newVal in
+                                pulseScale = newVal < 3600 ? 1.05 : 1.0
+                            }
 
-                Spacer()
-                Spacer()
-
-                // Earnings & payout section
-                let boostedEarnings = BoostManager.shared.calculatedEarnings(baseSeconds: earnedToday)
-                Text("💰 Lön hittills: \(timeFormatted(seconds: boostedEarnings))")
-                    .font(.system(size: 14, weight: .medium, design: .monospaced))
-                    .foregroundColor(.white)
-
-                Text("⏳ Tid till lön: \(payoutTime)")
-                    .font(.system(size: 12, weight: .regular, design: .monospaced))
-                    .foregroundColor(.white.opacity(0.6))
-
-                HStack(spacing: 16) {
-                    Button(action: {
-                        showTimeMarket = true
-                    }) {
-                        Text("🛒 Butik")
-                            .font(.system(size: 14, weight: .medium, design: .monospaced))
-                            .padding(8)
-                            .background(Color.white.opacity(0.1))
-                            .cornerRadius(8)
-                            .foregroundColor(.white)
-                    }
-
-                    Button(action: {
-                        showZoneMap = true
-                    }) {
-                        HStack(spacing: 6) {
-                            Image(systemName: "map.fill")
-                                .resizable()
-                                .scaledToFit()
-                                .frame(width: 18, height: 18)
-
-                            Text("Zoner")
-                                .font(.system(size: 14, weight: .medium, design: .monospaced))
+                        if engine.cheatingDetected {
+                            Text("TIDMANIPULATION DETEKTERAD")
+                                .font(.system(size: 11, weight: .bold, design: .monospaced))
+                                .foregroundColor(.red)
                         }
-                        .padding(8)
-                        .background(Color.white.opacity(0.1))
-                        .cornerRadius(8)
-                        .foregroundColor(.white)
-                    }
 
-                    // Återställning av tiden
-                    Button(action: {
-                        UserDefaults.standard.set(Date(), forKey: "absoluteStartTimeUTC")
-                    }) {
-                        Image(systemName: "arrow.clockwise.circle.fill")
-                            .resizable()
-                            .frame(width: 24, height: 24)
-                            .foregroundColor(.green)
+                        HStack(spacing: 16) {
+                            VStack(spacing: 2) {
+                                Text("Skattesats")
+                                    .font(.system(size: 10, design: .monospaced))
+                                    .foregroundColor(.white.opacity(0.4))
+                                Text("\(Int(gameState.currentZone.taxRate * 100))%")
+                                    .font(.system(size: 13, weight: .bold, design: .monospaced))
+                                    .foregroundColor(.yellow)
+                            }
+                            Divider().background(Color.white.opacity(0.2)).frame(height: 30)
+                            VStack(spacing: 2) {
+                                Text("Tjanat idag")
+                                    .font(.system(size: 10, design: .monospaced))
+                                    .foregroundColor(.white.opacity(0.4))
+                                Text(TimeEngine.shortFormatted(incomeManager.earnedSeconds))
+                                    .font(.system(size: 13, weight: .bold, design: .monospaced))
+                                    .foregroundColor(.green)
+                            }
+                            Divider().background(Color.white.opacity(0.2)).frame(height: 30)
+                            VStack(spacing: 2) {
+                                Text("NTP")
+                                    .font(.system(size: 10, design: .monospaced))
+                                    .foregroundColor(.white.opacity(0.4))
+                                Text(engine.ntpVerified ? "OK" : "sync")
+                                    .font(.system(size: 13, weight: .bold, design: .monospaced))
+                                    .foregroundColor(engine.ntpVerified ? .green : .yellow)
+                            }
+                        }
                     }
-                }
-
-                Text(quotes[currentQuoteIndex])
-                    .font(.footnote)
-                    .foregroundColor(.white)
                     .padding()
-                    .background(Color.white.opacity(0.1))
-                    .cornerRadius(12)
-                    .padding(.horizontal, 32)
-                    .padding(.bottom, 20)
-                    .multilineTextAlignment(.center)
-                    .onReceive(quoteTimer) { _ in
-                        currentQuoteIndex = (currentQuoteIndex + 1) % quotes.count
+                    .background(Color.white.opacity(0.04))
+                    .cornerRadius(16)
+                    .padding(.horizontal)
+
+                    // Active Boosts
+                    if !BoostManager.shared.getActiveBoosts().isEmpty {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("AKTIVA BOOSTS")
+                                .font(.system(size: 10, weight: .bold, design: .monospaced))
+                                .foregroundColor(.green.opacity(0.7))
+                            ForEach(BoostManager.shared.getActiveBoosts(), id: \.self) { boost in
+                                Text("• \(boost)")
+                                    .font(.system(size: 12, design: .monospaced))
+                                    .foregroundColor(.white)
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding()
+                        .background(Color.green.opacity(0.08))
+                        .cornerRadius(12)
+                        .padding(.horizontal)
                     }
+
+                    // Shortcut buttons
+                    HStack(spacing: 12) {
+                        ShortcutButton(icon: "cart.fill", label: "Butik") { showTimeMarket = true }
+                        ShortcutButton(icon: "map.fill", label: "Zoner") { showZoneMap = true }
+                    }
+                    .padding(.horizontal)
+
+                    // Quote
+                    Text(quotes[currentQuoteIndex])
+                        .font(.system(size: 12, design: .monospaced))
+                        .foregroundColor(.white.opacity(0.6))
+                        .multilineTextAlignment(.center)
+                        .padding()
+                        .background(Color.white.opacity(0.05))
+                        .cornerRadius(12)
+                        .padding(.horizontal)
+                        .onReceive(quoteTimer) { _ in
+                            withAnimation { currentQuoteIndex = (currentQuoteIndex + 1) % quotes.count }
+                        }
+
+                    Spacer(minLength: 80)
+                }
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Color.black)
-            .ignoresSafeArea()
         }
-        .alert("Dagens Lön", isPresented: $incomeManager.showDailySummary) {
-            Button("OK", role: .cancel) { }
-        } message: {
-            Text(incomeManager.summaryMessage)
-        }
-        .fullScreenCover(isPresented: $showOnboarding) {
-            OnboardingView(showOnboarding: $showOnboarding)
-        }
+        .onAppear { gameState.updateZone() }
+        .fullScreenCover(isPresented: $showOnboarding) { OnboardingView(showOnboarding: $showOnboarding) }
         .sheet(isPresented: $showTimeMarket) {
-            TimeMarketView(timeRemaining: $timeRemaining, currentZone: currentZone)
-                .presentationDetents([.large])
+            TimeMarketView(timeRemaining: .constant(engine.balance), currentZone: gameState.currentZone)
         }
-        .sheet(isPresented: $showZoneMap) {
-            ZoneVisual()
-                .presentationDetents([.large])
-        }
+        .sheet(isPresented: $showZoneMap) { ZoneVisual() }
+        .alert("Streak Bonus!", isPresented: $gameState.showStreakBonus) {
+            Button("Tack!", role: .cancel) {}
+        } message: { Text(gameState.streakBonusMessage) }
+        .alert("Fusk Detekterat", isPresented: $engine.cheatingDetected) {
+            Button("OK") {}
+        } message: { Text("Din enhetstid stammer inte med servertiden. Ogiltig tid har dragits av.") }
     }
 
-    private func updateTimeRemaining() {
-        guard let startTime = UserDefaults.standard.object(forKey: "absoluteStartTimeUTC") as? Date else { return }
-        let secondsElapsed = Date().timeIntervalSince(startTime)
-        let startLife: TimeInterval = 82800
-        timeRemaining = max(0, startLife - secondsElapsed)
-        ZoneManager.shared.evaluateZoneChange(currentTime: timeRemaining)
-        currentZone = ZoneManager.shared.currentZone(forTime: timeRemaining)
-
-        // Update earnedToday with real-time incomeManager value
-        earnedToday = incomeManager.earnedSeconds
-
-        // Calculate time until next payout (12:00 noon)
-        let now = Date()
-        var components = Calendar.current.dateComponents([.year, .month, .day], from: now)
-        components.hour = 12
-        components.minute = 0
-        components.second = 0
-        let noonToday = Calendar.current.date(from: components)!
-        let targetTime = now < noonToday ? noonToday : Calendar.current.date(byAdding: .day, value: 1, to: noonToday)!
-        let remaining = Int(targetTime.timeIntervalSince(now))
-        let hours = remaining / 3600
-        let minutes = (remaining % 3600) / 60
-        payoutTime = "\(hours)h \(minutes)m"
-    }
-
-    private func timeFormatted(seconds: TimeInterval) -> String {
-        let hrs = Int(seconds) / 3600
-        let min = (Int(seconds) % 3600) / 60
-        let sec = Int(seconds) % 60
-        return String(format: "%02d:%02d:%02d", hrs, min, sec)
+    private var clockColor: Color {
+        if engine.balance <= 0 { return .red }
+        if engine.balance < 3600 { return .red }
+        if engine.balance < 21600 { return .yellow }
+        return .green
     }
 }
 
-struct DashboardView_Previews: PreviewProvider {
-    static var previews: some View {
-        DashboardView()
+struct ShortcutButton: View {
+    let icon: String
+    let label: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 8) {
+                Image(systemName: icon)
+                Text(label).font(.system(size: 13, weight: .medium, design: .monospaced))
+            }
+            .frame(maxWidth: .infinity)
+            .padding(10)
+            .background(Color.white.opacity(0.08))
+            .cornerRadius(10)
+            .foregroundColor(.white)
+        }
+    }
+}
+
+struct MainTabView: View {
+    @ObservedObject private var engine = TimeEngine.shared
+
+    var body: some View {
+        TabView {
+            DashboardView()
+                .tabItem {
+                    Label("Hem", systemImage: "clock.fill")
+                }
+            WorkView()
+                .tabItem {
+                    Label("Arbete", systemImage: "hammer.fill")
+                }
+            CasinoHubView()
+                .tabItem {
+                    Label("Kasino", systemImage: "suit.spade.fill")
+                }
+            ZoneVisual()
+                .tabItem {
+                    Label("Zoner", systemImage: "map.fill")
+                }
+            SocialView()
+                .tabItem {
+                    Label("Social", systemImage: "person.2.fill")
+                }
+        }
+        .accentColor(.green)
+        .preferredColorScheme(.dark)
     }
 }
 
 struct OnboardingView: View {
     @Binding var showOnboarding: Bool
     @State private var username: String = ""
-    @State private var selectedZone: String = TimeZone.current.identifier
+    @State private var animating = false
 
     var body: some View {
-        NavigationView {
-            Form {
-                Section(header: Text("Användarnamn")) {
-                    TextField("Ange namn", text: $username)
-                }
+        ZStack {
+            Color.black.ignoresSafeArea()
+            VStack(spacing: 32) {
+                Spacer()
+                Text("LIFETOKEN")
+                    .font(.system(size: 40, weight: .bold, design: .monospaced))
+                    .foregroundColor(.white)
+                    .scaleEffect(animating ? 1.05 : 1.0)
+                    .animation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true), value: animating)
 
-                Section(header: Text("Välj tidszon")) {
-                    Picker("Tidszon", selection: $selectedZone) {
-                        ForEach(TimeZone.knownTimeZoneIdentifiers, id: \.self) { zone in
-                            Text(zone).tag(zone)
-                        }
-                    }
-                }
+                Text("00:00:00")
+                    .font(.system(size: 48, weight: .bold, design: .monospaced))
+                    .foregroundColor(.green)
 
-                Section {
-                    Button("Starta Livet") {
-                        UserDefaults.standard.set(true, forKey: "hasLaunched")
-                        UserDefaults.standard.set(username, forKey: "username")
-                        UserDefaults.standard.set(selectedZone, forKey: "userTimeZone")
-                        UserDefaults.standard.set(Date(), forKey: "absoluteStartTimeUTC")
-                        showOnboarding = false
-                    }
-                    .disabled(username.isEmpty)
+                Text("\"Ingen tid att forlora.\"")
+                    .font(.system(size: 16, design: .monospaced))
+                    .foregroundColor(.white.opacity(0.5))
+
+                VStack(alignment: .leading, spacing: 12) {
+                    InfoRow(icon: "clock", text: "Din klocka tickar alltid — aven nar appen ar stangd.")
+                    InfoRow(icon: "figure.walk", text: "Varje 7 steg = 1 sekund livstid.")
+                    InfoRow(icon: "map", text: "7 zoner att lasa upp. Ju hogre zon, desto mer risk och beloning.")
+                    InfoRow(icon: "suit.spade.fill", text: "Kasino finns i de rika zonerna. Odsen gynnar alltid huset.")
+                    InfoRow(icon: "exclamationmark.triangle", text: "Klockan kan inte fuskas. Servertid verifieras alltid.")
                 }
+                .padding(.horizontal)
+
+                TextField("Ditt namn", text: $username)
+                    .font(.system(size: 18, design: .monospaced))
+                    .foregroundColor(.white)
+                    .padding()
+                    .background(Color.white.opacity(0.1))
+                    .cornerRadius(12)
+                    .padding(.horizontal)
+
+                Button {
+                    guard !username.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+                    UserDefaults.standard.set(true, forKey: "hasLaunched")
+                    UserDefaults.standard.set(username, forKey: "username")
+                    UserDefaults.standard.set(Date(), forKey: "absoluteStartTimeUTC")
+                    GameState.shared.username = username
+                    showOnboarding = false
+                } label: {
+                    Text("STARTA LIVET")
+                        .font(.system(size: 18, weight: .bold, design: .monospaced))
+                        .foregroundColor(.black)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(username.isEmpty ? Color.gray : Color.green)
+                        .cornerRadius(14)
+                        .padding(.horizontal)
+                }
+                .disabled(username.isEmpty)
+
+                Spacer()
             }
-            .navigationTitle("Välj start")
+        }
+        .onAppear { animating = true }
+    }
+}
+
+struct InfoRow: View {
+    let icon: String
+    let text: String
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: icon)
+                .font(.system(size: 18))
+                .foregroundColor(.green)
+                .frame(width: 24)
+            Text(text)
+                .font(.system(size: 13, design: .monospaced))
+                .foregroundColor(.white.opacity(0.75))
         }
     }
 }
