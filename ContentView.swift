@@ -1,9 +1,10 @@
 import SwiftUI
 
 struct DashboardView: View {
-    @ObservedObject private var engine = TimeEngine.shared
-    @ObservedObject private var gameState = GameState.shared
+    @ObservedObject private var engine        = TimeEngine.shared
+    @ObservedObject private var gameState     = GameState.shared
     @ObservedObject private var incomeManager = IncomeManager.shared
+    @ObservedObject private var shop          = ShopManager.shared
 
     @State private var showOnboarding = !UserDefaults.standard.bool(forKey: "hasLaunched")
     @State private var showTimeMarket = false
@@ -129,37 +130,46 @@ struct DashboardView: View {
                     .cornerRadius(12)
                     .padding(.horizontal)
 
-                    // Active Boosts
-                    if !BoostManager.shared.getActiveBoosts().isEmpty {
-                        VStack(alignment: .leading, spacing: 6) {
-                            HStack {
-                                Image(systemName: "bolt.fill")
+                    // Aktiva effekter från ShopManager
+                    let liveEffects = shop.activeEffects.filter { !$0.isExpired }
+                    if !liveEffects.isEmpty {
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack(spacing: 6) {
+                                Image(systemName: "sparkles")
                                     .font(.system(size: 10))
-                                    .foregroundColor(.green)
-                                Text("AKTIVA BOOSTS")
+                                    .foregroundColor(.yellow)
+                                Text("AKTIVA EFFEKTER (\(liveEffects.count))")
                                     .font(.system(size: 10, weight: .bold, design: .monospaced))
-                                    .foregroundColor(.green.opacity(0.8))
+                                    .foregroundColor(.yellow.opacity(0.85))
                             }
-                            ForEach(BoostManager.shared.getActiveBoosts(), id: \.self) { boost in
-                                HStack(spacing: 6) {
-                                    Circle().fill(Color.green).frame(width: 5, height: 5)
-                                    Text(boost)
-                                        .font(.system(size: 12, design: .monospaced))
+                            FlowLayout(items: liveEffects) { effect in
+                                HStack(spacing: 5) {
+                                    Circle().fill(Color.green).frame(width: 4, height: 4)
+                                    Text(effect.name)
+                                        .font(.system(size: 11, design: .monospaced))
                                         .foregroundColor(.white.opacity(0.85))
+                                    if effect.remainingSeconds > 0 {
+                                        Text(TimeEngine.shortFormatted(effect.remainingSeconds))
+                                            .font(.system(size: 9, design: .monospaced))
+                                            .foregroundColor(.white.opacity(0.35))
+                                    }
                                 }
+                                .padding(.horizontal, 8).padding(.vertical, 4)
+                                .background(Color.white.opacity(0.07))
+                                .clipShape(Capsule())
                             }
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding()
-                        .background(Color.green.opacity(0.06))
-                        .cornerRadius(12)
-                        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.green.opacity(0.2), lineWidth: 1))
+                        .padding(12)
+                        .background(Color.yellow.opacity(0.05))
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.yellow.opacity(0.2), lineWidth: 1))
                         .padding(.horizontal)
                     }
 
                     // Shortcut buttons — 3-kolumns grid
                     HStack(spacing: 10) {
-                        ShortcutButton(icon: "cart.fill", label: "Marknad") { showTimeMarket = true }
+                        ShopShortcutButton { showTimeMarket = true }
                         ShortcutButton(icon: "chart.bar.fill", label: "Time Bank") { showInvestment = true }
                         ShortcutButton(icon: "map.fill", label: "Zonkarta") { showZoneMap = true }
                     }
@@ -319,6 +329,21 @@ struct ArmClockView: View {
 
 // MARK: - Stat Pill
 
+// Enkel FlowLayout för aktiva effekter — wraps items i rader
+struct FlowLayout<Item: Identifiable, Content: View>: View {
+    let items: [Item]
+    @ViewBuilder let content: (Item) -> Content
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            ForEach(items) { item in
+                content(item)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
 struct StatPill: View {
     let label: String
     let value: String
@@ -363,6 +388,59 @@ struct ShortcutButton: View {
             .background(Color.white.opacity(0.07))
             .clipShape(RoundedRectangle(cornerRadius: 12))
             .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.white.opacity(0.06), lineWidth: 1))
+            .scaleEffect(pressed ? 0.96 : 1.0)
+            .animation(.spring(response: 0.2), value: pressed)
+        }
+        .simultaneousGesture(DragGesture(minimumDistance: 0)
+            .onChanged { _ in pressed = true }
+            .onEnded { _ in pressed = false }
+        )
+    }
+}
+
+// Marknad-knapp med badge för aktiva effekter
+struct ShopShortcutButton: View {
+    @ObservedObject private var shop = ShopManager.shared
+    let action: () -> Void
+    @State private var pressed = false
+
+    private var activeCount: Int {
+        shop.activeEffects.filter { !$0.isExpired }.count
+    }
+
+    var body: some View {
+        Button(action: {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            action()
+        }) {
+            ZStack(alignment: .topTrailing) {
+                VStack(spacing: 5) {
+                    Image(systemName: "cart.fill")
+                        .font(.system(size: 18))
+                        .foregroundColor(.white.opacity(0.8))
+                    Text("Marknad")
+                        .font(.system(size: 10, weight: .medium, design: .monospaced))
+                        .foregroundColor(.white.opacity(0.6))
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+                .background(activeCount > 0 ? Color.green.opacity(0.12) : Color.white.opacity(0.07))
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(activeCount > 0 ? Color.green.opacity(0.3) : Color.white.opacity(0.06), lineWidth: 1)
+                )
+
+                if activeCount > 0 {
+                    Text("\(activeCount)")
+                        .font(.system(size: 9, weight: .black))
+                        .foregroundColor(.black)
+                        .padding(4)
+                        .background(Color.green)
+                        .clipShape(Circle())
+                        .offset(x: -6, y: 4)
+                }
+            }
             .scaleEffect(pressed ? 0.96 : 1.0)
             .animation(.spring(response: 0.2), value: pressed)
         }
