@@ -121,6 +121,21 @@ struct ZoneProfile: Equatable {
         }
     }
 
+    /// Daglig inflationstakt per dag i zonen (används av InflationManager)
+    /// Symboliserar att det med tiden kostar mer och mer att bo i samma zon.
+    var inflationRatePerDay: Double {
+        switch name {
+        case "Duskline":    return 0.05   // 5%/dag → +35% efter 7 dagar — ohållbart
+        case "Midgrey":     return 0.03   // 3%/dag → +30% efter 10 dagar
+        case "Risefield":   return 0.025  // 2.5%/dag → +35% efter 14 dagar
+        case "Aetherpoint": return 0.020  // 2%/dag → +40% efter 20 dagar
+        case "Novalux":     return 0.015  // 1.5%/dag → +30% efter 20 dagar
+        case "Vaultum":     return 0.010  // 1%/dag → +30% efter 30 dagar
+        case "Solara":      return 0.006  // 0.6%/dag → liten men konstant press
+        default:            return 0.05
+        }
+    }
+
     var description: String {
         switch name {
         case "Duskline":    return "Startzonen. Skattefri och trygg. Perfekt för nybörjare. Knappt möjligt att gå plus."

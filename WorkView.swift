@@ -116,15 +116,19 @@ class WorkManager: ObservableObject {
                 earnings *= (1 - loseFactor)
                 let taxed = earnings * (1 - GameState.shared.currentZone.taxRate)
                 let boosted = taxed * BoostManager.shared.boosterMultiplier()
-                TimeEngine.shared.addTime(boosted)
-                GameState.shared.recordEarning(boosted)
-                lastCompletedJobMessage = "Händelse! \(jobType.name) avkortad.\nIntjänat: \(TimeEngine.shortFormatted(boosted)) (efter skatt + risk)"
+                // Apply inflation penalty
+                let inflated = InflationManager.shared.applyToEarnings(boosted)
+                TimeEngine.shared.addTime(inflated)
+                GameState.shared.recordEarning(inflated)
+                lastCompletedJobMessage = "Händelse! \(jobType.name) avkortad.\nIntjänat: \(TimeEngine.shortFormatted(inflated)) (skatt + risk + inflation)"
             } else {
                 let taxed = earnings * (1 - GameState.shared.currentZone.taxRate)
                 let boosted = taxed * BoostManager.shared.boosterMultiplier()
-                TimeEngine.shared.addTime(boosted)
-                GameState.shared.recordEarning(boosted)
-                lastCompletedJobMessage = "\(jobType.name) klar!\nIntjänat: \(TimeEngine.shortFormatted(boosted)) (efter skatt)"
+                // Apply inflation penalty
+                let inflated = InflationManager.shared.applyToEarnings(boosted)
+                TimeEngine.shared.addTime(inflated)
+                GameState.shared.recordEarning(inflated)
+                lastCompletedJobMessage = "\(jobType.name) klar!\nIntjänat: \(TimeEngine.shortFormatted(inflated)) (efter skatt)"
             }
 
             MissionsManager.incrementProgress("jobs_completed", by: 1)
@@ -174,7 +178,8 @@ extension JobType {
 
     func netEarnings(for zone: ZoneProfile) -> TimeInterval {
         let base = baseEarnings(for: zone)
-        return base * (1 - zone.taxRate) * BoostManager.shared.boosterMultiplier()
+        let afterTaxAndBoost = base * (1 - zone.taxRate) * BoostManager.shared.boosterMultiplier()
+        return InflationManager.shared.applyToEarnings(afterTaxAndBoost)
     }
 
     func hourlyRate(for zone: ZoneProfile) -> TimeInterval {
@@ -188,6 +193,7 @@ struct WorkView: View {
     @ObservedObject private var workManager = WorkManager.shared
     @ObservedObject private var gameState = GameState.shared
     @ObservedObject private var engine = TimeEngine.shared
+    @ObservedObject private var inflation = InflationManager.shared
 
     @State private var selectedJob: JobType? = nil
     @State private var showConfirm: Bool = false
@@ -204,7 +210,7 @@ struct WorkView: View {
             ScrollView {
                 VStack(spacing: 20) {
                     // Header
-                    VStack(spacing: 4) {
+                    VStack(spacing: 8) {
                         Text("ARBETSMARKNADEN")
                             .font(.system(size: 22, weight: .bold, design: .monospaced))
                             .foregroundColor(.white)
@@ -212,6 +218,21 @@ struct WorkView: View {
                         Text("Zon: \(gameState.currentZone.name) | Skatt: \(Int(gameState.currentZone.taxRate * 100))%")
                             .font(.system(size: 12, design: .monospaced))
                             .foregroundColor(.white.opacity(0.5))
+
+                        // Inflation warning
+                        if inflation.inflationMultiplier > 1.05 {
+                            HStack(spacing: 6) {
+                                Image(systemName: inflation.severity.icon)
+                                    .font(.system(size: 11))
+                                    .foregroundColor(inflation.severity.color)
+                                Text("Inflation \(inflation.percentLabel) — löner reducerade")
+                                    .font(.system(size: 11, design: .monospaced))
+                                    .foregroundColor(inflation.severity.color.opacity(0.9))
+                            }
+                            .padding(.horizontal, 12).padding(.vertical, 5)
+                            .background(inflation.severity.color.opacity(0.08))
+                            .clipShape(Capsule())
+                        }
                     }
 
                     // Active job display
