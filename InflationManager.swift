@@ -48,6 +48,24 @@ class InflationManager: ObservableObject {
         return base / currentMultiplier
     }
 
-    var isWarning: Bool { currentMultiplier > 1.15 }
+    var isWarning: Bool { currentMultiplier > 1.10 }
+    var isCritical: Bool { currentMultiplier > 1.30 }
+
+    /// Daily inflation cost in seconds for UI display
+    var dailyInflationCostSeconds: TimeInterval {
+        let baseDaily: TimeInterval = 86400 // 1 day drain
+        return baseDaily * (currentMultiplier - 1.0)
+    }
+
+    /// Estimated days until inflation makes zone unsustainable
+    var daysUntilUnsustainable: Int {
+        let zone = GameState.shared.currentZone
+        let rate = zone.inflationRatePerDay
+        guard rate > 0 else { return 999 }
+        // At rate r per day, costs double every ln(2)/ln(1+r) days
+        let doublingDays = log(2.0) / log(1.0 + rate)
+        return Int(doublingDays)
+    }
+
     var percentageString: String { String(format: "+%.1f%%", (currentMultiplier - 1) * 100) }
 }

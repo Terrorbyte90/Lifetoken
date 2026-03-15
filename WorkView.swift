@@ -302,7 +302,7 @@ struct WorkView: View {
             // Breakdown bars
             let total = max(income.todayBreakdown.total, 1)
             Group {
-                HealthBar(icon: "figure.walk",       label: "Steg",         value: income.todayBreakdown.stepsSeconds,    maxValue: 10800.0 * gameState.currentZone.stepBonusMultiplier, total: total, color: .green)
+                HealthBar(icon: "figure.walk",       label: "Steg",         value: income.todayBreakdown.stepsSeconds,    maxValue: 21600.0 * gameState.currentZone.stepBonusMultiplier, total: total, color: .green)
                 HealthBar(icon: "flame",              label: "Kalorier",     value: income.todayBreakdown.caloriesSeconds, maxValue: 1200.0,  total: total, color: .orange)
                 HealthBar(icon: "bolt.heart",         label: "Träning",      value: income.todayBreakdown.exerciseSeconds, maxValue: 3600.0,  total: total, color: .yellow)
                 HealthBar(icon: "moon.zzz",           label: "Sömn",         value: income.todayBreakdown.sleepSeconds,    maxValue: 14400.0, total: total, color: .indigo)
@@ -315,9 +315,21 @@ struct WorkView: View {
                 Text("Tjänat via hälsa idag: \(TimeEngine.shortFormatted(income.todayBreakdown.total))")
                     .font(.system(size: 11, design: .monospaced))
                     .foregroundColor(.white.opacity(0.5))
+                Text("Förväntad nettolön: \(TimeEngine.shortFormatted(income.projectedDailyIncome))")
+                    .font(.system(size: 12, weight: .bold, design: .monospaced))
+                    .foregroundColor(.green)
                 Text("Lön utbetalas vid 00.00")
                     .font(.system(size: 10, weight: .semibold, design: .monospaced))
                     .foregroundColor(.green.opacity(0.6))
+                if inflation.isCritical {
+                    Text("KRITISK INFLATION: \(inflation.percentageString)")
+                        .font(.system(size: 10, weight: .bold, design: .monospaced))
+                        .foregroundColor(.red)
+                } else if inflation.isWarning {
+                    Text("Inflation: \(inflation.percentageString) — uppgradera zon!")
+                        .font(.system(size: 10, design: .monospaced))
+                        .foregroundColor(.orange)
+                }
             }
             .frame(maxWidth: .infinity, alignment: .trailing)
         }
@@ -367,6 +379,8 @@ struct WorkView: View {
             if inflation.isWarning {
                 DetailRow(label: "Inflation", value: inflation.percentageString, color: .red)
             }
+            DetailRow(label: "Inflation/dag", value: TimeEngine.shortFormatted(inflation.dailyInflationCostSeconds), color: inflation.isCritical ? .red : .orange)
+            DetailRow(label: "Hållbart (dagar)", value: "\(inflation.daysUntilUnsustainable)d", color: inflation.daysUntilUnsustainable < 7 ? .red : .yellow)
         }
         .padding()
         .background(Color.white.opacity(0.04))

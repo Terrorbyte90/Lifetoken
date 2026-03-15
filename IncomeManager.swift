@@ -5,10 +5,10 @@ import SwiftUI
 
 struct HealthIncomeBreakdown {
     // Generösa men realistiska värden — du måste anstränga dig för att överleva.
-    var stepsSeconds: TimeInterval = 0       // 10 000 steg → 10 800s (1.08s/steg)
+    var stepsSeconds: TimeInterval = 0       // 20 000 steg → 21 600s (1.08s/steg)
     var caloriesSeconds: TimeInterval = 0    // 600 kcal → 1 200s (2s/kcal)
     var exerciseSeconds: TimeInterval = 0    // 60 min → 3 600s (60s/min)
-    var sleepSeconds: TimeInterval = 0       // 7–9h → 10 800s; 8–9h → 14 400s; 6–7h → 3 600s
+    var sleepSeconds: TimeInterval = 0       // 8–10h → 14 400s (4h); 7–8h → 7 200s (2h); 6–7h → 1 800s (30m); <6h → 0
     var standSeconds: TimeInterval = 0       // 12 h stående → 2 160s (180s/h)
     var mindfulSeconds: TimeInterval = 0     // 20 min → 1 800s (90s/min)
     var hrvBonus: TimeInterval = 0           // >50 ms → +3 600s; >70 ms → +7 200s
@@ -126,7 +126,7 @@ class IncomeManager: ObservableObject {
         HealthKitManager.shared.fetchTodayStepCount { steps in
             DispatchQueue.main.async {
                 self.dailySteps = steps
-                let raw = min(Double(steps), 10000) * 1.08
+                let raw = min(Double(steps), 20000) * 1.08
                 self.todayBreakdown.stepsSeconds = raw * zone.stepBonusMultiplier
                 self.earnedSeconds = self.todayBreakdown.stepsSeconds
             }
@@ -147,15 +147,15 @@ class IncomeManager: ObservableObject {
         }
 
         // Sleep: tiered bonus
-        // 8–9h → 14 400s (4h life); 7–8h → 10 800s (3h); 6–7h → 3 600s (1h); <6h → 0
+        // 8–10h → 14 400s (4h); 7–8h → 7 200s (2h); 6–7h → 1 800s (30m); <6h → 0
         HealthKitManager.shared.fetchLastNightSleepHours { hours in
             DispatchQueue.main.async {
-                if hours >= 8 && hours <= 9 {
-                    self.todayBreakdown.sleepSeconds = 14400
+                if hours >= 8 && hours <= 10 {
+                    self.todayBreakdown.sleepSeconds = 14400  // 4h
                 } else if hours >= 7 {
-                    self.todayBreakdown.sleepSeconds = 10800
+                    self.todayBreakdown.sleepSeconds = 7200   // 2h
                 } else if hours >= 6 {
-                    self.todayBreakdown.sleepSeconds = 3600
+                    self.todayBreakdown.sleepSeconds = 1800   // 30min
                 } else {
                     self.todayBreakdown.sleepSeconds = 0
                 }
@@ -200,7 +200,7 @@ class IncomeManager: ObservableObject {
 
         let zone = GameState.shared.currentZone
         let boostMult = BoostManager.shared.boosterMultiplier()
-        let gross = todayBreakdown.total * zone.stepBonusMultiplier * boostMult
+        let gross = todayBreakdown.total * boostMult
         let net = gross * (1.0 - zone.taxRate)
 
         TimeEngine.shared.addTime(net)
@@ -221,14 +221,14 @@ class IncomeManager: ObservableObject {
 
     var jobTitle: String {
         switch dailySteps {
-        case 0..<500:      return "Soffpotatisen"
-        case 500..<1000:   return "Halvpensionären"
-        case 1000..<2500:  return "Pendlaren"
-        case 2500..<5000:  return "Promenören"
-        case 5000..<7500:  return "Aktiv Medborgare"
-        case 7500..<10000: return "Tidsspararen"
-        case 10000..<12500: return "Maratonaren"
-        default:           return "Tidsmästaren"
+        case 0..<1000:      return "Soffpotatisen"
+        case 1000..<3000:   return "Halvpensionären"
+        case 3000..<5000:   return "Pendlaren"
+        case 5000..<8000:   return "Promenören"
+        case 8000..<12000:  return "Aktiv Medborgare"
+        case 12000..<16000: return "Tidsspararen"
+        case 16000..<20000: return "Maratonaren"
+        default:            return "Tidsmästaren"
         }
     }
 
@@ -237,6 +237,6 @@ class IncomeManager: ObservableObject {
     var projectedDailyIncome: TimeInterval {
         let zone = GameState.shared.currentZone
         let boostMult = BoostManager.shared.boosterMultiplier()
-        return todayBreakdown.total * zone.stepBonusMultiplier * boostMult * (1.0 - zone.taxRate)
+        return todayBreakdown.total * boostMult * (1.0 - zone.taxRate)
     }
 }
