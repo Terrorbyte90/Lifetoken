@@ -202,10 +202,14 @@ class ServerSync: ObservableObject {
             DispatchQueue.main.async {
                 self.isOnline = true
                 self.lastSyncDate = Date()
-                if let adj = resp.adjustedBalance, adj < TimeEngine.shared.balance * 0.95 {
-                    // Only apply server correction if it's significantly lower (anti-cheat)
+                if let adj = resp.adjustedBalance,
+                   adj < TimeEngine.shared.balance * 0.95,
+                   !TimeEngine.shared.skipServerCorrection {
+                    // Only apply server correction if significantly lower (anti-cheat)
+                    // and no manual reset is in progress
                     TimeEngine.shared.balance = adj
                 }
+                TimeEngine.shared.skipServerCorrection = false
             }
         } catch {
             DispatchQueue.main.async { self.isOnline = false }

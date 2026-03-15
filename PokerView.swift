@@ -186,7 +186,7 @@ struct PokerView: View {
 
             Slider(
                 value: $betAmount,
-                in: bigBlind...max(bigBlind, playerStack),
+                in: bigBlind...max(bigBlind * 2, playerStack),
                 step: bigBlind
             )
             .accentColor(.green)

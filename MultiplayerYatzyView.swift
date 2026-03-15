@@ -502,7 +502,6 @@ private enum MultiYatzyPhase: Equatable {
 
 private enum MultiYatzyMode: Equatable {
     case vsAI
-    case localPassPlay
     case onlineOneVsOne
     case onlineThreePlayer
 }
@@ -551,7 +550,6 @@ struct MultiplayerYatzyView: View {
         case .vsAI:               return currentPlayerIndex == 1
         case .onlineOneVsOne:     return currentPlayerIndex == 1
         case .onlineThreePlayer:  return currentPlayerIndex >= 1
-        case .localPassPlay:      return false
         }
     }
 
@@ -684,10 +682,7 @@ struct MultiplayerYatzyView: View {
                 .kerning(2)
 
             VStack(spacing: 10) {
-                HStack(spacing: 10) {
-                    modeButton(title: "Mot AI", subtitle: "Enkelt", icon: "cpu", mode: .vsAI)
-                    modeButton(title: "Lokal", subtitle: "Pass & Play", icon: "person.2", mode: .localPassPlay)
-                }
+                modeButton(title: "Mot AI", subtitle: "Spela mot AI", icon: "cpu", mode: .vsAI)
                 HStack(spacing: 10) {
                     modeButton(title: "Online 1v1", subtitle: "Samma zon", icon: "wifi", mode: .onlineOneVsOne)
                     modeButton(title: "Online 3P", subtitle: "Tre spelare", icon: "person.3", mode: .onlineThreePlayer)
@@ -739,9 +734,6 @@ struct MultiplayerYatzyView: View {
             nameField(label: "Spelare 1", placeholder: "Ditt namn", text: $player1Name, color: .accentGreen)
 
             switch gameMode {
-            case .localPassPlay:
-                nameField(label: "Spelare 2", placeholder: "Spelare 2", text: $player2Name, color: .orange)
-
             case .vsAI:
                 aiOpponentRow(name: "AI-motståndare", subtitle: "Spelar optimalt")
 
@@ -1533,7 +1525,6 @@ struct MultiplayerYatzyView: View {
         case .vsAI:           return "AI VANN"
         case .onlineOneVsOne, .onlineThreePlayer:
                               return players[w].name.prefix(8).uppercased()
-        case .localPassPlay:  return players[w].name.prefix(8).uppercased()
         }
     }
 
@@ -1687,12 +1678,6 @@ struct MultiplayerYatzyView: View {
                 YatzyPlayerState(name: finalP1),
                 YatzyPlayerState(name: "🤖 AI")
             ]
-        case .localPassPlay:
-            let p2 = player2Name.trimmingCharacters(in: .whitespacesAndNewlines)
-            newPlayers = [
-                YatzyPlayerState(name: finalP1),
-                YatzyPlayerState(name: p2.isEmpty ? "Spelare 2" : p2)
-            ]
         case .onlineOneVsOne:
             let opp = zoneOpponents.first?.username ?? "Online-AI"
             newPlayers = [
@@ -1777,12 +1762,7 @@ struct MultiplayerYatzyView: View {
         rollsUsed = 0
         statusMessage = ""
 
-        // If local pass-and-play, show handoff screen
-        if gameMode == .localPassPlay {
-            withAnimation(.easeInOut(duration: 0.3)) {
-                phase = .handoff(toPlayerIndex: nextIndex)
-            }
-        } else if isCurrentPlayerAI {
+        if isCurrentPlayerAI {
             // Online or vs AI: trigger AI for current player
             triggerAITurn()
         } else {

@@ -22,14 +22,35 @@ class TimeEngine: ObservableObject {
     private var lastVerifiedTime: Date?
     private var currentDrainRate: TimeInterval = 1.0  // seconds drained per real second
 
+    /// Prevents the next server sync from rolling back a manual balance reset
+    var skipServerCorrection: Bool = false
+
     // NTP servers to query
     private let ntpServers = ["time.apple.com", "time.cloudflare.com", "pool.ntp.org"]
 
     private init() {
         loadFromKeychain()
+        applyPendingServerReset()   // one-time reset if flagged
         startTicking()
         startNTPVerification()
         registerBackgroundDrain()
+    }
+
+    // MARK: - One-time balance restore (runs exactly once on first launch of this build)
+
+    private func applyPendingServerReset() {
+        let doneKey = "balance_reset_done_v4"
+        guard !UserDefaults.standard.bool(forKey: doneKey) else { return }
+        UserDefaults.standard.set(true, forKey: doneKey)
+        // Reset to 24 hours — runs once, then never again
+        balance = 86400
+        isTimedOut = false
+        cheatingDetected = false
+        skipServerCorrection = true
+        saveToKeychain(balance: 86400, timestamp: Date())
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+            Task { await ServerSync.shared.syncBalance(86400) }
+        }
     }
 
     // MARK: - Keychain Storage
@@ -214,14 +235,16 @@ class TimeEngine: ObservableObject {
         saveToKeychain(balance: balance, timestamp: Date())
     }
 
-    /// DEV ONLY — Reset balance to a specific value and persist to Keychain
+    /// DEV ONLY — Reset balance, persist to Keychain, and push to server
     func devResetBalance(to seconds: TimeInterval = 86400) {
         DispatchQueue.main.async {
-            self.balance    = seconds
+            self.balance = seconds
             self.isTimedOut = false
             self.cheatingDetected = false
+            self.skipServerCorrection = true
             self.saveToKeychain(balance: seconds, timestamp: Date())
         }
+        Task { await ServerSync.shared.syncBalance(seconds) }
     }
 
     // MARK: - Formatting

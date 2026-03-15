@@ -262,7 +262,7 @@ struct RouletteGameView: View {
 
             Slider(
                 value: $betAmount,
-                in: 60...max(60, min(engine.balance, 86400 * 30)),
+                in: 60...max(120, min(engine.balance, 86400 * 30)),
                 step: 60
             )
             .accentColor(.green)

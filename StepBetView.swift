@@ -515,7 +515,8 @@ struct CreateChallengeSheet: View {
 
     private var maxStakeHours: Double {
         let secs = StepBetManager.shared.maxStake(for: gameState.currentZone)
-        return secs == .infinity ? 24 : secs / 3600
+        let hours = secs == .infinity ? 24.0 : secs / 3600
+        return max(0.5, hours)   // must be >= lower(0.25) + step(0.25) to avoid stride crash
     }
 
     var body: some View {

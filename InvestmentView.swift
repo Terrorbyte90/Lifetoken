@@ -163,7 +163,7 @@ struct InvestmentView: View {
                                 .font(.system(size: 14, design: .monospaced))
                                 .foregroundColor(.yellow)
                             Slider(value: $investAmount,
-                                   in: 3600...max(3601, min(engine.balance * 0.8, 86400 * 365)),
+                                   in: 3600...max(7200, min(engine.balance * 0.8, 86400 * 365)),
                                    step: 3600)
                                 .accentColor(.green)
                         }
