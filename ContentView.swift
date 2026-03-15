@@ -20,6 +20,7 @@ struct DashboardView: View {
     @State private var showPvPRaid       = false
     @State private var showBoard         = false
     @State private var showNewsFeed      = false
+    @State private var showMiniJobs      = false
     @State private var pulseAnim: Bool   = false
 
     // Mikrotexts per kontext
@@ -84,6 +85,9 @@ struct DashboardView: View {
         }
         .sheet(isPresented: $showBoard) {
             NavigationStack { BoardDetailView() }
+        }
+        .sheet(isPresented: $showMiniJobs) {
+            NavigationStack { MiniJobsView() }
         }
         .alert("Streak Bonus!", isPresented: $gameState.showStreakBonus) {
             Button("Tack!", role: .cancel) {}
@@ -297,6 +301,7 @@ struct DashboardView: View {
             ShortcutButton(icon: "bolt.fill", label: "Rånet", color: Color(red: 0.9, green: 0.3, blue: 0.1)) { showPvPRaid = true }
             ShortcutButton(icon: "crown.fill", label: "Styrelsen", color: Color(red: 0.9, green: 0.7, blue: 0.1)) { showBoard = true }
             ShortcutButton(icon: "newspaper.fill", label: "Nyheter", color: Color(red: 0.4, green: 0.7, blue: 0.9)) { showNewsFeed = true }
+            ShortcutButton(icon: "wrench.and.screwdriver.fill", label: "Arbete", color: Color(red: 0.2, green: 0.8, blue: 0.5)) { showMiniJobs = true }
         }
         .padding(.horizontal)
     }
