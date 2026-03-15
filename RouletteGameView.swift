@@ -365,3 +365,8 @@ struct RouletteGameView: View {
         showResult = true
     }
 }
+
+#Preview {
+    RouletteGameView()
+        .preferredColorScheme(.dark)
+}

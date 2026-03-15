@@ -261,3 +261,8 @@ struct MissionCard: View {
             .stroke(mission.isReady ? Color.yellow.opacity(0.4) : Color.clear, lineWidth: 1))
     }
 }
+
+#Preview {
+    MissionsView()
+        .preferredColorScheme(.dark)
+}

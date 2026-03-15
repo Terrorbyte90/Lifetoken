@@ -515,3 +515,8 @@ struct ActionButton: View {
         }
     }
 }
+
+#Preview {
+    PokerView()
+        .preferredColorScheme(.dark)
+}
