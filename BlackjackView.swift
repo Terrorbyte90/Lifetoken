@@ -290,7 +290,7 @@ struct BlackjackView: View {
 
             Slider(
                 value: $betAmount,
-                in: 60...max(60, min(engine.balance, 86400 * 10)),
+                in: 60...max(120, min(engine.balance, 86400 * 10)),
                 step: 60
             )
             .accentColor(.green)

@@ -439,7 +439,7 @@ struct YatzyView: View {
                 }
             }
 
-            Slider(value: $betAmount, in: 300...max(300, min(engine.balance, 86400 * 7)), step: 300)
+            Slider(value: $betAmount, in: 300...max(600, min(engine.balance, 86400 * 7)), step: 300)
                 .accentColor(.green)
                 .padding(.horizontal)
 

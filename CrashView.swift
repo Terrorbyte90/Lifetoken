@@ -216,7 +216,7 @@ struct CrashView: View {
                 Spacer()
             }
 
-            Slider(value: $betAmount, in: 60...max(60, min(engine.balance, 86400 * 7)), step: 60)
+            Slider(value: $betAmount, in: 60...max(120, min(engine.balance, 86400 * 7)), step: 60)
                 .accentColor(.green)
 
             HStack(spacing: 8) {

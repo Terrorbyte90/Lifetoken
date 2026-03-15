@@ -895,7 +895,7 @@ struct LendSheetView: View {
                         .font(.system(size: 15, design: .monospaced))
                         .foregroundColor(.white)
                     Slider(value: $lendAmount,
-                           in: 3600...max(3601, min(engine.balance * 0.9, 86400 * 365)),
+                           in: 3600...max(7200, min(engine.balance * 0.9, 86400 * 365)),
                            step: 3600)
                         .accentColor(.green)
 
@@ -983,7 +983,7 @@ struct TransferSheetView: View {
                         .font(.system(size: 15, design: .monospaced))
                         .foregroundColor(.white)
                     Slider(value: $amount,
-                           in: 60...max(61, min(engine.balance * 0.5, 86400 * 7)),
+                           in: 60...max(120, min(engine.balance * 0.5, 86400 * 7)),
                            step: 60)
                         .accentColor(.green)
 
