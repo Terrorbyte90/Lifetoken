@@ -154,7 +154,7 @@ struct YatzyPlayerState {
     }
 
     var hasBonus: Bool { upperTotal >= 63 }
-    var bonusPoints: Int { hasBonus ? 35 : 0 }
+    var bonusPoints: Int { hasBonus ? 50 : 0 }
 
     var lowerTotal: Int {
         MultiYatzyCategory.allCases
@@ -177,6 +177,11 @@ struct YatzyPlayerState {
 // MARK: - AI Strategy
 
 private func aiChooseCategory(dice: [Int], available: Set<MultiYatzyCategory>) -> MultiYatzyCategory? {
+    // Smart guard: if all 5 dice are the same AND Yatzy category is available → ALWAYS pick Yatzy
+    if Set(dice).count == 1 && available.contains(.yatzy) {
+        return .yatzy
+    }
+
     // Priority order: Yatzy, large straight, small straight, full house, four of a kind,
     // high pairs / triss, upper section based on count
     let priority: [MultiYatzyCategory] = [
@@ -184,19 +189,25 @@ private func aiChooseCategory(dice: [Int], available: Set<MultiYatzyCategory>) -
         .tvaPar, .par, .sexor, .femmor, .fyror, .treor, .tvaor, .ettor, .chans
     ]
 
-    // Try best scoring category first
+    // Try best scoring category first (never use upper section for a potential Yatzy)
     var bestCat: MultiYatzyCategory? = nil
     var bestScore = -1
 
     for cat in priority where available.contains(cat) {
         let s = multiYatzyScore(for: cat, dice: dice)
+        // Never waste a near-Yatzy (4+ of a kind) on upper section categories
+        let counts = Dictionary(grouping: dice, by: { $0 }).mapValues { $0.count }
+        let maxCount = counts.values.max() ?? 0
+        if cat.isUpperSection && maxCount >= 4 && available.contains(.yatzy) {
+            continue // skip upper section, save Yatzy potential
+        }
         if s > bestScore {
             bestScore = s
             bestCat = cat
         }
     }
 
-    // Fallback: any available category, prefer non-zero score
+    // Fallback: pick first available in priority order (scratch with strike)
     if bestScore <= 0 {
         for cat in priority where available.contains(cat) {
             return cat
@@ -377,9 +388,11 @@ private enum MultiYatzyPhase: Equatable {
 
 // MARK: - Game Mode
 
-private enum MultiYatzyMode {
+private enum MultiYatzyMode: Equatable {
     case vsAI
     case localPassPlay
+    case onlineOneVsOne
+    case onlineThreePlayer
 }
 
 // MARK: - MultiplayerYatzyView
@@ -387,9 +400,10 @@ private enum MultiYatzyMode {
 struct MultiplayerYatzyView: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject private var engine = TimeEngine.shared
+    @ObservedObject private var server = ServerSync.shared
 
     // MARK: Lobby state
-    @State private var player1Name: String = "Spelare 1"
+    @State private var player1Name: String = GameState.shared.username.isEmpty ? "Spelare 1" : GameState.shared.username
     @State private var player2Name: String = "Spelare 2"
     @State private var betAmount: TimeInterval = 600
     @State private var gameMode: MultiYatzyMode = .vsAI
@@ -421,7 +435,12 @@ struct MultiplayerYatzyView: View {
     }
 
     private var isCurrentPlayerAI: Bool {
-        gameMode == .vsAI && currentPlayerIndex == 1
+        switch gameMode {
+        case .vsAI:               return currentPlayerIndex == 1
+        case .onlineOneVsOne:     return currentPlayerIndex == 1
+        case .onlineThreePlayer:  return currentPlayerIndex >= 1
+        case .localPassPlay:      return false
+        }
     }
 
     private var canRoll: Bool {
@@ -552,9 +571,15 @@ struct MultiplayerYatzyView: View {
                 .foregroundColor(.white.opacity(0.4))
                 .kerning(2)
 
-            HStack(spacing: 10) {
-                modeButton(title: "Mot AI", subtitle: "Enkelt", icon: "cpu", mode: .vsAI)
-                modeButton(title: "Lokal", subtitle: "Pass & Play", icon: "person.2", mode: .localPassPlay)
+            VStack(spacing: 10) {
+                HStack(spacing: 10) {
+                    modeButton(title: "Mot AI", subtitle: "Enkelt", icon: "cpu", mode: .vsAI)
+                    modeButton(title: "Lokal", subtitle: "Pass & Play", icon: "person.2", mode: .localPassPlay)
+                }
+                HStack(spacing: 10) {
+                    modeButton(title: "Online 1v1", subtitle: "Samma zon", icon: "wifi", mode: .onlineOneVsOne)
+                    modeButton(title: "Online 3P", subtitle: "Tre spelare", icon: "person.3", mode: .onlineThreePlayer)
+                }
             }
         }
         .padding(18)
@@ -599,34 +624,77 @@ struct MultiplayerYatzyView: View {
                 .foregroundColor(.white.opacity(0.4))
                 .kerning(2)
 
-            nameField(label: "Spelare 1", placeholder: "Spelare 1", text: $player1Name, color: .accentGreen)
+            nameField(label: "Spelare 1", placeholder: "Ditt namn", text: $player1Name, color: .accentGreen)
 
-            if gameMode == .localPassPlay {
+            switch gameMode {
+            case .localPassPlay:
                 nameField(label: "Spelare 2", placeholder: "Spelare 2", text: $player2Name, color: .orange)
-            } else {
-                HStack(spacing: 10) {
-                    ZStack {
-                        Circle()
-                            .fill(Color.red.opacity(0.15))
-                            .frame(width: 36, height: 36)
-                        Text("🤖")
-                            .font(.system(size: 18))
-                    }
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("AI-motståndare")
-                            .font(.system(size: 13, weight: .semibold, design: .monospaced))
-                            .foregroundColor(.white.opacity(0.7))
-                        Text("Spelar optimalt")
-                            .font(.system(size: 10, design: .monospaced))
-                            .foregroundColor(.red.opacity(0.7))
-                    }
+
+            case .vsAI:
+                aiOpponentRow(name: "AI-motståndare", subtitle: "Spelar optimalt")
+
+            case .onlineOneVsOne:
+                let opponents = server.zoneMembers.filter { $0.username != player1Name }
+                if opponents.isEmpty {
+                    onlineOpponentRow(name: "Online-AI", subtitle: "Inga spelare online i din zon", isOnline: false)
+                } else {
+                    onlineOpponentRow(name: opponents[0].username, subtitle: "Online • \(opponents[0].zone)", isOnline: true)
                 }
-                .padding(.horizontal, 4)
+
+            case .onlineThreePlayer:
+                let opponents = server.zoneMembers.filter { $0.username != player1Name }
+                let opp1Name = opponents.first?.username ?? "Online-AI 1"
+                let opp1Zone = opponents.first?.zone ?? ""
+                let opp2Name = opponents.dropFirst().first?.username ?? "Online-AI 2"
+                let opp2Zone = opponents.dropFirst().first?.zone ?? ""
+                onlineOpponentRow(name: opp1Name, subtitle: opponents.isEmpty ? "Inga spelare online" : "Online • \(opp1Zone)", isOnline: !opponents.isEmpty)
+                onlineOpponentRow(name: opp2Name, subtitle: opponents.count < 2 ? "Inga fler spelare online" : "Online • \(opp2Zone)", isOnline: opponents.count >= 2)
             }
         }
         .padding(18)
         .background(.ultraThinMaterial)
         .clipShape(RoundedRectangle(cornerRadius: 16))
+    }
+
+    private func aiOpponentRow(name: String, subtitle: String) -> some View {
+        HStack(spacing: 10) {
+            ZStack {
+                Circle().fill(Color.red.opacity(0.15)).frame(width: 36, height: 36)
+                Text("🤖").font(.system(size: 18))
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                Text(name)
+                    .font(.system(size: 13, weight: .semibold, design: .monospaced))
+                    .foregroundColor(.white.opacity(0.7))
+                Text(subtitle)
+                    .font(.system(size: 10, design: .monospaced))
+                    .foregroundColor(.red.opacity(0.7))
+            }
+        }
+        .padding(.horizontal, 4)
+    }
+
+    private func onlineOpponentRow(name: String, subtitle: String, isOnline: Bool) -> some View {
+        HStack(spacing: 10) {
+            ZStack {
+                Circle().fill(isOnline ? Color.cyan.opacity(0.15) : Color.gray.opacity(0.12)).frame(width: 36, height: 36)
+                Text(isOnline ? "👤" : "🤖").font(.system(size: 18))
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                Text(name)
+                    .font(.system(size: 13, weight: .semibold, design: .monospaced))
+                    .foregroundColor(isOnline ? .white.opacity(0.85) : .white.opacity(0.5))
+                HStack(spacing: 4) {
+                    Circle()
+                        .fill(isOnline ? Color.green : Color.gray)
+                        .frame(width: 5, height: 5)
+                    Text(subtitle)
+                        .font(.system(size: 10, design: .monospaced))
+                        .foregroundColor(isOnline ? .cyan.opacity(0.7) : .white.opacity(0.3))
+                }
+            }
+        }
+        .padding(.horizontal, 4)
     }
 
     private func nameField(label: String, placeholder: String, text: Binding<String>, color: Color) -> some View {
@@ -649,19 +717,28 @@ struct MultiplayerYatzyView: View {
     }
 
     private var betCard: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        let maxBet = max(100, floor(engine.balance * 0.8))
+        return VStack(alignment: .leading, spacing: 16) {
             HStack {
                 Text("INSATS")
                     .font(.system(size: 10, weight: .bold, design: .monospaced))
                     .foregroundColor(.white.opacity(0.4))
                     .kerning(2)
                 Spacer()
-                Text(betFormatted)
-                    .font(.system(size: 22, weight: .bold, design: .monospaced))
-                    .foregroundColor(.goldYatzy)
+                VStack(alignment: .trailing, spacing: 1) {
+                    Text(betFormatted)
+                        .font(.system(size: 22, weight: .bold, design: .monospaced))
+                        .foregroundColor(.goldYatzy)
+                    Text("max 80% av saldo")
+                        .font(.system(size: 8, design: .monospaced))
+                        .foregroundColor(.white.opacity(0.3))
+                }
             }
 
-            Slider(value: $betAmount, in: 100...7200, step: 60)
+            Slider(value: Binding(
+                get: { min(betAmount, maxBet) },
+                set: { betAmount = $0 }
+            ), in: 100...maxBet, step: 60)
                 .tint(.goldYatzy)
 
             HStack {
@@ -669,7 +746,7 @@ struct MultiplayerYatzyView: View {
                     .font(.system(size: 9, design: .monospaced))
                     .foregroundColor(.white.opacity(0.3))
                 Spacer()
-                Text("2h")
+                Text("Max: \(TimeEngine.shortFormatted(maxBet))")
                     .font(.system(size: 9, design: .monospaced))
                     .foregroundColor(.white.opacity(0.3))
             }
@@ -701,7 +778,8 @@ struct MultiplayerYatzyView: View {
     }
 
     private var startButton: some View {
-        let canAfford = betAmount <= engine.balance
+        let maxBet = max(100, floor(engine.balance * 0.8))
+        let canAfford = betAmount <= engine.balance && betAmount <= maxBet
         return Button { startGame() } label: {
             HStack(spacing: 10) {
                 Image(systemName: "play.fill")
@@ -1129,9 +1207,10 @@ struct MultiplayerYatzyView: View {
 
                     Group {
                         if let s = score {
-                            Text("\(s)")
+                            Text(s == 0 ? "—" : "\(s)")
                                 .font(.system(size: 12, weight: .bold, design: .monospaced))
-                                .foregroundColor(color.opacity(0.9))
+                                .foregroundColor(s == 0 ? color.opacity(0.25) : color.opacity(0.9))
+                                .strikethrough(s == 0, color: color.opacity(0.3))
                         } else if isCurrent && isActive {
                             Text(potential > 0 ? "\(potential)" : "0")
                                 .font(.system(size: 12, design: .monospaced))
@@ -1164,7 +1243,7 @@ struct MultiplayerYatzyView: View {
                 Text("Bonus")
                     .font(.system(size: 11, weight: .semibold, design: .monospaced))
                     .foregroundColor(.goldYatzy.opacity(0.8))
-                Text("≥63p → +35p")
+                Text("≥63p → +50p")
                     .font(.system(size: 8, design: .monospaced))
                     .foregroundColor(.white.opacity(0.25))
             }
@@ -1178,7 +1257,7 @@ struct MultiplayerYatzyView: View {
 
                 VStack(spacing: 1) {
                     if p.hasBonus {
-                        Text("+35")
+                        Text("+50")
                             .font(.system(size: 11, weight: .bold, design: .monospaced))
                             .foregroundColor(.goldYatzy)
                     } else {
@@ -1334,22 +1413,29 @@ struct MultiplayerYatzyView: View {
 
     private var resultTitle: String {
         if isTie { return "OAVGJORT" }
-        if winnerIndex == 0 {
-            return players.first.map { "\($0.name.prefix(8).uppercased())" } ?? "VINST!"
+        guard let w = winnerIndex, players.indices.contains(w) else { return "SPELET KLART" }
+        if w == 0 {
+            return players[0].name.prefix(8).uppercased()
         }
-        return gameMode == .vsAI ? "AI VANN" : (players.count > 1 ? players[1].name.prefix(8).uppercased() : "FÖRLUST")
+        switch gameMode {
+        case .vsAI:           return "AI VANN"
+        case .onlineOneVsOne, .onlineThreePlayer:
+                              return players[w].name.prefix(8).uppercased()
+        case .localPassPlay:  return players[w].name.prefix(8).uppercased()
+        }
     }
 
     private var resultSubtitle: String {
         guard players.count >= 2 else { return "" }
-        let p1 = players[0].grandTotal
-        let p2 = players[1].grandTotal
-        return "\(players[0].name): \(p1)p  vs  \(players[1].name): \(p2)p"
+        return players.map { "\($0.name.prefix(6)): \($0.grandTotal)p" }.joined(separator: "  ")
     }
 
     private var earningsText: String {
         if isTie { return "±0 (insats tillbaka)" }
-        if winnerIndex == 0 { return "+\(TimeEngine.shortFormatted(betAmount * 2))" }
+        if winnerIndex == 0 {
+            let opponents = players.count - 1
+            return "+\(TimeEngine.shortFormatted(betAmount * Double(opponents)))"
+        }
         return "−\(TimeEngine.shortFormatted(betAmount))"
     }
 
@@ -1389,7 +1475,7 @@ struct MultiplayerYatzyView: View {
                                     .foregroundColor(.goldYatzy)
                             }
                         }
-                        Text("Övre: \(p.upperTotal)\(p.hasBonus ? " +35 bonus" : "")  Nedre: \(p.lowerTotal)")
+                        Text("Övre: \(p.upperTotal)\(p.hasBonus ? " +50 bonus" : "")  Nedre: \(p.lowerTotal)")
                             .font(.system(size: 9, design: .monospaced))
                             .foregroundColor(.white.opacity(0.4))
                     }
@@ -1414,7 +1500,7 @@ struct MultiplayerYatzyView: View {
             // Bonus detail
             if players.count > 0 {
                 HStack {
-                    Text("Bonusgräns (övre ≥63): +35p")
+                    Text("Bonusgräns (övre ≥63): +50p")
                         .font(.system(size: 9, design: .monospaced))
                         .foregroundColor(.white.opacity(0.3))
                     Spacer()
@@ -1464,18 +1550,54 @@ struct MultiplayerYatzyView: View {
     // MARK: - Game Logic
 
     private func startGame() {
-        let p1 = player1Name.trimmingCharacters(in: .whitespacesAndNewlines)
-        let p2 = gameMode == .vsAI ? "🤖 AI" : player2Name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let p1Name = player1Name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let finalP1 = p1Name.isEmpty ? "Spelare 1" : p1Name
+
+        // 80% bet limit enforcement
+        let maxBet = max(100, floor(engine.balance * 0.8))
+        guard betAmount <= maxBet else {
+            showInsufficientFundsAlert = true
+            return
+        }
 
         guard TimeEngine.shared.deductTime(betAmount) else {
             showInsufficientFundsAlert = true
             return
         }
 
-        players = [
-            YatzyPlayerState(name: p1.isEmpty ? "Spelare 1" : p1),
-            YatzyPlayerState(name: p2.isEmpty ? "Spelare 2" : p2)
-        ]
+        // Build player list based on mode
+        let zoneOpponents = server.zoneMembers.filter { $0.username != finalP1 }
+
+        var newPlayers: [YatzyPlayerState]
+        switch gameMode {
+        case .vsAI:
+            newPlayers = [
+                YatzyPlayerState(name: finalP1),
+                YatzyPlayerState(name: "🤖 AI")
+            ]
+        case .localPassPlay:
+            let p2 = player2Name.trimmingCharacters(in: .whitespacesAndNewlines)
+            newPlayers = [
+                YatzyPlayerState(name: finalP1),
+                YatzyPlayerState(name: p2.isEmpty ? "Spelare 2" : p2)
+            ]
+        case .onlineOneVsOne:
+            let opp = zoneOpponents.first?.username ?? "Online-AI"
+            newPlayers = [
+                YatzyPlayerState(name: finalP1),
+                YatzyPlayerState(name: opp)
+            ]
+        case .onlineThreePlayer:
+            let opp1 = zoneOpponents.first?.username ?? "Online-AI 1"
+            let opp2 = zoneOpponents.dropFirst().first?.username ?? "Online-AI 2"
+            newPlayers = [
+                YatzyPlayerState(name: finalP1),
+                YatzyPlayerState(name: opp1),
+                YatzyPlayerState(name: opp2)
+            ]
+        }
+
+        players = newPlayers
         currentPlayerIndex = 0
         resetDice()
         rollsUsed = 0
@@ -1548,27 +1670,27 @@ struct MultiplayerYatzyView: View {
             withAnimation(.easeInOut(duration: 0.3)) {
                 phase = .handoff(toPlayerIndex: nextIndex)
             }
+        } else if isCurrentPlayerAI {
+            // Online or vs AI: trigger AI for current player
+            triggerAITurn()
         } else {
-            // vs AI: if next is AI, trigger AI turn
-            if nextIndex == 1 {
-                triggerAITurn()
-            } else {
-                statusMessage = "Din tur — kasta tärningarna!"
-            }
+            statusMessage = "Din tur — kasta tärningarna!"
         }
     }
 
     private func triggerAITurn() {
-        guard gameMode == .vsAI else { return }
+        guard isCurrentPlayerAI else { return }
         isAIThinking = true
-        statusMessage = "🤖 AI tänker..."
+        let aiName = players.indices.contains(currentPlayerIndex) ? players[currentPlayerIndex].name : "AI"
+        statusMessage = "🤖 \(aiName) tänker..."
 
         // AI does up to 3 rolls
         performAIRoll(rollsLeft: 3)
     }
 
     private func performAIRoll(rollsLeft: Int) {
-        guard rollsLeft > 0, players.indices.contains(1) else {
+        let aiIdx = currentPlayerIndex
+        guard rollsLeft > 0, players.indices.contains(aiIdx) else {
             // AI picks category
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
                 self.aiPickCategory()
@@ -1579,8 +1701,9 @@ struct MultiplayerYatzyView: View {
         let delay: TimeInterval = rollsLeft == 3 ? 0.6 : 0.8
 
         DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+            guard self.players.indices.contains(aiIdx) else { return }
             // Determine which dice to keep
-            let available = self.players[1].availableCategories
+            let available = self.players[aiIdx].availableCategories
             let keepMask = aiSelectDiceToKeep(dice: self.dice, available: available)
 
             // Roll unheld dice
@@ -1596,9 +1719,9 @@ struct MultiplayerYatzyView: View {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                 self.isRolling = false
 
-                // Check if AI should stop early (has yatzy or full house etc)
+                // Stop early if Yatzy is available
                 let yatzyScore = multiYatzyScore(for: .yatzy, dice: self.dice)
-                if yatzyScore == 50 && self.players[1].scores[.yatzy] == nil {
+                if yatzyScore == 50 && self.players.indices.contains(aiIdx) && self.players[aiIdx].scores[.yatzy] == nil {
                     self.aiPickCategory()
                     return
                 }
@@ -1609,58 +1732,51 @@ struct MultiplayerYatzyView: View {
     }
 
     private func aiPickCategory() {
-        guard players.indices.contains(1) else { return }
-        let available = players[1].availableCategories
+        let aiIdx = currentPlayerIndex
+        guard players.indices.contains(aiIdx) else { return }
+        let available = players[aiIdx].availableCategories
+        let aiName = players[aiIdx].name
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             if let chosen = aiChooseCategory(dice: self.dice, available: available) {
                 let score = multiYatzyScore(for: chosen, dice: self.dice)
-                self.players[1].scores[chosen] = score
-                self.statusMessage = "🤖 AI väljer \(chosen.displayName): \(score)p"
+                self.players[aiIdx].scores[chosen] = score
+                self.statusMessage = "🤖 \(aiName) väljer \(chosen.displayName): \(score)p"
             }
 
             self.isAIThinking = false
             self.heldDice = [false, false, false, false, false]
 
-            // Check game over
-            if self.players.allSatisfy({ $0.isFilled }) {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
-                    self.endGame()
-                }
-                return
-            }
-
-            // Switch back to player 1
+            // Advance to next turn after short pause
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
-                self.currentPlayerIndex = 0
-                self.resetDice()
-                self.rollsUsed = 0
-                self.statusMessage = "Din tur — kasta tärningarna!"
+                self.advanceTurn()
             }
         }
     }
 
     private func endGame() {
         guard players.count >= 2 else { return }
-        let p1 = players[0].grandTotal
-        let p2 = players[1].grandTotal
 
-        if p1 > p2 {
-            winnerIndex = 0
-            isTie = false
-            TimeEngine.shared.addTime(betAmount * 2)
-        } else if p2 > p1 {
-            winnerIndex = 1
-            isTie = false
-            // Loser gets nothing (bet already deducted)
-            if gameMode == .localPassPlay {
-                // In local multiplayer, player 2 wins — bet was from player 1
-                // Already handled: nothing extra
-            }
-        } else {
+        let maxScore = players.map { $0.grandTotal }.max() ?? 0
+        let winnerIndices = players.indices.filter { players[$0].grandTotal == maxScore }
+
+        if winnerIndices.count > 1 {
+            // Tie involving player 1
             winnerIndex = nil
             isTie = true
-            TimeEngine.shared.addTime(betAmount)
+            if winnerIndices.contains(0) {
+                TimeEngine.shared.addTime(betAmount) // return player 1's bet
+            }
+        } else {
+            let w = winnerIndices[0]
+            winnerIndex = w
+            isTie = false
+            if w == 0 {
+                // Player 1 wins: gets their bet back + opponents' bets
+                let prize = betAmount * Double(players.count)
+                TimeEngine.shared.addTime(prize)
+            }
+            // If AI/online player wins, player 1's bet is already lost (already deducted)
         }
 
         withAnimation(.easeInOut(duration: 0.4)) {

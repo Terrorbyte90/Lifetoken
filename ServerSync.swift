@@ -113,22 +113,36 @@ class ServerSync: ObservableObject {
         return try JSONDecoder().decode(AuthResponse.self, from: data)
     }
 
+    func login(username: String, deviceId: String) async throws -> AuthResponse {
+        let body: [String: Any] = ["username": username, "deviceId": deviceId]
+        let data = try await post(path: "/auth/login", body: body, requireAuth: false)
+        return try JSONDecoder().decode(AuthResponse.self, from: data)
+    }
+
     func loginOrRegister(username: String) async {
         let deviceId = UIDevice.current.identifierForVendor?.uuidString ?? UUID().uuidString
         do {
             let resp = try await register(username: username, deviceId: deviceId)
             token = resp.token
             userId = resp.userId
-            if let serverBalance = resp.timeBalance, serverBalance > 0 {
-                // Don't overwrite local balance; server balance is used for anti-cheat only
-            }
             DispatchQueue.main.async {
                 self.isOnline = true
                 self.onlineCount = 1
             }
         } catch {
-            DispatchQueue.main.async { self.isOnline = false }
-            scheduleReconnect()
+            // Register failed (user may already exist) — try login as fallback
+            do {
+                let resp = try await login(username: username, deviceId: deviceId)
+                token = resp.token
+                userId = resp.userId
+                DispatchQueue.main.async {
+                    self.isOnline = true
+                    self.onlineCount = 1
+                }
+            } catch {
+                DispatchQueue.main.async { self.isOnline = false }
+                scheduleReconnect()
+            }
         }
     }
 
