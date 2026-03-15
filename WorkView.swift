@@ -302,19 +302,24 @@ struct WorkView: View {
             // Breakdown bars
             let total = max(income.todayBreakdown.total, 1)
             Group {
-                HealthBar(icon: "figure.walk",    label: "Steg",         value: income.todayBreakdown.stepsSeconds,    maxValue: 10000.0/7.0 * gameState.currentZone.stepBonusMultiplier, total: total, color: .green)
-                HealthBar(icon: "flame",           label: "Kalorier",     value: income.todayBreakdown.caloriesSeconds, maxValue: 36.0,  total: total, color: .orange)
-                HealthBar(icon: "bolt.heart",      label: "Träning",      value: income.todayBreakdown.exerciseSeconds, maxValue: 120.0, total: total, color: .yellow)
-                HealthBar(icon: "moon.zzz",        label: "Sömn",         value: income.todayBreakdown.sleepSeconds,    maxValue: 1800.0, total: total, color: .indigo)
-                HealthBar(icon: "figure.stand",    label: "Stå",          value: income.todayBreakdown.standSeconds,    maxValue: 360.0, total: total, color: .cyan)
-                HealthBar(icon: "brain.head.profile", label: "Mindfulness", value: income.todayBreakdown.mindfulSeconds, maxValue: 120.0, total: total, color: .purple)
-                HealthBar(icon: "waveform.path.ecg", label: "HRV-bonus",  value: income.todayBreakdown.hrvBonus,        maxValue: 300.0, total: total, color: .pink)
+                HealthBar(icon: "figure.walk",       label: "Steg",         value: income.todayBreakdown.stepsSeconds,    maxValue: 10800.0 * gameState.currentZone.stepBonusMultiplier, total: total, color: .green)
+                HealthBar(icon: "flame",              label: "Kalorier",     value: income.todayBreakdown.caloriesSeconds, maxValue: 1200.0,  total: total, color: .orange)
+                HealthBar(icon: "bolt.heart",         label: "Träning",      value: income.todayBreakdown.exerciseSeconds, maxValue: 3600.0,  total: total, color: .yellow)
+                HealthBar(icon: "moon.zzz",           label: "Sömn",         value: income.todayBreakdown.sleepSeconds,    maxValue: 14400.0, total: total, color: .indigo)
+                HealthBar(icon: "figure.stand",       label: "Stå",          value: income.todayBreakdown.standSeconds,    maxValue: 2160.0,  total: total, color: .cyan)
+                HealthBar(icon: "brain.head.profile", label: "Mindfulness",  value: income.todayBreakdown.mindfulSeconds,  maxValue: 1800.0,  total: total, color: .purple)
+                HealthBar(icon: "waveform.path.ecg",  label: "HRV-bonus",   value: income.todayBreakdown.hrvBonus,         maxValue: 7200.0,  total: total, color: .pink)
             }
 
-            Text("Tjänat via hälsa idag: \(TimeEngine.shortFormatted(income.todayBreakdown.total))")
-                .font(.system(size: 11, design: .monospaced))
-                .foregroundColor(.white.opacity(0.5))
-                .frame(maxWidth: .infinity, alignment: .trailing)
+            VStack(alignment: .trailing, spacing: 3) {
+                Text("Tjänat via hälsa idag: \(TimeEngine.shortFormatted(income.todayBreakdown.total))")
+                    .font(.system(size: 11, design: .monospaced))
+                    .foregroundColor(.white.opacity(0.5))
+                Text("Lön utbetalas vid 00.00")
+                    .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                    .foregroundColor(.green.opacity(0.6))
+            }
+            .frame(maxWidth: .infinity, alignment: .trailing)
         }
         .padding(16)
         .background(.ultraThinMaterial)
