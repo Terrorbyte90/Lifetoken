@@ -22,6 +22,7 @@ struct DashboardView: View {
     @State private var showNewsFeed      = false
     @State private var showMiniJobs      = false
     @State private var pulseAnim: Bool   = false
+    @State private var showDevReset      = false
 
     // Mikrotexts per kontext
     private let microTexts = [
@@ -178,6 +179,16 @@ struct DashboardView: View {
         .clipShape(RoundedRectangle(cornerRadius: 20))
         .overlay(RoundedRectangle(cornerRadius: 20).stroke(clockColor.opacity(0.3), lineWidth: 1))
         .padding(.horizontal)
+        // DEV: long-press to reset balance to 24h
+        .onLongPressGesture(minimumDuration: 2.0) { showDevReset = true }
+        .alert("Dev: Återställ tid", isPresented: $showDevReset) {
+            Button("Återställ till 24h", role: .destructive) {
+                TimeEngine.shared.devResetBalance(to: 86400)
+            }
+            Button("Avbryt", role: .cancel) {}
+        } message: {
+            Text("Sätt balansen till exakt 24 timmar (86400 sekunder)?")
+        }
     }
 
     // MARK: - Förväntad lön (realtid) + nedräkning till utbetalning
