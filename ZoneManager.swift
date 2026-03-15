@@ -57,10 +57,13 @@ public class ZoneManager: ObservableObject {
     func migrateToZone(_ zone: ZoneProfile) -> (success: Bool, message: String) {
         let balance = TimeEngine.shared.balance
 
-        // Must meet unlock requirement
-        guard balance >= zone.unlockRequirementSeconds else {
-            let needed = TimeEngine.shortFormatted(zone.unlockRequirementSeconds)
-            return (false, "Kräver \(needed) för att låsa upp \(zone.name). Fortsätt tjäna tid.")
+        // For free zones (Grundskiftet), just migrate
+        if zone.entryCostSeconds == 0 {
+            DispatchQueue.main.async {
+                self.currentZone = zone
+                UserDefaults.standard.set(zone.name, forKey: self.lastZoneKey)
+            }
+            return (true, "Välkommen till \(zone.name)!")
         }
 
         // Must be able to afford entry cost
@@ -69,11 +72,12 @@ public class ZoneManager: ObservableObject {
             return (false, "Otillräcklig tid. Inträde kostar \(needed).")
         }
 
-        // After paying entry, ensure balance >= fallThreshold so player doesn't immediately fall back
+        // After paying entry, ensure balance stays above fallThreshold
+        // so player doesn't immediately fall back down
         let afterCost = balance - zone.entryCostSeconds
-        if afterCost < zone.fallThresholdSeconds {
-            let buffer = TimeEngine.shortFormatted(zone.entryCostSeconds + zone.fallThresholdSeconds)
-            return (false, "Du behöver totalt \(buffer) (inträde + säkerhetsbuffert) för att inte falla tillbaka direkt.")
+        if zone.fallThresholdSeconds > 0 && afterCost < zone.fallThresholdSeconds {
+            let totalNeeded = TimeEngine.shortFormatted(zone.entryCostSeconds + zone.fallThresholdSeconds)
+            return (false, "Du behöver totalt \(totalNeeded) för att klara inträdet och inte falla tillbaka direkt.")
         }
 
         let success = TimeEngine.shared.deductTime(zone.entryCostSeconds)
