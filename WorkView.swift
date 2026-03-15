@@ -302,7 +302,7 @@ struct WorkView: View {
             // Breakdown bars
             let total = max(income.todayBreakdown.total, 1)
             Group {
-                HealthBar(icon: "figure.walk",       label: "Steg",         value: income.todayBreakdown.stepsSeconds,    maxValue: 21600.0 * gameState.currentZone.stepBonusMultiplier, total: total, color: .green)
+                HealthBar(icon: "figure.walk",       label: "Steg",         value: income.todayBreakdown.stepsSeconds,    maxValue: 21600.0 * gameState.currentZone.stepBonusMultiplier, total: total, color: .green)  // 20k steps × 1.08s × zoneMult
                 HealthBar(icon: "flame",              label: "Kalorier",     value: income.todayBreakdown.caloriesSeconds, maxValue: 1200.0,  total: total, color: .orange)
                 HealthBar(icon: "bolt.heart",         label: "Träning",      value: income.todayBreakdown.exerciseSeconds, maxValue: 3600.0,  total: total, color: .yellow)
                 HealthBar(icon: "moon.zzz",           label: "Sömn",         value: income.todayBreakdown.sleepSeconds,    maxValue: 14400.0, total: total, color: .indigo)

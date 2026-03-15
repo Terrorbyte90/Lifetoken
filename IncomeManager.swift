@@ -200,16 +200,20 @@ class IncomeManager: ObservableObject {
 
         let zone = GameState.shared.currentZone
         let boostMult = BoostManager.shared.boosterMultiplier()
-        let gross = todayBreakdown.total * boostMult
-        let net = gross * (1.0 - zone.taxRate)
+        let gross    = todayBreakdown.total * boostMult
+        let afterTax = gross * (1.0 - zone.taxRate)
+        // Inflation erodes health income just like job income — this is what creates the
+        // "3 days after the upgrade point you can no longer afford to wait" pressure.
+        let net = InflationManager.shared.deflatedEarnings(afterTax)
 
         TimeEngine.shared.addTime(net)
         GameState.shared.recordEarning(net)
 
         // Build summary
-        let lines = todayBreakdown.summaryLines
+        let inflPct  = String(format: "%.1f", (InflationManager.shared.currentMultiplier - 1) * 100)
+        let lines    = todayBreakdown.summaryLines
         let breakdown = lines.joined(separator: "\n")
-        summaryMessage = "🌅 Ny dag — hälsoinkomst:\n\(breakdown)\n\n✅ Netto: +\(TimeEngine.shortFormatted(net))\n(Skatt \(Int(zone.taxRate*100))% avdragen)"
+        summaryMessage = "🌅 Ny dag — hälsoinkomst:\n\(breakdown)\n\n✅ Netto: +\(TimeEngine.shortFormatted(net))\n(Skatt \(Int(zone.taxRate*100))%, Inflation -\(inflPct)% avdragna)"
         showDailySummary = true
 
         // Mark awarded
@@ -237,6 +241,8 @@ class IncomeManager: ObservableObject {
     var projectedDailyIncome: TimeInterval {
         let zone = GameState.shared.currentZone
         let boostMult = BoostManager.shared.boosterMultiplier()
-        return todayBreakdown.total * boostMult * (1.0 - zone.taxRate)
+        let gross = todayBreakdown.total * boostMult * (1.0 - zone.taxRate)
+        // Show inflation-deflated figure so the UI reflects what will actually be awarded
+        return InflationManager.shared.deflatedEarnings(gross)
     }
 }
