@@ -27,14 +27,30 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         // Request notification permission
         NotificationManager.shared.requestPermission()
 
-        // Sync balance with server on launch
+        // Startup: auto-login with stored username if no token, then sync
         let balance = TimeEngine.shared.balance
         Task {
+            await ServerSync.shared.startup()           // handles auto-login
+            await ServerSync.shared.syncBalance(balance)
+            await ServerSync.shared.fetchZoneMembers()
+            await ServerSync.shared.fetchLeaderboard()
+        }
+
+        // Check midnight health-income award (catches missed midnight if app was closed)
+        IncomeManager.shared.checkAndAwardDailyHealthIncome()
+
+        return true
+    }
+
+    func applicationDidBecomeActive(_ application: UIApplication) {
+        // Re-check health award when returning from background (covers midnight scenarios)
+        IncomeManager.shared.checkAndAwardDailyHealthIncome()
+        let balance = TimeEngine.shared.balance
+        Task {
+            await ServerSync.shared.checkHealth()
             await ServerSync.shared.syncBalance(balance)
             await ServerSync.shared.fetchZoneMembers()
         }
-
-        return true
     }
 
     func applicationDidEnterBackground(_ application: UIApplication) {

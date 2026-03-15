@@ -7,6 +7,7 @@ struct DashboardView: View {
     @ObservedObject private var gameState = GameState.shared
     @ObservedObject private var incomeManager = IncomeManager.shared
     @ObservedObject private var inflation = InflationManager.shared
+    @ObservedObject private var server = ServerSync.shared
 
     @State private var showOnboarding = !UserDefaults.standard.bool(forKey: "hasLaunched")
     @State private var showTimeMarket = false
@@ -21,15 +22,22 @@ struct DashboardView: View {
 
     let quotes = [
         "Du förlorar 1 sekund varje sekund. Tjäna tillbaka dem.",
-        "Varje 7 steg ger dig 1 sekund livstid.",
+        "10 000 steg ger dig 3 timmars livstid. Rör på dig.",
         "Din tid är din valuta. Använd den klokt.",
         "Zoner låser upp fördelar — ju längre du överlever, desto starkare.",
-        "Boosts kan dubbla din inkomst. Använd dem rätt.",
-        "Daglig inloggning ger streak-bonus.",
-        "Kasino finns i rikare zoner. Odds gynnar alltid huset.",
+        "Boosts kan dubbla din inkomst. Köp dem i Butiken.",
+        "8 timmars sömn ger 4 timmar extra livstid nästa dag.",
+        "Kasino öppnar i Eterpunkten. Oddsen gynnar alltid huset.",
         "Investera tid i Time Bank — men marknaden kraschar ibland.",
-        "Minutmannen är ute på gatorna. Vakta din tid.",
-        "Inflation äter upp din förmögenhet. Migrera uppåt."
+        "Inflation äter upp din förmögenhet. Migrera uppåt.",
+        "Mindfulness ger 90 sekunders liv per tränad minut.",
+        "Din HRV avgör om du är frisk. >50ms ger 1 timme bonus.",
+        "Träna 60 minuter — tjäna 1 timme liv. Break-even på träning.",
+        "Kasino är högrisk. Förlora aldrig mer än du har råd.",
+        "Varje 12 minuters träning ger dig 1 extra timmes livstid.",
+        "Spela Yatzy mot vänner — satsa tid och dubbla upp.",
+        "Migrera uppåt för passiv inkomst och arbetsbonus.",
+        "Sov optimalt (7–9h) för maximal hälsobonus vid midnatt."
     ]
 
     var body: some View {
@@ -74,6 +82,9 @@ struct DashboardView: View {
         .alert("Fusk Detekterat", isPresented: $engine.cheatingDetected) {
             Button("OK") {}
         } message: { Text("Din enhetstid stämmer inte med servertiden. Ogiltig tid har dragits av.") }
+        .alert("🌅 Daglig Hälsoinkomst", isPresented: $incomeManager.showDailySummary) {
+            Button("Tack!", role: .cancel) {}
+        } message: { Text(incomeManager.summaryMessage) }
     }
 
     // MARK: Top Header
@@ -184,9 +195,19 @@ struct DashboardView: View {
         HStack(spacing: 0) {
             statColumn(label: "Skatt", value: "\(Int(gameState.currentZone.taxRate * 100))%", color: .yellow)
             Divider().background(Color.white.opacity(0.15)).frame(height: 36)
-            statColumn(label: "Tjänat idag", value: TimeEngine.shortFormatted(incomeManager.earnedSeconds), color: .green)
+            statColumn(label: "Hälsa idag", value: TimeEngine.shortFormatted(incomeManager.todayBreakdown.total), color: .green)
             Divider().background(Color.white.opacity(0.15)).frame(height: 36)
-            statColumn(label: "NTP", value: engine.ntpVerified ? "OK" : "SYNC", color: engine.ntpVerified ? .green : .yellow)
+            statColumn(
+                label: "Server",
+                value: server.isOnline ? "Online" : "Offline",
+                color: server.isOnline ? .green : .red
+            )
+            Divider().background(Color.white.opacity(0.15)).frame(height: 36)
+            statColumn(
+                label: "Online",
+                value: "\(max(1, server.onlineCount))",
+                color: .cyan
+            )
         }
         .padding(.vertical, 12)
         .background(.ultraThinMaterial)

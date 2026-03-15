@@ -21,16 +21,19 @@ struct ServerUser: Codable, Identifiable {
 struct SyncResponse: Codable {
     let serverTime: Double
     let adjustedBalance: Double?
+    let antiCheatFlag: Bool?
 }
 
 class ServerSync: ObservableObject {
     static let shared = ServerSync()
     private let baseURL = "http://209.38.98.107:4000/api"
     private var syncTimer: Timer?
+    private var reconnectTimer: Timer?
 
     @Published var isOnline: Bool = false
     @Published var lastSyncDate: Date? = nil
     @Published var zoneMembers: [ServerUser] = []
+    @Published var onlineCount: Int = 0
 
     private init() {
         startPeriodicSync()
@@ -43,33 +46,67 @@ class ServerSync: ObservableObject {
     var token: String? {
         get { keychainLoad(key: tokenKey) }
         set {
-            if let v = newValue {
-                keychainSave(key: tokenKey, value: v)
-            } else {
-                keychainDelete(key: tokenKey)
-            }
+            if let v = newValue { keychainSave(key: tokenKey, value: v) }
+            else { keychainDelete(key: tokenKey) }
         }
     }
 
     var userId: String? {
         get { keychainLoad(key: userIdKey) }
         set {
-            if let v = newValue {
-                keychainSave(key: userIdKey, value: v)
-            } else {
-                keychainDelete(key: userIdKey)
+            if let v = newValue { keychainSave(key: userIdKey, value: v) }
+            else { keychainDelete(key: userIdKey) }
+        }
+    }
+
+    // MARK: - Startup
+
+    /// Called on app launch — auto-logins if we have stored credentials
+    func startup() async {
+        let storedUsername = UserDefaults.standard.string(forKey: "username") ?? ""
+        if token == nil && !storedUsername.isEmpty {
+            await loginOrRegister(username: storedUsername)
+        } else if token != nil {
+            await checkHealth()
+        }
+    }
+
+    // MARK: - Health check
+
+    func checkHealth() async {
+        do {
+            let data = try await get(path: "/health", requireAuth: false)
+            if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               json["status"] as? String == "ok" {
+                DispatchQueue.main.async { self.isOnline = true }
             }
+        } catch {
+            DispatchQueue.main.async { self.isOnline = false }
+            scheduleReconnect()
         }
     }
 
     // MARK: - Periodic sync
+
     func startPeriodicSync() {
-        syncTimer = Timer.scheduledTimer(withTimeInterval: 300, repeats: true) { [weak self] _ in
-            Task { await self?.syncBalance(TimeEngine.shared.balance) }
+        syncTimer?.invalidate()
+        syncTimer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
+            Task {
+                await self?.syncBalance(TimeEngine.shared.balance)
+                await self?.fetchZoneMembers()
+            }
+        }
+    }
+
+    private func scheduleReconnect() {
+        reconnectTimer?.invalidate()
+        reconnectTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: false) { [weak self] _ in
+            Task { await self?.checkHealth() }
         }
     }
 
     // MARK: - Auth
+
     func register(username: String, deviceId: String) async throws -> AuthResponse {
         let body: [String: Any] = ["username": username, "deviceId": deviceId]
         let data = try await post(path: "/auth/register", body: body, requireAuth: false)
@@ -82,13 +119,21 @@ class ServerSync: ObservableObject {
             let resp = try await register(username: username, deviceId: deviceId)
             token = resp.token
             userId = resp.userId
-            DispatchQueue.main.async { self.isOnline = true }
+            if let serverBalance = resp.timeBalance, serverBalance > 0 {
+                // Don't overwrite local balance; server balance is used for anti-cheat only
+            }
+            DispatchQueue.main.async {
+                self.isOnline = true
+                self.onlineCount = 1
+            }
         } catch {
             DispatchQueue.main.async { self.isOnline = false }
+            scheduleReconnect()
         }
     }
 
     // MARK: - Time sync
+
     func syncBalance(_ balance: TimeInterval) async {
         guard token != nil else { return }
         let body: [String: Any] = [
@@ -102,12 +147,14 @@ class ServerSync: ObservableObject {
             DispatchQueue.main.async {
                 self.isOnline = true
                 self.lastSyncDate = Date()
-                if let adj = resp.adjustedBalance, adj < TimeEngine.shared.balance {
+                if let adj = resp.adjustedBalance, adj < TimeEngine.shared.balance * 0.95 {
+                    // Only apply server correction if it's significantly lower (anti-cheat)
                     TimeEngine.shared.balance = adj
                 }
             }
         } catch {
             DispatchQueue.main.async { self.isOnline = false }
+            scheduleReconnect()
         }
     }
 
@@ -120,12 +167,27 @@ class ServerSync: ObservableObject {
     }
 
     // MARK: - Social
+
     func fetchZoneMembers() async {
         guard token != nil else { return }
         do {
             let data = try await get(path: "/social/zone-members", requireAuth: true)
             let members = try JSONDecoder().decode([ServerUser].self, from: data)
-            DispatchQueue.main.async { self.zoneMembers = members }
+            DispatchQueue.main.async {
+                self.zoneMembers = members
+                self.onlineCount = members.count
+            }
+        } catch {}
+    }
+
+    func fetchLeaderboard() async {
+        guard token != nil else { return }
+        do {
+            let data = try await get(path: "/social/zone-leaderboard", requireAuth: true)
+            let users = try JSONDecoder().decode([ServerUser].self, from: data)
+            DispatchQueue.main.async {
+                self.onlineCount = max(self.onlineCount, users.count)
+            }
         } catch {}
     }
 
@@ -145,9 +207,10 @@ class ServerSync: ObservableObject {
     }
 
     // MARK: - HTTP helpers
+
     private func get(path: String, requireAuth: Bool) async throws -> Data {
         guard let url = URL(string: baseURL + path) else { throw URLError(.badURL) }
-        var req = URLRequest(url: url)
+        var req = URLRequest(url: url, timeoutInterval: 10)
         if requireAuth, let t = token { req.setValue("Bearer \(t)", forHTTPHeaderField: "Authorization") }
         let (data, _) = try await URLSession.shared.data(for: req)
         return data
@@ -155,7 +218,7 @@ class ServerSync: ObservableObject {
 
     private func post(path: String, body: [String: Any], requireAuth: Bool) async throws -> Data {
         guard let url = URL(string: baseURL + path) else { throw URLError(.badURL) }
-        var req = URLRequest(url: url)
+        var req = URLRequest(url: url, timeoutInterval: 10)
         req.httpMethod = "POST"
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         if requireAuth, let t = token { req.setValue("Bearer \(t)", forHTTPHeaderField: "Authorization") }
@@ -165,6 +228,7 @@ class ServerSync: ObservableObject {
     }
 
     // MARK: - Keychain
+
     private func keychainSave(key: String, value: String) {
         let data = value.data(using: .utf8)!
         let query: [String: Any] = [

@@ -19,9 +19,9 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>NSHealthUpdateUsageDescription</key>
-	<string>Appen använder din hälsodata för att beräkna och förbättra din upplevelse</string>
+	<string>LifeToken skriver hälsodata för att registrera dina aktiviteter och beräkna din dagliga tidsinkomst.</string>
 	<key>NSHealthShareUsageDescription</key>
-	<string>Vi använder dina riktiga steg för att tjäna lön i appen</string>
+	<string>LifeToken läser dina steg, sömn, träning, kalorier, HRV och mindfulness för att omvandla ditt hälsobeteende till livstid i spelet. Ju friskare du lever, desto längre överlever du.</string>
 	<key>UIRequiredDeviceCapabilities</key>
 	<array>
 		<string>armv7</string>
@@ -39,6 +39,11 @@
 	</array>
 	<key>UILaunchScreen</key>
 	<dict/>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>fetch</string>
+		<string>processing</string>
+	</array>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSExceptionDomains</key>
