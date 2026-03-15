@@ -138,10 +138,7 @@ struct DashboardView: View {
                     .font(.system(size: 48, weight: .bold, design: .monospaced))
                     .foregroundColor(.red)
             } else {
-                Text(TimeEngine.formatted(engine.balance))
-                    .font(.system(size: 48, weight: .bold, design: .monospaced))
-                    .foregroundColor(clockColor)
-                    .scaleEffect(pulseAnim ? 1.04 : 1.0)
+                InTimeClockView(balance: engine.balance, pulseAnim: pulseAnim)
                     .animation(
                         engine.balance < 3600
                             ? .easeInOut(duration: 0.5).repeatForever(autoreverses: true)
