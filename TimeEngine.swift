@@ -214,6 +214,16 @@ class TimeEngine: ObservableObject {
         saveToKeychain(balance: balance, timestamp: Date())
     }
 
+    /// DEV ONLY — Reset balance to a specific value and persist to Keychain
+    func devResetBalance(to seconds: TimeInterval = 86400) {
+        DispatchQueue.main.async {
+            self.balance    = seconds
+            self.isTimedOut = false
+            self.cheatingDetected = false
+            self.saveToKeychain(balance: seconds, timestamp: Date())
+        }
+    }
+
     // MARK: - Formatting
 
     static func formatted(_ seconds: TimeInterval) -> String {
