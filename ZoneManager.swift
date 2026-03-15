@@ -5,7 +5,7 @@ public class ZoneManager: ObservableObject {
     static let shared = ZoneManager()
     private let lastZoneKey = "lastKnownZoneName"
 
-    @Published var currentZone: ZoneProfile = .grundskiftet
+    @Published var currentZone: ZoneProfile = .askan
 
     private init() {
         // Restore last known zone from UserDefaults (preserves hysteresis)
@@ -42,7 +42,7 @@ public class ZoneManager: ObservableObject {
             // Find the highest zone whose fallThreshold we still meet
             let fallZone = ZoneProfile.allZones.reversed().first {
                 currentTime >= $0.fallThresholdSeconds
-            } ?? .grundskiftet
+            } ?? .askan
             if fallZone.index < current.index {
                 DispatchQueue.main.async {
                     self.currentZone = fallZone

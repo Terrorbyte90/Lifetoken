@@ -261,6 +261,67 @@ class ServerSync: ObservableObject {
         _ = try await post(path: "/social/message", body: body, requireAuth: true)
     }
 
+    // MARK: - StepBet
+
+    func createStepBet(bet: StepBet) async {
+        guard token != nil else { return }
+        let body: [String: Any] = [
+            "betId":         bet.id,
+            "challengerName": bet.challengerName,
+            "opponentName":  bet.opponentName,
+            "stake":         bet.stake,
+            "deadline":      bet.deadline.timeIntervalSince1970
+        ]
+        _ = try? await post(path: "/bets/create", body: body, requireAuth: true)
+    }
+
+    func acceptStepBet(betId: String) async {
+        guard token != nil else { return }
+        let body: [String: Any] = ["betId": betId]
+        _ = try? await post(path: "/bets/accept", body: body, requireAuth: true)
+    }
+
+    func syncStepBet(betId: String, steps: Int) async {
+        guard token != nil else { return }
+        let body: [String: Any] = ["betId": betId, "steps": steps, "timestamp": Date().timeIntervalSince1970]
+        _ = try? await post(path: "/bets/sync-steps", body: body, requireAuth: true)
+    }
+
+    func settleBet(betId: String, winnerName: String) async {
+        guard token != nil else { return }
+        let body: [String: Any] = ["betId": betId, "winner": winnerName]
+        _ = try? await post(path: "/bets/settle", body: body, requireAuth: true)
+    }
+
+    // MARK: - Board / Styrelsen
+
+    func syncBoardBalances(members: [BoardMember]) async {
+        guard token != nil else { return }
+        let payload = members.map { ["id": $0.id, "balance": $0.balance, "displayName": $0.displayName] }
+        let body: [String: Any] = ["members": payload]
+        _ = try? await post(path: "/board/sync", body: body, requireAuth: true)
+    }
+
+    func fetchBoardState() async {
+        guard token != nil else { return }
+        _ = try? await get(path: "/board/state", requireAuth: true)
+    }
+
+    // MARK: - News feed
+
+    func fetchServerNews() async {
+        guard token != nil else { return }
+        guard let data = try? await get(path: "/news/feed", requireAuth: true),
+              let items = try? JSONDecoder().decode([NewsItem].self, from: data) else { return }
+        DispatchQueue.main.async {
+            for item in items.reversed() {
+                if !NewsManager.shared.items.contains(where: { $0.id == item.id }) {
+                    NewsManager.shared.items.insert(item, at: 0)
+                }
+            }
+        }
+    }
+
     // MARK: - HTTP helpers
 
     private func get(path: String, requireAuth: Bool) async throws -> Data {
