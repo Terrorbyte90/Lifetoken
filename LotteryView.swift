@@ -322,3 +322,8 @@ struct LotteryView: View {
         }
     }
 }
+
+#Preview {
+    LotteryView()
+        .preferredColorScheme(.dark)
+}

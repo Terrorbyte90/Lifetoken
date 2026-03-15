@@ -1,5 +1,99 @@
 import SwiftUI
 
+// MARK: - PlayingCardView
+
+struct PlayingCardView: View {
+    let rank: String   // "A", "K", "Q", "J", "10", "2"-"9"
+    let suit: String   // "♠", "♥", "♦", "♣"
+    var faceDown: Bool = false
+    var large: Bool = false
+
+    var isRed: Bool { suit == "♥" || suit == "♦" }
+
+    var body: some View {
+        if faceDown {
+            RoundedRectangle(cornerRadius: large ? 10 : 7)
+                .fill(LinearGradient(
+                    colors: [Color(red: 0.05, green: 0.25, blue: 0.1), Color(red: 0.02, green: 0.15, blue: 0.06)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                ))
+                .frame(width: large ? 64 : 40, height: large ? 90 : 56)
+                .overlay(RoundedRectangle(cornerRadius: large ? 10 : 7).stroke(Color.green.opacity(0.5), lineWidth: 1))
+                .shadow(color: .black.opacity(0.6), radius: 4)
+        } else {
+            ZStack {
+                RoundedRectangle(cornerRadius: large ? 10 : 7)
+                    .fill(Color.white)
+                    .frame(width: large ? 64 : 40, height: large ? 90 : 56)
+                    .shadow(color: .black.opacity(0.7), radius: 5, y: 3)
+
+                VStack(spacing: 0) {
+                    HStack {
+                        VStack(spacing: -2) {
+                            Text(rank)
+                                .font(.system(size: large ? 16 : 10, weight: .bold, design: .default))
+                                .foregroundColor(isRed ? .red : Color(white: 0.08))
+                            Text(suit)
+                                .font(.system(size: large ? 12 : 8))
+                                .foregroundColor(isRed ? .red : Color(white: 0.08))
+                        }
+                        Spacer()
+                    }
+                    Spacer()
+                    Text(suit)
+                        .font(.system(size: large ? 28 : 18))
+                        .foregroundColor(isRed ? .red : Color(white: 0.08))
+                    Spacer()
+                    HStack {
+                        Spacer()
+                        VStack(spacing: -2) {
+                            Text(suit)
+                                .font(.system(size: large ? 12 : 8))
+                                .foregroundColor(isRed ? .red : Color(white: 0.08))
+                            Text(rank)
+                                .font(.system(size: large ? 16 : 10, weight: .bold, design: .default))
+                                .foregroundColor(isRed ? .red : Color(white: 0.08))
+                        }
+                        .rotationEffect(.degrees(180))
+                    }
+                }
+                .padding(large ? 5 : 3)
+                .frame(width: large ? 64 : 40, height: large ? 90 : 56)
+            }
+        }
+    }
+}
+
+// MARK: - ChipView
+
+struct ChipView: View {
+    let amount: TimeInterval
+    let label: String
+    let color: Color
+
+    var body: some View {
+        Circle()
+            .fill(color)
+            .frame(width: 48, height: 48)
+            .overlay(Circle().stroke(Color.white.opacity(0.6), lineWidth: 2))
+            .overlay(
+                Text(label)
+                    .font(.system(size: 9, weight: .bold, design: .monospaced))
+                    .foregroundColor(.white)
+                    .multilineTextAlignment(.center)
+            )
+            .shadow(color: .black.opacity(0.5), radius: 3)
+    }
+}
+
+// MARK: - Helpers to convert Card to PlayingCardView inputs
+
+private extension Card {
+    var pvRank: String { rank.display }
+    var pvSuit: String { suit.rawValue }
+}
+
 // MARK: - Blackjack Game State
 
 enum BJGameState {
@@ -18,9 +112,9 @@ struct BlackjackView: View {
 
     @State private var deck          = Deck()
     @State private var playerCards:  [Card] = []
-    @State private var splitCards:   [Card] = []          // split hand (if used)
+    @State private var splitCards:   [Card] = []
     @State private var dealerCards:  [Card] = []
-    @State private var betAmount:    TimeInterval = 600   // 10 minutes default
+    @State private var betAmount:    TimeInterval = 600
     @State private var bjState:      BJGameState = .betting
     @State private var resultMessage: String = ""
     @State private var showResult:   Bool = false
@@ -28,28 +122,33 @@ struct BlackjackView: View {
     @State private var playerTotal:  Int = 0
     @State private var dealerTotal:  Int = 0
     @State private var splitActive:  Bool = false
-    @State private var playingSplit: Bool = false          // true = acting on split hand
+    @State private var playingSplit: Bool = false
 
-    // MARK: Body
+    // Chip definitions: (amount, label, color)
+    private let chips: [(TimeInterval, String, Color)] = [
+        (300, "5m", Color(red: 0.7, green: 0.45, blue: 0.2)),
+        (1800, "30m", Color(red: 0.7, green: 0.7, blue: 0.7)),
+        (3600, "1h", Color(red: 0.8, green: 0.7, blue: 0.1)),
+        (21600, "6h", Color(red: 0.1, green: 0.4, blue: 0.9)),
+        (86400, "1d", Color(red: 0.6, green: 0.1, blue: 0.8))
+    ]
 
     var body: some View {
         ZStack {
-            Color.black.ignoresSafeArea()
+            // Green felt background
+            LinearGradient(
+                colors: [Color(red: 0.05, green: 0.25, blue: 0.1), Color(red: 0.02, green: 0.18, blue: 0.08)],
+                startPoint: .top,
+                endPoint: .bottom
+            ).ignoresSafeArea()
 
             VStack(spacing: 0) {
                 headerBar
-
                 Spacer()
-
-                dealerSection
-                    .padding(.top, 8)
-
+                dealerSection.padding(.top, 8)
                 Spacer()
-
                 playerSection
-
-                betAndControls
-                    .padding(.bottom, 20)
+                betAndControls.padding(.bottom, 20)
             }
         }
         .alert("Resultat", isPresented: $showResult) {
@@ -65,7 +164,10 @@ struct BlackjackView: View {
         HStack {
             Button(action: { dismiss() }) {
                 Image(systemName: "xmark")
-                    .foregroundColor(.white.opacity(0.6))
+                    .foregroundColor(.white.opacity(0.7))
+                    .padding(8)
+                    .background(Color.black.opacity(0.3))
+                    .clipShape(Circle())
             }
             Spacer()
             Text("BLACKJACK")
@@ -75,6 +177,10 @@ struct BlackjackView: View {
             Text(TimeEngine.shortFormatted(engine.balance))
                 .font(.system(size: 13, design: .monospaced))
                 .foregroundColor(.yellow)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+                .background(Color.black.opacity(0.3))
+                .clipShape(Capsule())
         }
         .padding()
         .padding(.top, 20)
@@ -82,15 +188,15 @@ struct BlackjackView: View {
 
     private var dealerSection: some View {
         VStack(spacing: 10) {
-            Text("DEALER\(dealerHidden ? "" : ": \(dealerTotal)")")
+            Text(dealerHidden ? "DEALER" : "DEALER: \(dealerTotal)")
                 .font(.system(size: 14, weight: .bold, design: .monospaced))
-                .foregroundColor(.white.opacity(0.6))
+                .foregroundColor(.white.opacity(0.8))
             HStack(spacing: 8) {
                 ForEach(Array(dealerCards.enumerated()), id: \.offset) { idx, card in
                     if idx == 1 && dealerHidden {
-                        CardBackView(large: true)
+                        PlayingCardView(rank: "?", suit: "?", faceDown: true, large: true)
                     } else {
-                        CardView(card: card, large: true)
+                        PlayingCardView(rank: card.pvRank, suit: card.pvSuit, large: true)
                     }
                 }
             }
@@ -102,23 +208,16 @@ struct BlackjackView: View {
         VStack(spacing: 10) {
             if splitActive {
                 HStack(spacing: 24) {
-                    handDisplay(cards: playerCards,
-                                total: handValue(playerCards),
-                                label: "HAND 1",
-                                active: !playingSplit)
-                    handDisplay(cards: splitCards,
-                                total: handValue(splitCards),
-                                label: "HAND 2",
-                                active: playingSplit)
+                    splitHandDisplay(cards: playerCards, total: handValue(playerCards), label: "HAND 1", active: !playingSplit)
+                    splitHandDisplay(cards: splitCards, total: handValue(splitCards), label: "HAND 2", active: playingSplit)
                 }
             } else {
-                let total = playerTotal
-                Text("DU: \(total)")
+                Text("DU: \(playerTotal)")
                     .font(.system(size: 22, weight: .bold, design: .monospaced))
-                    .foregroundColor(total > 21 ? .red : .green)
+                    .foregroundColor(playerTotal > 21 ? .red : .white)
                 HStack(spacing: 8) {
                     ForEach(playerCards) { card in
-                        CardView(card: card, large: true)
+                        PlayingCardView(rank: card.pvRank, suit: card.pvSuit, large: true)
                     }
                 }
                 .animation(.easeInOut(duration: 0.2), value: playerCards.count)
@@ -126,38 +225,35 @@ struct BlackjackView: View {
         }
     }
 
-    private func handDisplay(cards: [Card], total: Int, label: String, active: Bool) -> some View {
+    private func splitHandDisplay(cards: [Card], total: Int, label: String, active: Bool) -> some View {
         VStack(spacing: 6) {
             Text("\(label): \(total)")
                 .font(.system(size: 12, weight: .bold, design: .monospaced))
                 .foregroundColor(active ? .green : .white.opacity(0.4))
             HStack(spacing: 6) {
                 ForEach(cards) { card in
-                    CardView(card: card, large: false)
+                    PlayingCardView(rank: card.pvRank, suit: card.pvSuit, large: false)
                 }
             }
         }
         .padding(8)
-        .background(active ? Color.green.opacity(0.08) : Color.clear)
-        .cornerRadius(10)
+        .background(active ? Color.green.opacity(0.12) : Color.clear)
+        .clipShape(RoundedRectangle(cornerRadius: 10))
         .overlay(
             RoundedRectangle(cornerRadius: 10)
-                .stroke(active ? Color.green.opacity(0.3) : Color.clear, lineWidth: 1)
+                .stroke(active ? Color.green.opacity(0.4) : Color.clear, lineWidth: 1)
         )
     }
 
     private var betAndControls: some View {
         VStack(spacing: 14) {
-            // Bet display
             Text("Insats: \(TimeEngine.shortFormatted(betAmount))")
                 .font(.system(size: 14, design: .monospaced))
                 .foregroundColor(.yellow)
 
             switch bjState {
-            case .betting:
-                bettingControls
-            case .playing:
-                playingControls
+            case .betting:    bettingControls
+            case .playing:    playingControls
             case .dealerTurn:
                 Text("Dealer drar...")
                     .font(.system(size: 14, design: .monospaced))
@@ -170,31 +266,27 @@ struct BlackjackView: View {
                         .frame(maxWidth: .infinity)
                         .padding()
                         .background(Color.green)
-                        .cornerRadius(12)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
                 }
                 .padding(.horizontal)
             }
         }
+        .padding(.bottom, 8)
     }
 
     private var bettingControls: some View {
-        VStack(spacing: 10) {
-            // Quick bet chips
-            HStack(spacing: 10) {
-                ForEach([300.0, 1800.0, 3600.0, 18000.0, 86400.0], id: \.self) { chip in
+        VStack(spacing: 12) {
+            // Chip row
+            HStack(spacing: 12) {
+                ForEach(chips, id: \.0) { chip in
                     Button {
-                        betAmount = min(chip, engine.balance)
+                        betAmount = min(chip.0, engine.balance)
                     } label: {
-                        Text(TimeEngine.shortFormatted(chip))
-                            .font(.system(size: 10, design: .monospaced))
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 6)
-                            .background(Color.white.opacity(0.10))
-                            .cornerRadius(8)
+                        ChipView(amount: chip.0, label: chip.1, color: chip.2)
                     }
                 }
             }
+            .padding(.horizontal)
 
             Slider(
                 value: $betAmount,
@@ -211,7 +303,7 @@ struct BlackjackView: View {
                     .frame(maxWidth: .infinity)
                     .padding()
                     .background(betAmount > engine.balance ? Color.gray : Color.green)
-                    .cornerRadius(12)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
             }
             .disabled(betAmount > engine.balance)
             .padding(.horizontal)
@@ -227,11 +319,9 @@ struct BlackjackView: View {
             .padding(.horizontal)
 
             HStack(spacing: 10) {
-                // Double Down — only on first two cards, if funds available
                 if activeHandCardCount() == 2 && engine.balance >= betAmount {
                     ActionButton(label: "DOUBLE", color: .yellow) { playerDouble() }
                 }
-                // Split — only if the two cards have equal rank value and not already split
                 if canSplit() {
                     ActionButton(label: "SPLIT", color: .purple) { playerSplit() }
                 }
@@ -252,7 +342,6 @@ struct BlackjackView: View {
         playingSplit = false
         dealerHidden = true
 
-        // Deal in order: player, dealer, player, dealer
         playerCards.append(deck.deal()!)
         dealerCards.append(deck.deal()!)
         playerCards.append(deck.deal()!)
@@ -262,25 +351,17 @@ struct BlackjackView: View {
         dealerTotal  = handValue(dealerCards)
         bjState      = .playing
 
-        // Natural blackjack check
-        if playerTotal == 21 {
-            runDealerTurn()
-        }
+        if playerTotal == 21 { runDealerTurn() }
     }
-
-    // MARK: Hand value (Ace = 11 or 1)
 
     func handValue(_ cards: [Card]) -> Int {
         var value = 0
         var aces  = 0
         for card in cards {
             switch card.rank {
-            case .ace:
-                value += 11; aces += 1
-            case .jack, .queen, .king:
-                value += 10
-            default:
-                value += card.rank.rawValue
+            case .ace:                       value += 11; aces += 1
+            case .jack, .queen, .king:       value += 10
+            default:                         value += card.rank.rawValue
             }
         }
         while value > 21 && aces > 0 { value -= 10; aces -= 1 }
@@ -291,27 +372,20 @@ struct BlackjackView: View {
         var value = 0; var aces = 0
         for card in cards {
             switch card.rank {
-            case .ace:               value += 11; aces += 1
-            case .jack, .queen, .king: value += 10
-            default:                 value += card.rank.rawValue
+            case .ace:                       value += 11; aces += 1
+            case .jack, .queen, .king:       value += 10
+            default:                         value += card.rank.rawValue
             }
         }
         return aces > 0 && value <= 21
     }
-
-    // MARK: Player actions
 
     func playerHit() {
         guard let card = deck.deal() else { return }
         if playingSplit {
             splitCards.append(card)
             let total = handValue(splitCards)
-            if total > 21 {
-                // Split hand busted — switch back or resolve
-                if !splitCards.isEmpty {
-                    runDealerTurn()
-                }
-            }
+            if total > 21 { runDealerTurn() }
         } else {
             playerCards.append(card)
             playerTotal = handValue(playerCards)
@@ -321,7 +395,6 @@ struct BlackjackView: View {
 
     func playerStand() {
         if splitActive && !playingSplit {
-            // Done with first hand — move to split hand
             playingSplit = true
         } else {
             runDealerTurn()
@@ -340,15 +413,11 @@ struct BlackjackView: View {
     func playerSplit() {
         guard !splitActive, playerCards.count == 2 else { return }
         guard TimeEngine.shared.deductTime(betAmount) else { return }
-
         splitCards  = [playerCards.removeLast()]
         splitActive = true
         playingSplit = false
-
-        // Deal one card to each hand
         if let c1 = deck.deal() { playerCards.append(c1) }
         if let c2 = deck.deal() { splitCards.append(c2) }
-
         playerTotal = handValue(playerCards)
     }
 
@@ -359,40 +428,29 @@ struct BlackjackView: View {
         showResult = true
     }
 
-    // MARK: Dealer turn
-
     func runDealerTurn() {
         dealerHidden = false
         dealerTotal  = handValue(dealerCards)
         bjState      = .dealerTurn
-
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            self.dealerDraw()
-        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { self.dealerDraw() }
     }
 
     func dealerDraw() {
-        // Dealer hits soft 17
         let soft = isSoft(dealerCards)
         if dealerTotal < 17 || (dealerTotal == 17 && soft) {
             if let card = deck.deal() { dealerCards.append(card) }
             dealerTotal = handValue(dealerCards)
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                self.dealerDraw()
-            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { self.dealerDraw() }
         } else {
             determineOutcome()
         }
     }
 
-    // MARK: Outcome
-
     func determineOutcome() {
         bjState = .done
-        let taxRate  = gameState.currentZone.taxRate
+        let taxRate = gameState.currentZone.taxRate
 
         if splitActive {
-            // Evaluate both hands
             let h1 = handValue(playerCards)
             let h2 = handValue(splitCards)
             var msgs: [String] = []
@@ -402,13 +460,12 @@ struct BlackjackView: View {
                 if hTotal > 21 {
                     msgs.append("\(label): Bust — förlust")
                 } else if dealerTotal > 21 || hTotal > dealerTotal {
-                    let gross = betAmount * (1.0 - taxRate)  // win = bet * (1-tax) net profit
-                    let win   = betAmount * 2.0 * (1.0 - taxRate)
+                    let win = betAmount * 2.0 * (1.0 - taxRate)
                     TimeEngine.shared.addTime(win)
                     netGain += win - betAmount
                     msgs.append("\(label): Vinst! +\(TimeEngine.shortFormatted(win - betAmount))")
                 } else if hTotal == dealerTotal {
-                    TimeEngine.shared.addTime(betAmount)    // push
+                    TimeEngine.shared.addTime(betAmount)
                     msgs.append("\(label): Lika — insatsen tillbaka")
                 } else {
                     msgs.append("\(label): Förlust")
@@ -416,32 +473,23 @@ struct BlackjackView: View {
             }
             if netGain > 0 { GameState.shared.recordEarning(netGain) }
             resultMessage = msgs.joined(separator: "\n")
-
         } else {
             let pTotal = handValue(playerCards)
-
             if pTotal > 21 {
                 resultMessage = "Bust! Du förlorade \(TimeEngine.shortFormatted(betAmount))."
-
             } else if pTotal == 21 && playerCards.count == 2 {
-                // Blackjack — 3:2
-                let gross = betAmount * 2.5
-                let net   = gross * (1.0 - taxRate)
+                let net = betAmount * 2.5 * (1.0 - taxRate)
                 TimeEngine.shared.addTime(net)
                 GameState.shared.recordEarning(net - betAmount)
                 resultMessage = "BLACKJACK! +\(TimeEngine.shortFormatted(net - betAmount)) (efter \(Int(taxRate * 100))% skatt)"
-
             } else if dealerTotal > 21 || pTotal > dealerTotal {
-                let gross = betAmount * 2.0
-                let net   = gross * (1.0 - taxRate)
+                let net = betAmount * 2.0 * (1.0 - taxRate)
                 TimeEngine.shared.addTime(net)
                 GameState.shared.recordEarning(net - betAmount)
                 resultMessage = "Du vann! +\(TimeEngine.shortFormatted(net - betAmount)) (efter skatt)"
-
             } else if pTotal == dealerTotal {
                 TimeEngine.shared.addTime(betAmount)
                 resultMessage = "Lika! (\(pTotal) vs \(dealerTotal)) — insatsen återbetalad."
-
             } else {
                 resultMessage = "Dealer vann (\(dealerTotal) mot \(pTotal)). Förlust: \(TimeEngine.shortFormatted(betAmount))."
             }
@@ -449,12 +497,9 @@ struct BlackjackView: View {
         showResult = true
     }
 
-    // MARK: Helpers
-
     func canSplit() -> Bool {
         guard !splitActive, playerCards.count == 2 else { return false }
         guard engine.balance >= betAmount else { return false }
-        // Split on equal rank value
         let v1 = min(playerCards[0].rank.rawValue, 10)
         let v2 = min(playerCards[1].rank.rawValue, 10)
         return v1 == v2
@@ -476,4 +521,9 @@ struct BlackjackView: View {
         betAmount    = 600
         bjState      = .betting
     }
+}
+
+#Preview {
+    BlackjackView()
+        .preferredColorScheme(.dark)
 }

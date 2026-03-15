@@ -343,3 +343,8 @@ struct SlotMachineView: View {
         showResult = true
     }
 }
+
+#Preview {
+    SlotMachineView()
+        .preferredColorScheme(.dark)
+}

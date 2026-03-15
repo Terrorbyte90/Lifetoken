@@ -310,3 +310,8 @@ struct InvestmentCard: View {
             .stroke(investment.isMatured ? Color.green.opacity(0.4) : Color.white.opacity(0.08), lineWidth: 1))
     }
 }
+
+#Preview {
+    InvestmentView()
+        .preferredColorScheme(.dark)
+}
