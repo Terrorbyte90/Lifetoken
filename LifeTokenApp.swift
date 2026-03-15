@@ -1,4 +1,5 @@
 import SwiftUI
+import HealthKit
 
 @main
 struct LifeTokenApp: App {
@@ -27,6 +28,13 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         // Request notification permission
         NotificationManager.shared.requestPermission()
 
+        // Request HealthKit authorization on every launch
+        HealthKitManager.shared.requestAuthorization { granted in
+            if granted {
+                IncomeManager.shared.loadAndRefresh()
+            }
+        }
+
         // Startup: auto-login with stored username if no token, then sync
         let balance = TimeEngine.shared.balance
         Task {
@@ -43,7 +51,8 @@ class AppDelegate: NSObject, UIApplicationDelegate {
     }
 
     func applicationDidBecomeActive(_ application: UIApplication) {
-        // Re-check health award when returning from background (covers midnight scenarios)
+        // Refresh health data and re-check award when returning from background
+        IncomeManager.shared.loadAndRefresh()
         IncomeManager.shared.checkAndAwardDailyHealthIncome()
         let balance = TimeEngine.shared.balance
         Task {
