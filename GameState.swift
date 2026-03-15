@@ -5,7 +5,7 @@ class GameState: ObservableObject {
     static let shared = GameState()
 
     @Published var username: String = ""
-    @Published var currentZone: ZoneProfile = .duskline
+    @Published var currentZone: ZoneProfile = .askan
     @Published var loginStreakDays: Int = 0
     @Published var lastLoginDate: Date? = nil
     @Published var totalEarnedAllTime: TimeInterval = 0

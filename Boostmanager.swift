@@ -49,4 +49,18 @@ class BoostManager {
         guard expiry > 0 else { return false }
         return Date().timeIntervalSince1970 < expiry
     }
+
+    /// Aktivera en boost med namn och varaktighet (köpt på nattmarknaden etc.)
+    func activateBoost(named name: String, duration: TimeInterval) {
+        var boosts = getActiveBoosts()
+        let entry = "\(name) (exp:\(Int(Date().timeIntervalSince1970 + duration)))"
+        boosts.append(entry)
+        UserDefaults.standard.set(boosts, forKey: boostsKey)
+
+        // Tidsstopp är speciell — sätt expiry-nyckel
+        if name.contains("Tidsstopp") {
+            let expiry = Date().timeIntervalSince1970 + duration
+            UserDefaults.standard.set(expiry, forKey: "tidsstopp_expiry")
+        }
+    }
 }
