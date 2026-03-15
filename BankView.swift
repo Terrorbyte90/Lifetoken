@@ -122,9 +122,12 @@ struct BankView: View {
         case historik    = "Historik"
     }
 
-    // Safe upper bound for invest slider — avoids crash when balance changes
+    // Safe upper bound for invest slider — always a multiple of 3600 and at least 7200
+    // (range needs width ≥ step to avoid "max stride must be positive" fatal error)
     private var investUpperBound: TimeInterval {
-        max(3601.0, min(engine.balance * 0.8, TimeInterval(86400 * 365)))
+        let raw = min(engine.balance * 0.8, TimeInterval(86400 * 365))
+        let floored = (raw / 3600).rounded(.down) * 3600   // snap to step grid
+        return max(7200.0, floored)                         // at minimum 2 steps
     }
     private var investAmountClamped: TimeInterval {
         min(investAmount, investUpperBound)

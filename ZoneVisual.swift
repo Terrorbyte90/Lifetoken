@@ -204,7 +204,7 @@ struct ZoneVisual: View {
                 zoneStatItem(label: "Skatt", value: "\(Int(zone.taxRate * 100))%", icon: "percent", color: .yellow)
                 zoneStatItem(label: "Arbetsmult", value: "×\(String(format: "%.1f", zone.workMultiplier))", icon: "hammer.fill", color: .cyan)
                 zoneStatItem(label: "Inflation/dag", value: "\(String(format: "%.1f", zone.inflationRatePerDay * 100))%", icon: "chart.line.uptrend.xyaxis", color: .orange)
-                zoneStatItem(label: "Passiv/dag", value: TimeEngine.shortFormatted(TimeInterval(zone.passiveBonusSecondsPerDay)), icon: "clock.badge.plus", color: .green)
+                zoneStatItem(label: "Passiv/dag", value: TimeEngine.shortFormatted(TimeInterval(zone.passiveBonusSecondsPerDay)), icon: "clock.arrow.circlepath", color: .green)
             }
 
             if !zone.protections.isEmpty {

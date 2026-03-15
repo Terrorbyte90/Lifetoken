@@ -123,7 +123,12 @@ class TimeEngine: ObservableObject {
     private func verifyTimeNow() {
         // Use worldtimeapi as a simple HTTP time source
         guard let url = URL(string: "https://worldtimeapi.org/api/ip") else { return }
-        URLSession.shared.dataTask(with: url) { [weak self] data, response, _ in
+        URLSession.shared.dataTask(with: url) { [weak self] data, response, error in
+            // TLS / network errors are non-fatal — skip verification silently
+            if let error = error {
+                _ = error   // acknowledged; NTP check simply skipped this cycle
+                return
+            }
             guard let self = self,
                   let data = data,
                   let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
