@@ -68,7 +68,7 @@ struct PipeGrid {
     let size: Int
     var cells: [[PCell]]
 
-    static func generate(size: Int) -> PipeGrid {
+    static func generate(size: Int, maxScramble: Int = 3) -> PipeGrid {
         var cells = Array(repeating: Array(repeating: PCell(type: .straight, rotation: 0), count: size), count: size)
 
         // 1. DFS path from (0,0) to (size-1, size-1)
@@ -115,8 +115,8 @@ struct PipeGrid {
             var cell = PCell.make(openings: conns)
             cell.isSource = i == 0
             cell.isDrain  = i == path.count-1
-            // Scramble rotation (+1 or +2 or +3)
-            let scramble = Int.random(in: 1...3)
+            // Scramble rotation by 1..maxScramble (lower = easier)
+            let scramble = Int.random(in: 1...maxScramble)
             cell.rotation = (cell.rotation + scramble) % 4
             cells[r][c] = cell
         }
@@ -177,9 +177,9 @@ struct PipeGameView: View {
     let difficulty: Int
     @Environment(\.dismiss) var dismiss
 
-    private let gridSizes:  [Int]    = [4, 6, 8, 10]
-    private let timeLimits: [Int]    = [30, 25, 20, 15]
-    private let rewards:    [Int]    = [12, 22, 38, 65]
+    private let gridSizes:  [Int]    = [4, 5, 7, 9]
+    private let timeLimits: [Int]    = [45, 35, 25, 20]
+    private let rewards:    [Int]    = [6, 11, 19, 32]
 
     private var gridSize:  Int { gridSizes[difficulty] }
     private var timeLimit: Int { timeLimits[difficulty] }
@@ -257,8 +257,9 @@ struct PipeGameView: View {
                 pipeInfoRow("Rutnät", "\(gridSize)×\(gridSize)", .white)
                 pipeInfoRow("Tidsgräns", "\(timeLimit)s", .yellow)
                 pipeInfoRow("Lön vid vinst", "\(reward) min", Color(red:0.2,green:0.8,blue:0.5))
-                pipeInfoRow("Roterar", "Tryck på rör", Color(white:0.5))
-                pipeInfoRow("Vatten flödar", "automatiskt när tid är ute", Color(white:0.5))
+                pipeInfoRow("Straff vid läcka", "−\(max(1, reward/3)) min", .red)
+                pipeInfoRow("Rotera rör", "Tryck på rör", Color(white:0.5))
+                pipeInfoRow("Vatten flödar", "automatiskt vid 0s", Color(white:0.5))
             }
             .padding(16)
             .background(Color.white.opacity(0.04))
@@ -459,16 +460,16 @@ struct PipeGameView: View {
             }
 
             VStack(spacing: 8) {
-                Text(won ? "SYSTEMET HÅLLER TRYCKET" : "LÄCKA — NOLL LÖN")
+                Text(won ? "SYSTEMET HÅLLER TRYCKET" : "LÄCKA DETEKTERAD")
                     .font(.system(size: 16, weight: .black, design: .monospaced))
-                    .foregroundColor(won ? .white : .orange)
+                    .foregroundColor(won ? .white : .red)
                     .tracking(2)
                 if won {
                     Text("Flödet nådde utloppet utan läcka.")
                         .font(.system(size: 11, design: .monospaced))
                         .foregroundColor(Color(white:0.4))
                 } else {
-                    Text("Rörsystemet var inkopplat. Lönet uteblev.")
+                    Text("Rörsystemet läckte. Kostnaderna dras.")
                         .font(.system(size: 11, design: .monospaced))
                         .foregroundColor(Color(white:0.4))
                 }
@@ -478,6 +479,10 @@ struct PipeGameView: View {
                 Text("+\(TimeEngine.shortFormatted(earned))")
                     .font(.system(size: 32, weight: .black, design: .monospaced))
                     .foregroundColor(Color(red:0.2,green:0.8,blue:0.5))
+            } else if !won {
+                Text("−\(TimeEngine.shortFormatted(abs(earned)))")
+                    .font(.system(size: 28, weight: .black, design: .monospaced))
+                    .foregroundColor(.red)
             }
 
             Button("Stäng") { dismiss() }
@@ -495,8 +500,10 @@ struct PipeGameView: View {
     // MARK: - Logic
 
     private func startGame() {
-        grid     = PipeGrid.generate(size: gridSize)
-        timeLeft = timeLimit
+        // Enkel=1 rotation, Medel=2, Svår=3, Expert=3
+        let maxScramble = [1, 2, 3, 3][difficulty]
+        grid      = PipeGrid.generate(size: gridSize, maxScramble: maxScramble)
+        timeLeft  = timeLimit
         waterAnim = 0
         tapFlash  = nil
         phase     = .playing
@@ -517,10 +524,19 @@ struct PipeGameView: View {
     }
 
     private func calcEarnings(won: Bool) -> TimeInterval {
-        guard won else { return 0 }
-        awardMiniJobEarnings(minutes: reward)
         let zone = GameState.shared.currentZone
-        return TimeInterval(reward * 60) * zone.workMultiplier * (1 - zone.taxRate) * BoostManager.shared.boosterMultiplier()
+        if won {
+            awardMiniJobEarnings(minutes: reward)
+            let net = TimeInterval(reward * 60) * zone.workMultiplier * (1 - zone.taxRate) * BoostManager.shared.boosterMultiplier()
+            NewsManager.shared.addMiniJobCompletedEvent(jobName: "Rörmockaren", earned: net, won: true)
+            return net
+        } else {
+            // Penalty = 1/3 of reward
+            let penaltyMin = max(1, reward / 3)
+            penalizeMiniJob(minutes: penaltyMin)
+            NewsManager.shared.addMiniJobCompletedEvent(jobName: "Rörmockaren", earned: 0, won: false)
+            return -TimeInterval(penaltyMin * 60)
+        }
     }
 
     private func pipeInfoRow(_ label: String, _ value: String, _ col: Color) -> some View {

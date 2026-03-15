@@ -315,9 +315,6 @@ struct WorkView: View {
                 Text("Tjänat via hälsa idag: \(TimeEngine.shortFormatted(income.todayBreakdown.total))")
                     .font(.system(size: 11, design: .monospaced))
                     .foregroundColor(.white.opacity(0.5))
-                Text("Förväntad nettolön: \(TimeEngine.shortFormatted(income.projectedDailyIncome))")
-                    .font(.system(size: 12, weight: .bold, design: .monospaced))
-                    .foregroundColor(.green)
                 Text("Lön utbetalas vid 00.00")
                     .font(.system(size: 10, weight: .semibold, design: .monospaced))
                     .foregroundColor(.green.opacity(0.6))
@@ -368,19 +365,49 @@ struct WorkView: View {
     // MARK: Income Details
 
     private var incomeDetailsSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 12) {
             Text("INKOMSTDETALJER")
                 .font(.system(size: 11, weight: .bold, design: .monospaced))
                 .foregroundColor(.white.opacity(0.4))
 
-            DetailRow(label: "Skattesats", value: "\(Int(gameState.currentZone.taxRate * 100))%", color: .yellow)
-            DetailRow(label: "Boost-multiplikator", value: "x\(String(format: "%.1f", BoostManager.shared.boosterMultiplier()))", color: .green)
-            DetailRow(label: "Zonmultiplikator", value: "x\(String(format: "%.1f", gameState.currentZone.workMultiplier))", color: .cyan)
+            DetailRow(
+                label: "Skattesats",
+                value: "\(Int(gameState.currentZone.taxRate * 100))%",
+                color: .yellow,
+                description: "Statens andel — dras automatiskt vid varje utbetalning"
+            )
+            Divider().background(Color.white.opacity(0.06))
+            DetailRow(
+                label: "Boost-multiplikator",
+                value: "×\(String(format: "%.2f", BoostManager.shared.boosterMultiplier()))",
+                color: .green,
+                description: "Bonus från aktiva boosters — multiplicerar hela inkomsten"
+            )
+            Divider().background(Color.white.opacity(0.06))
+            DetailRow(
+                label: "Zonmultiplikator",
+                value: "×\(String(format: "%.1f", gameState.currentZone.workMultiplier))",
+                color: .cyan,
+                description: "Din zons effektivitet — högre zon ger mer per tidsenhet"
+            )
+            Divider().background(Color.white.opacity(0.06))
+            DetailRow(
+                label: "Inflation/dag",
+                value: TimeEngine.shortFormatted(inflation.dailyInflationCostSeconds),
+                color: inflation.isCritical ? .red : .orange,
+                description: inflation.isCritical
+                    ? "KRITISK — din tid förlorar värde snabbare än du tjänar"
+                    : "Daglig kostnad — uppgradera zon för att sänka inflationen"
+            )
             if inflation.isWarning {
-                DetailRow(label: "Inflation", value: inflation.percentageString, color: .red)
+                Divider().background(Color.white.opacity(0.06))
+                DetailRow(
+                    label: "Inflationstakt",
+                    value: inflation.percentageString,
+                    color: .red,
+                    description: "Aktuell takt — sänker köpkraften på din sparade tid"
+                )
             }
-            DetailRow(label: "Inflation/dag", value: TimeEngine.shortFormatted(inflation.dailyInflationCostSeconds), color: inflation.isCritical ? .red : .orange)
-            DetailRow(label: "Hållbart (dagar)", value: "\(inflation.daysUntilUnsustainable)d", color: inflation.daysUntilUnsustainable < 7 ? .red : .yellow)
         }
         .padding()
         .background(Color.white.opacity(0.04))
@@ -447,16 +474,25 @@ struct DetailRow: View {
     let label: String
     let value: String
     let color: Color
+    var description: String? = nil
 
     var body: some View {
-        HStack {
-            Text(label)
-                .font(.system(size: 12, design: .monospaced))
-                .foregroundColor(.white.opacity(0.6))
-            Spacer()
-            Text(value)
-                .font(.system(size: 12, weight: .bold, design: .monospaced))
-                .foregroundColor(color)
+        VStack(alignment: .leading, spacing: 3) {
+            HStack {
+                Text(label)
+                    .font(.system(size: 12, design: .monospaced))
+                    .foregroundColor(.white.opacity(0.6))
+                Spacer()
+                Text(value)
+                    .font(.system(size: 12, weight: .bold, design: .monospaced))
+                    .foregroundColor(color)
+            }
+            if let desc = description {
+                Text(desc)
+                    .font(.system(size: 10, design: .monospaced))
+                    .foregroundColor(.white.opacity(0.28))
+                    .lineLimit(2)
+            }
         }
     }
 }

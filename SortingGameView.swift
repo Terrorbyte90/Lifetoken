@@ -12,10 +12,10 @@ struct SortingGameView: View {
     private let fallingSpeed:   [Double] = [8.0, 6.0, 4.5, 3.5]  // seconds to fall across screen
     private let spawnInterval:  [Double] = [1.4, 1.1, 0.85, 0.7]
     private let rewards = [
-        (perfect:15, good:8, worse:2),
-        (perfect:25, good:14, worse:4),
-        (perfect:42, good:23, worse:7),
-        (perfect:70, good:38, worse:11),
+        (perfect:7,  good:4,  worse:1),
+        (perfect:12, good:7,  worse:2),
+        (perfect:21, good:11, worse:3),
+        (perfect:35, good:19, worse:5),
     ]
     private var catCount:  Int    { categoryCounts[difficulty] }
     private var timeLimit: Int    { timeLimits[difficulty] }
@@ -244,7 +244,6 @@ struct SortingGameView: View {
                     }
                     .shadow(color: col.opacity(0.4), radius: 8)
                     .position(x: x, y: y)
-                    .animation(.linear(duration: 1/30.0), value: obj.yOffset)
                 }
 
                 // ── Combo label ──────────────────────
@@ -296,17 +295,24 @@ struct SortingGameView: View {
     // MARK: - Result Screen
 
     private func resultScreen(earned: TimeInterval) -> some View {
-        VStack(spacing: 24) {
+        let won = earned > 0
+        let penalized = earned < 0
+        return VStack(spacing: 24) {
             Spacer()
 
-            Image(systemName: "checkmark.seal.fill")
-                .font(.system(size: 56))
-                .foregroundColor(Color(red:0.9,green:0.55,blue:0.1))
+            ZStack {
+                Circle()
+                    .fill((won ? Color(red:0.9,green:0.55,blue:0.1) : Color.red).opacity(0.12))
+                    .frame(width: 110, height: 110)
+                Image(systemName: won ? "checkmark.seal.fill" : (penalized ? "exclamationmark.octagon.fill" : "minus.circle.fill"))
+                    .font(.system(size: 52))
+                    .foregroundColor(won ? Color(red:0.9,green:0.55,blue:0.1) : (penalized ? .red : Color(white:0.4)))
+            }
 
             VStack(spacing: 8) {
-                Text("SKIFT AVSLUTAT")
+                Text(won ? "SKIFT AVSLUTAT" : (penalized ? "FELSORTERING — BÖTER" : "SKIFT AVSLUTAT"))
                     .font(.system(size: 18, weight: .black, design: .monospaced))
-                    .foregroundColor(.white)
+                    .foregroundColor(won ? .white : (penalized ? .red : Color(white:0.5)))
                     .tracking(3)
                 Text("Rätt sorterade: \(score) | Fel: \(mistakes)")
                     .font(.system(size: 12, design: .monospaced))
@@ -322,8 +328,17 @@ struct SortingGameView: View {
                 Text("+\(TimeEngine.shortFormatted(earned))")
                     .font(.system(size: 32, weight: .black, design: .monospaced))
                     .foregroundColor(Color(red:0.9,green:0.55,blue:0.1))
+            } else if earned < 0 {
+                VStack(spacing: 4) {
+                    Text("−\(TimeEngine.shortFormatted(abs(earned)))")
+                        .font(.system(size: 28, weight: .black, design: .monospaced))
+                        .foregroundColor(.red)
+                    Text("Avgift för felaktig källsortering.")
+                        .font(.system(size: 11, design: .monospaced))
+                        .foregroundColor(Color(white:0.35))
+                }
             } else {
-                Text("För många fel. Minimal utbetalning.")
+                Text("Ingen sortering gjord.")
                     .font(.system(size: 13, design: .monospaced))
                     .foregroundColor(Color(white:0.35))
             }
@@ -435,6 +450,13 @@ struct SortingGameView: View {
             awardMiniJobEarnings(minutes: minutes)
             let zone = GameState.shared.currentZone
             net = TimeInterval(minutes * 60) * zone.workMultiplier * (1 - zone.taxRate) * BoostManager.shared.boosterMultiplier()
+            NewsManager.shared.addMiniJobCompletedEvent(jobName: "Sorteringsverket", earned: net, won: true)
+        } else {
+            // 30% penalty of the perfect reward at current difficulty
+            let penaltyMin = max(1, Int(Double(reward.perfect) * 0.30))
+            penalizeMiniJob(minutes: penaltyMin)
+            net = -TimeInterval(penaltyMin * 60)
+            NewsManager.shared.addMiniJobCompletedEvent(jobName: "Sorteringsverket", earned: 0, won: false)
         }
         phase = .result(earned: net)
     }
