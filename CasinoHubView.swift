@@ -3,6 +3,7 @@ import SwiftUI
 struct CasinoHubView: View {
     @ObservedObject private var engine = TimeEngine.shared
     @ObservedObject private var gameState = GameState.shared
+    @ObservedObject private var server = ServerSync.shared
 
     @State private var selectedGame: CasinoGame? = nil
     @State private var lockedMessageIndex: Int = Int.random(in: 0..<5)
@@ -40,14 +41,14 @@ struct CasinoHubView: View {
                 unlockedView
             }
         }
-        .sheet(item: $selectedGame) { game in
+        .fullScreenCover(item: $selectedGame) { game in
             switch game {
             case .poker:     PokerView()
             case .roulette:  RouletteGameView()
             case .slots:     SlotMachineView()
             case .blackjack: BlackjackView()
             case .lottery:   LotteryView()
-            case .yatzy:     YatzyView()
+            case .yatzy:     MultiplayerYatzyView()
             case .crash:     CrashView()
             }
         }
@@ -94,21 +95,11 @@ struct CasinoHubView: View {
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 40)
 
-                VStack(spacing: 6) {
-                    Text("Tillgängligt från: Aetherpoint")
-                        .font(.system(size: 11, design: .monospaced))
-                        .foregroundColor(.red.opacity(0.6))
-                    Text("Din zon: \(gameState.currentZone.name) (nivå \(gameState.currentZone.index))")
-                        .font(.system(size: 11, design: .monospaced))
-                        .foregroundColor(.white.opacity(0.4))
-                    Text("Krävs: Aetherpoint (nivå 8)")
-                        .font(.system(size: 11, design: .monospaced))
-                        .foregroundColor(.white.opacity(0.3))
-                }
-                .padding(14)
-                .background(Color.red.opacity(0.08))
-                .clipShape(RoundedRectangle(cornerRadius: 12))
-                .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.red.opacity(0.2), lineWidth: 1))
+                Text("Klättra uppåt i zonerna för att låsa upp kasinot.\nStarka spelare spelar sina sekunder på hög risk.")
+                    .font(.system(size: 12, design: .monospaced))
+                    .foregroundColor(.white.opacity(0.35))
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 32)
 
                 Spacer()
             }
@@ -128,9 +119,19 @@ struct CasinoHubView: View {
                     Text("Saldo: \(TimeEngine.formatted(engine.balance))")
                         .font(.system(size: 16, design: .monospaced))
                         .foregroundColor(.yellow)
-                    Text("Oddsen gynnar alltid huset")
-                        .font(.system(size: 11, design: .monospaced))
-                        .foregroundColor(.red.opacity(0.7))
+                    HStack(spacing: 16) {
+                        Text("Oddsen gynnar alltid huset")
+                            .font(.system(size: 11, design: .monospaced))
+                            .foregroundColor(.red.opacity(0.7))
+                        HStack(spacing: 4) {
+                            Circle()
+                                .fill(server.isOnline ? Color.green : Color.red)
+                                .frame(width: 6, height: 6)
+                            Text("\(max(1, server.onlineCount)) online")
+                                .font(.system(size: 10, design: .monospaced))
+                                .foregroundColor(.white.opacity(0.5))
+                        }
+                    }
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.bottom, 24)
@@ -189,9 +190,9 @@ struct CasinoHubView: View {
 
                     CasinoGameCard(
                         icon: "dice.fill",
-                        title: "YATZY",
-                        subtitle: "Mot AI-motståndare",
-                        detail: "RTP: ~95%",
+                        title: "YATZY DUELL",
+                        subtitle: "Mot spelare eller AI",
+                        detail: "Vinnaren tar allt",
                         gradient: [Color(red: 0.18, green: 0.12, blue: 0.02), Color(red: 0.10, green: 0.07, blue: 0.02)],
                         accentColor: .orange,
                         locked: false

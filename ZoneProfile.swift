@@ -24,33 +24,343 @@ struct ZoneProfile: Equatable {
     let description: String
     let index: Int
 
-    static let grundskiftet = ZoneProfile(name:"Grundskiftet", taxRate:0.02, dailyCostMultiplier:1.0, stepBonusMultiplier:1.0, appCostReduction:0, passiveBonusSecondsPerDay:0, boostEffectMultiplier:1.0, allowBoosts:false, maxActiveBoosts:0, fallThresholdSeconds:0, unlockRequirementSeconds:0, entryCostSeconds:0, protections:[], zoneIcon:"house", zoneColor:"#333333", casinoAccess:false, workMultiplier:1.0, drainRate:1.0, inflationRatePerDay:0.005, description:"Bottenvåningen. Ingen har valt att vara här.", index:0)
+    // MARK: - Zone Definitions (14 zones, helt på svenska)
 
-    static let krypdalen = ZoneProfile(name:"Krypdalen", taxRate:0.05, dailyCostMultiplier:1.1, stepBonusMultiplier:1.0, appCostReduction:0, passiveBonusSecondsPerDay:0, boostEffectMultiplier:1.0, allowBoosts:false, maxActiveBoosts:0, fallThresholdSeconds:21600, unlockRequirementSeconds:43200, entryCostSeconds:21600, protections:[], zoneIcon:"arrow.up", zoneColor:"#3d3d4a", casinoAccess:false, workMultiplier:1.2, drainRate:1.0, inflationRatePerDay:0.005, description:"Steget upp från botten. Ingen mer.", index:1)
+    static let grundskiftet = ZoneProfile(
+        name: "Grundskiftet",
+        taxRate: 0.02,
+        dailyCostMultiplier: 1.0,
+        stepBonusMultiplier: 1.0,
+        appCostReduction: 0,
+        passiveBonusSecondsPerDay: 0,
+        boostEffectMultiplier: 1.0,
+        allowBoosts: false,
+        maxActiveBoosts: 0,
+        fallThresholdSeconds: 0,
+        unlockRequirementSeconds: 0,
+        entryCostSeconds: 0,
+        protections: [],
+        zoneIcon: "house",
+        zoneColor: "#333333",
+        casinoAccess: false,
+        workMultiplier: 1.0,
+        drainRate: 1.0,
+        inflationRatePerDay: 0.003,
+        description: "Bottenvåningen. Ingen har valt att vara här.",
+        index: 0
+    )
 
-    static let grabotten = ZoneProfile(name:"Gråbotten", taxRate:0.08, dailyCostMultiplier:1.2, stepBonusMultiplier:1.0, appCostReduction:0, passiveBonusSecondsPerDay:0, boostEffectMultiplier:1.0, allowBoosts:true, maxActiveBoosts:1, fallThresholdSeconds:64800, unlockRequirementSeconds:129600, entryCostSeconds:64800, protections:[], zoneIcon:"cloud", zoneColor:"#4a4a5a", casinoAccess:false, workMultiplier:1.4, drainRate:1.0, inflationRatePerDay:0.005, description:"Grå. Trött. Men levande.", index:2)
+    static let krypdalen = ZoneProfile(
+        name: "Krypdalen",
+        taxRate: 0.04,
+        dailyCostMultiplier: 1.1,
+        stepBonusMultiplier: 1.05,
+        appCostReduction: 0,
+        passiveBonusSecondsPerDay: 120,
+        boostEffectMultiplier: 1.0,
+        allowBoosts: false,
+        maxActiveBoosts: 0,
+        fallThresholdSeconds: 10800,
+        unlockRequirementSeconds: 32400,
+        entryCostSeconds: 10800,
+        protections: [],
+        zoneIcon: "arrow.up",
+        zoneColor: "#3d3d4a",
+        casinoAccess: false,
+        workMultiplier: 1.2,
+        drainRate: 1.0,
+        inflationRatePerDay: 0.003,
+        description: "Steget upp från botten. Lite mer luft att andas.",
+        index: 1
+    )
 
-    static let skymring = ZoneProfile(name:"Skymring", taxRate:0.10, dailyCostMultiplier:1.3, stepBonusMultiplier:1.05, appCostReduction:0, passiveBonusSecondsPerDay:120, boostEffectMultiplier:1.0, allowBoosts:true, maxActiveBoosts:1, fallThresholdSeconds:172800, unlockRequirementSeconds:345600, entryCostSeconds:172800, protections:[], zoneIcon:"moon", zoneColor:"#505060", casinoAccess:false, workMultiplier:1.6, drainRate:1.0, inflationRatePerDay:0.008, description:"Gryningens kant. Fortfarande mörkt.", index:3)
+    static let grabotten = ZoneProfile(
+        name: "Gråbotten",
+        taxRate: 0.06,
+        dailyCostMultiplier: 1.2,
+        stepBonusMultiplier: 1.08,
+        appCostReduction: 0,
+        passiveBonusSecondsPerDay: 300,
+        boostEffectMultiplier: 1.0,
+        allowBoosts: true,
+        maxActiveBoosts: 1,
+        fallThresholdSeconds: 25200,
+        unlockRequirementSeconds: 75600,
+        entryCostSeconds: 25200,
+        protections: [],
+        zoneIcon: "cloud",
+        zoneColor: "#4a4a5a",
+        casinoAccess: false,
+        workMultiplier: 1.5,
+        drainRate: 1.0,
+        inflationRatePerDay: 0.004,
+        description: "Grå. Trött. Men levande.",
+        index: 2
+    )
 
-    static let halvmorker = ZoneProfile(name:"Halvmörker", taxRate:0.12, dailyCostMultiplier:1.4, stepBonusMultiplier:1.08, appCostReduction:0, passiveBonusSecondsPerDay:300, boostEffectMultiplier:1.0, allowBoosts:true, maxActiveBoosts:1, fallThresholdSeconds:432000, unlockRequirementSeconds:864000, entryCostSeconds:432000, protections:[], zoneIcon:"moon.stars", zoneColor:"#556070", casinoAccess:false, workMultiplier:1.9, drainRate:1.0, inflationRatePerDay:0.008, description:"Halvvägs till ljuset. Eller halvvägs ner.", index:4)
+    static let skymring = ZoneProfile(
+        name: "Skymring",
+        taxRate: 0.08,
+        dailyCostMultiplier: 1.3,
+        stepBonusMultiplier: 1.10,
+        appCostReduction: 0,
+        passiveBonusSecondsPerDay: 600,
+        boostEffectMultiplier: 1.0,
+        allowBoosts: true,
+        maxActiveBoosts: 1,
+        fallThresholdSeconds: 50400,
+        unlockRequirementSeconds: 151200,
+        entryCostSeconds: 50400,
+        protections: [],
+        zoneIcon: "moon",
+        zoneColor: "#505060",
+        casinoAccess: false,
+        workMultiplier: 1.8,
+        drainRate: 1.0,
+        inflationRatePerDay: 0.005,
+        description: "Gryningens kant. Fortfarande mörkt, men hoppfullt.",
+        index: 3
+    )
 
-    static let duskline = ZoneProfile(name:"Duskline", taxRate:0.15, dailyCostMultiplier:1.5, stepBonusMultiplier:1.1, appCostReduction:0.1, passiveBonusSecondsPerDay:600, boostEffectMultiplier:1.1, allowBoosts:true, maxActiveBoosts:2, fallThresholdSeconds:864000, unlockRequirementSeconds:1728000, entryCostSeconds:864000, protections:["Tidssköld Enkel"], zoneIcon:"cloud.sun", zoneColor:"#5a6478", casinoAccess:false, workMultiplier:2.2, drainRate:1.0, inflationRatePerDay:0.010, description:"Gränszonen. Varken upp eller ner.", index:5)
+    static let halvmorker = ZoneProfile(
+        name: "Halvmörker",
+        taxRate: 0.10,
+        dailyCostMultiplier: 1.4,
+        stepBonusMultiplier: 1.12,
+        appCostReduction: 0,
+        passiveBonusSecondsPerDay: 1200,
+        boostEffectMultiplier: 1.0,
+        allowBoosts: true,
+        maxActiveBoosts: 1,
+        fallThresholdSeconds: 100800,
+        unlockRequirementSeconds: 302400,
+        entryCostSeconds: 100800,
+        protections: [],
+        zoneIcon: "moon.stars",
+        zoneColor: "#556070",
+        casinoAccess: false,
+        workMultiplier: 2.2,
+        drainRate: 1.0,
+        inflationRatePerDay: 0.006,
+        description: "Halvvägs till ljuset. Håll ut.",
+        index: 4
+    )
 
-    static let midgrey = ZoneProfile(name:"Midgrey", taxRate:0.18, dailyCostMultiplier:1.8, stepBonusMultiplier:1.12, appCostReduction:0.15, passiveBonusSecondsPerDay:900, boostEffectMultiplier:1.2, allowBoosts:true, maxActiveBoosts:2, fallThresholdSeconds:1728000, unlockRequirementSeconds:3456000, entryCostSeconds:1728000, protections:["Tidssköld Enkel"], zoneIcon:"cloud.bolt", zoneColor:"#5a6e82", casinoAccess:false, workMultiplier:2.6, drainRate:1.0, inflationRatePerDay:0.010, description:"Mittzonen. Majoriteten bor här.", index:6)
+    static let duskline = ZoneProfile(
+        name: "Skymningsgränsen",
+        taxRate: 0.13,
+        dailyCostMultiplier: 1.5,
+        stepBonusMultiplier: 1.15,
+        appCostReduction: 0.05,
+        passiveBonusSecondsPerDay: 2400,
+        boostEffectMultiplier: 1.1,
+        allowBoosts: true,
+        maxActiveBoosts: 2,
+        fallThresholdSeconds: 180000,
+        unlockRequirementSeconds: 540000,
+        entryCostSeconds: 180000,
+        protections: ["Tidssköld Enkel"],
+        zoneIcon: "cloud.sun",
+        zoneColor: "#5a6478",
+        casinoAccess: false,
+        workMultiplier: 2.6,
+        drainRate: 1.0,
+        inflationRatePerDay: 0.007,
+        description: "Gränszonen. Varken upp eller ner — än.",
+        index: 5
+    )
 
-    static let risefield = ZoneProfile(name:"Risefield", taxRate:0.22, dailyCostMultiplier:2.2, stepBonusMultiplier:1.15, appCostReduction:0.2, passiveBonusSecondsPerDay:1800, boostEffectMultiplier:1.3, allowBoosts:true, maxActiveBoosts:2, fallThresholdSeconds:3456000, unlockRequirementSeconds:6912000, entryCostSeconds:3456000, protections:["Tidssköld Enkel"], zoneIcon:"waveform", zoneColor:"#4a7090", casinoAccess:false, workMultiplier:3.2, drainRate:1.0, inflationRatePerDay:0.012, description:"Stigande mark. Risken ökar.", index:7)
+    static let midgrey = ZoneProfile(
+        name: "Gråtaket",
+        taxRate: 0.16,
+        dailyCostMultiplier: 1.8,
+        stepBonusMultiplier: 1.18,
+        appCostReduction: 0.10,
+        passiveBonusSecondsPerDay: 3600,
+        boostEffectMultiplier: 1.2,
+        allowBoosts: true,
+        maxActiveBoosts: 2,
+        fallThresholdSeconds: 360000,
+        unlockRequirementSeconds: 1080000,
+        entryCostSeconds: 360000,
+        protections: ["Tidssköld Enkel"],
+        zoneIcon: "cloud.bolt",
+        zoneColor: "#5a6e82",
+        casinoAccess: false,
+        workMultiplier: 3.1,
+        drainRate: 1.0,
+        inflationRatePerDay: 0.008,
+        description: "Taket på gråzonen. Majoriteten fastnar här.",
+        index: 6
+    )
 
-    static let aetherpoint = ZoneProfile(name:"Aetherpoint", taxRate:0.28, dailyCostMultiplier:2.8, stepBonusMultiplier:1.2, appCostReduction:0.25, passiveBonusSecondsPerDay:3600, boostEffectMultiplier:1.5, allowBoosts:true, maxActiveBoosts:3, fallThresholdSeconds:6480000, unlockRequirementSeconds:12960000, entryCostSeconds:6480000, protections:["Tidssköld Enkel","Minutvakt"], zoneIcon:"antenna.radiowaves.left.and.right", zoneColor:"#3d80a0", casinoAccess:true, workMultiplier:4.0, drainRate:1.0, inflationRatePerDay:0.015, description:"Första steget mot makten. Kasinodörren öppnas.", index:8)
+    static let risefield = ZoneProfile(
+        name: "Stegningsfältet",
+        taxRate: 0.20,
+        dailyCostMultiplier: 2.2,
+        stepBonusMultiplier: 1.22,
+        appCostReduction: 0.15,
+        passiveBonusSecondsPerDay: 7200,
+        boostEffectMultiplier: 1.3,
+        allowBoosts: true,
+        maxActiveBoosts: 2,
+        fallThresholdSeconds: 720000,
+        unlockRequirementSeconds: 2160000,
+        entryCostSeconds: 720000,
+        protections: ["Tidssköld Enkel"],
+        zoneIcon: "waveform",
+        zoneColor: "#4a7090",
+        casinoAccess: false,
+        workMultiplier: 3.8,
+        drainRate: 1.0,
+        inflationRatePerDay: 0.010,
+        description: "Stigande mark. Risken ökar. Belöningarna med.",
+        index: 7
+    )
 
-    static let novalux = ZoneProfile(name:"Novalux", taxRate:0.33, dailyCostMultiplier:3.5, stepBonusMultiplier:1.25, appCostReduction:0.35, passiveBonusSecondsPerDay:7200, boostEffectMultiplier:1.8, allowBoosts:true, maxActiveBoosts:3, fallThresholdSeconds:12960000, unlockRequirementSeconds:25920000, entryCostSeconds:12960000, protections:["Tidssköld Pro","Minutvakt"], zoneIcon:"star", zoneColor:"#2090b8", casinoAccess:true, workMultiplier:5.0, drainRate:1.0, inflationRatePerDay:0.015, description:"Nytt ljus. Nytt pris.", index:9)
+    static let aetherpoint = ZoneProfile(
+        name: "Eterpunkten",
+        taxRate: 0.25,
+        dailyCostMultiplier: 2.8,
+        stepBonusMultiplier: 1.28,
+        appCostReduction: 0.20,
+        passiveBonusSecondsPerDay: 14400,
+        boostEffectMultiplier: 1.5,
+        allowBoosts: true,
+        maxActiveBoosts: 3,
+        fallThresholdSeconds: 1440000,
+        unlockRequirementSeconds: 4320000,
+        entryCostSeconds: 1440000,
+        protections: ["Tidssköld Enkel", "Minutvakt"],
+        zoneIcon: "antenna.radiowaves.left.and.right",
+        zoneColor: "#3d80a0",
+        casinoAccess: true,
+        workMultiplier: 4.5,
+        drainRate: 1.0,
+        inflationRatePerDay: 0.012,
+        description: "Kasinodörren öppnas. Möjligheter — och faror.",
+        index: 8
+    )
 
-    static let kronvakt = ZoneProfile(name:"Kronvakt", taxRate:0.38, dailyCostMultiplier:4.5, stepBonusMultiplier:1.3, appCostReduction:0.45, passiveBonusSecondsPerDay:14400, boostEffectMultiplier:2.0, allowBoosts:true, maxActiveBoosts:3, fallThresholdSeconds:25920000, unlockRequirementSeconds:51840000, entryCostSeconds:25920000, protections:["Tidssköld Pro","Minutvakt"], zoneIcon:"crown", zoneColor:"#10a0c8", casinoAccess:true, workMultiplier:6.0, drainRate:1.0, inflationRatePerDay:0.018, description:"Kronvakterna vill inte att du stannar länge.", index:10)
+    static let novalux = ZoneProfile(
+        name: "Nylysningen",
+        taxRate: 0.30,
+        dailyCostMultiplier: 3.5,
+        stepBonusMultiplier: 1.32,
+        appCostReduction: 0.30,
+        passiveBonusSecondsPerDay: 28800,
+        boostEffectMultiplier: 1.8,
+        allowBoosts: true,
+        maxActiveBoosts: 3,
+        fallThresholdSeconds: 2880000,
+        unlockRequirementSeconds: 8640000,
+        entryCostSeconds: 2880000,
+        protections: ["Tidssköld Pro", "Minutvakt"],
+        zoneIcon: "star",
+        zoneColor: "#2090b8",
+        casinoAccess: true,
+        workMultiplier: 5.5,
+        drainRate: 1.0,
+        inflationRatePerDay: 0.013,
+        description: "Nytt ljus. Nytt pris. Välkommen till eliten.",
+        index: 9
+    )
 
-    static let vaultum = ZoneProfile(name:"Vaultum", taxRate:0.42, dailyCostMultiplier:5.5, stepBonusMultiplier:1.35, appCostReduction:0.55, passiveBonusSecondsPerDay:21600, boostEffectMultiplier:2.2, allowBoosts:true, maxActiveBoosts:4, fallThresholdSeconds:51840000, unlockRequirementSeconds:103680000, entryCostSeconds:51840000, protections:["Tidssköld Elite","Minutvakt","Immunitetsmod"], zoneIcon:"lock.shield", zoneColor:"#08b0d8", casinoAccess:true, workMultiplier:7.0, drainRate:1.0, inflationRatePerDay:0.018, description:"Valvet. De rikaste gömmer sin tid här.", index:11)
+    static let kronvakt = ZoneProfile(
+        name: "Kronvakt",
+        taxRate: 0.35,
+        dailyCostMultiplier: 4.5,
+        stepBonusMultiplier: 1.38,
+        appCostReduction: 0.40,
+        passiveBonusSecondsPerDay: 57600,
+        boostEffectMultiplier: 2.0,
+        allowBoosts: true,
+        maxActiveBoosts: 3,
+        fallThresholdSeconds: 5760000,
+        unlockRequirementSeconds: 17280000,
+        entryCostSeconds: 5760000,
+        protections: ["Tidssköld Pro", "Minutvakt"],
+        zoneIcon: "crown",
+        zoneColor: "#10a0c8",
+        casinoAccess: true,
+        workMultiplier: 6.5,
+        drainRate: 1.0,
+        inflationRatePerDay: 0.015,
+        description: "Kronvakterna vill inte att du stannar. Gör det ändå.",
+        index: 10
+    )
 
-    static let zenit = ZoneProfile(name:"Zenit", taxRate:0.46, dailyCostMultiplier:7.0, stepBonusMultiplier:1.4, appCostReduction:0.7, passiveBonusSecondsPerDay:43200, boostEffectMultiplier:2.5, allowBoosts:true, maxActiveBoosts:4, fallThresholdSeconds:103680000, unlockRequirementSeconds:207360000, entryCostSeconds:103680000, protections:["Tidssköld Elite","Minutvakt","Immunitetsmod"], zoneIcon:"scope", zoneColor:"#00c0e8", casinoAccess:true, workMultiplier:7.8, drainRate:1.0, inflationRatePerDay:0.020, description:"Toppen av det möjliga. Nästan.", index:12)
+    static let vaultum = ZoneProfile(
+        name: "Valvet",
+        taxRate: 0.40,
+        dailyCostMultiplier: 5.5,
+        stepBonusMultiplier: 1.44,
+        appCostReduction: 0.50,
+        passiveBonusSecondsPerDay: 86400,
+        boostEffectMultiplier: 2.2,
+        allowBoosts: true,
+        maxActiveBoosts: 4,
+        fallThresholdSeconds: 11520000,
+        unlockRequirementSeconds: 34560000,
+        entryCostSeconds: 11520000,
+        protections: ["Tidssköld Elite", "Minutvakt", "Immunitetsmod"],
+        zoneIcon: "lock.shield",
+        zoneColor: "#08b0d8",
+        casinoAccess: true,
+        workMultiplier: 7.5,
+        drainRate: 1.0,
+        inflationRatePerDay: 0.016,
+        description: "Valvet. De rikaste gömmer sin tid här. Djupt.",
+        index: 11
+    )
 
-    static let solara = ZoneProfile(name:"Solara", taxRate:0.50, dailyCostMultiplier:9.0, stepBonusMultiplier:1.5, appCostReduction:1.0, passiveBonusSecondsPerDay:86400, boostEffectMultiplier:3.0, allowBoosts:true, maxActiveBoosts:5, fallThresholdSeconds:207360000, unlockRequirementSeconds:414720000, entryCostSeconds:207360000, protections:["Tidssköld Elite","Minutvakt","Immunitetsmod","Solarakärna"], zoneIcon:"sun.max", zoneColor:"#00d8ff", casinoAccess:true, workMultiplier:9.0, drainRate:1.0, inflationRatePerDay:0.025, description:"Solen. De flesta dör innan de når hit.", index:13)
+    static let zenit = ZoneProfile(
+        name: "Zenit",
+        taxRate: 0.44,
+        dailyCostMultiplier: 7.0,
+        stepBonusMultiplier: 1.50,
+        appCostReduction: 0.65,
+        passiveBonusSecondsPerDay: 172800,
+        boostEffectMultiplier: 2.5,
+        allowBoosts: true,
+        maxActiveBoosts: 4,
+        fallThresholdSeconds: 23040000,
+        unlockRequirementSeconds: 69120000,
+        entryCostSeconds: 23040000,
+        protections: ["Tidssköld Elite", "Minutvakt", "Immunitetsmod"],
+        zoneIcon: "scope",
+        zoneColor: "#00c0e8",
+        casinoAccess: true,
+        workMultiplier: 8.5,
+        drainRate: 1.0,
+        inflationRatePerDay: 0.018,
+        description: "Toppen av det möjliga. Nästan. En sista nivå väntar.",
+        index: 12
+    )
+
+    static let solara = ZoneProfile(
+        name: "Solara",
+        taxRate: 0.48,
+        dailyCostMultiplier: 9.0,
+        stepBonusMultiplier: 1.60,
+        appCostReduction: 1.0,
+        passiveBonusSecondsPerDay: 345600,
+        boostEffectMultiplier: 3.0,
+        allowBoosts: true,
+        maxActiveBoosts: 5,
+        fallThresholdSeconds: 46080000,
+        unlockRequirementSeconds: 138240000,
+        entryCostSeconds: 46080000,
+        protections: ["Tidssköld Elite", "Minutvakt", "Immunitetsmod", "Solarakärna"],
+        zoneIcon: "sun.max",
+        zoneColor: "#00d8ff",
+        casinoAccess: true,
+        workMultiplier: 10.0,
+        drainRate: 1.0,
+        inflationRatePerDay: 0.020,
+        description: "Solen. De flesta dör innan de når hit. Du klarade det.",
+        index: 13
+    )
 
     static let allZones: [ZoneProfile] = [
         .grundskiftet, .krypdalen, .grabotten, .skymring, .halvmorker,
@@ -58,6 +368,7 @@ struct ZoneProfile: Equatable {
         .kronvakt, .vaultum, .zenit, .solara
     ]
 
+    /// Auto-assign zone purely by unlockRequirement (used for initial placement)
     static func currentZone(forTime seconds: TimeInterval) -> ZoneProfile {
         for zone in allZones.reversed() {
             if seconds >= zone.unlockRequirementSeconds { return zone }
@@ -74,7 +385,7 @@ struct ZoneProfile: Equatable {
 
 extension Color {
     init?(hex: String) {
-        var h = hex.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: "#", with: "")
+        let h = hex.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: "#", with: "")
         var rgb: UInt64 = 0
         guard Scanner(string: h).scanHexInt64(&rgb) else { return nil }
         self.init(red: Double((rgb>>16)&0xFF)/255, green: Double((rgb>>8)&0xFF)/255, blue: Double(rgb&0xFF)/255)

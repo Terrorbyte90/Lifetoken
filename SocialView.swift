@@ -30,25 +30,25 @@ struct NPCPlayer: Identifiable {
         NPCPlayer(id: UUID(), name: "Pjotr V.",    zone: "Halvmörker",   avatar: "🧔",
                   bio: "Säkerhetsvakt. Håller sin tid noga. Låg ränta.",
                   balance: 86400 * 4,   loanInterestRate: 0.10, reliability: 0.88, lastSeen: "45m sedan"),
-        NPCPlayer(id: UUID(), name: "Mara D.",     zone: "Duskline",     avatar: "🧐",
+        NPCPlayer(id: UUID(), name: "Mara D.",     zone: "Skymningsgränsen", avatar: "🧐",
                   bio: "Revisor. Noggrant bokförd. Betalar alltid tillbaka.",
                   balance: 86400 * 8,   loanInterestRate: 0.08, reliability: 0.95, lastSeen: "1h sedan"),
-        NPCPlayer(id: UUID(), name: "Sven K.",     zone: "Midgrey",      avatar: "👨‍💼",
+        NPCPlayer(id: UUID(), name: "Sven K.",     zone: "Gråtaket",      avatar: "👨‍💼",
                   bio: "Monteringsarbetare. Stabil och förutsägbar.",
                   balance: 86400 * 15,  loanInterestRate: 0.09, reliability: 0.90, lastSeen: "20m sedan"),
-        NPCPlayer(id: UUID(), name: "Yuki T.",     zone: "Risefield",    avatar: "👩‍🔬",
+        NPCPlayer(id: UUID(), name: "Yuki T.",     zone: "Stegningsfältet", avatar: "👩‍🔬",
                   bio: "Laboratorieassistent. Precis och pålitlig.",
                   balance: 86400 * 30,  loanInterestRate: 0.07, reliability: 0.93, lastSeen: "10m sedan"),
-        NPCPlayer(id: UUID(), name: "ARIA-7",      zone: "Aetherpoint",  avatar: "🤖",
+        NPCPlayer(id: UUID(), name: "ARIA-7",      zone: "Eterpunkten",   avatar: "🤖",
                   bio: "AI-analytiker. Aldrig sen med betalning. Låg ränta.",
                   balance: 86400 * 60,  loanInterestRate: 0.05, reliability: 0.99, lastSeen: "15m sedan"),
-        NPCPlayer(id: UUID(), name: "Kai Dusk",    zone: "Novalux",      avatar: "😎",
+        NPCPlayer(id: UUID(), name: "Kai Dusk",    zone: "Nylysningen",   avatar: "😎",
                   bio: "Tidshandlare. Hög risk, hög belöning. Lite otillförlitlig.",
                   balance: 86400 * 400, loanInterestRate: 0.25, reliability: 0.60, lastSeen: "3h sedan"),
-        NPCPlayer(id: UUID(), name: "Echo",        zone: "Kronvakt",     avatar: "🎭",
+        NPCPlayer(id: UUID(), name: "Echo",        zone: "Kronvakt",      avatar: "🎭",
                   bio: "Mystisk spelare. Ingen vet var hen kommer ifrån. Hög ränta.",
                   balance: 86400 * 300, loanInterestRate: 0.30, reliability: 0.55, lastSeen: "Just nu"),
-        NPCPlayer(id: UUID(), name: "Director Y.", zone: "Vaultum",      avatar: "🧑‍⚖️",
+        NPCPlayer(id: UUID(), name: "Director Y.", zone: "Valvet",        avatar: "🧑‍⚖️",
                   bio: "Tidsdirektör. Enormt kapital. Kräver stor insats.",
                   balance: 86400 * 365 * 2, loanInterestRate: 0.40, reliability: 0.70, lastSeen: "Just nu"),
         NPCPlayer(id: UUID(), name: "Syndra Wei",  zone: "Zenit",        avatar: "👑",
@@ -240,9 +240,11 @@ struct SocialView: View {
     @State private var showTransferSheet: Bool = false
     @State private var transferAmount: TimeInterval = 3600
     @State private var chatInput: String = ""
+    @State private var showYatzy: Bool = false
 
     enum SocialTab: String, CaseIterable {
         case spelare  = "Spelare"
+        case yatzy    = "Yatzy"
         case chat     = "Zon-chatt"
         case lan      = "Lån"
     }
@@ -262,6 +264,7 @@ struct SocialView: View {
 
                 switch selectedTab {
                 case .spelare: playerSection
+                case .yatzy:   yatzySection
                 case .chat:    chatSection
                 case .lan:     loanSection
                 }
@@ -287,6 +290,9 @@ struct SocialView: View {
             Button("OK") {}
         } message: { Text(social.alertMessage) }
         .task { await serverSync.fetchZoneMembers() }
+        .fullScreenCover(isPresented: $showYatzy) {
+            MultiplayerYatzyView()
+        }
     }
 
     // MARK: Header
@@ -401,6 +407,101 @@ struct SocialView: View {
                 Spacer(minLength: 80)
             }
             .padding()
+        }
+    }
+
+    // MARK: - Yatzy Section
+
+    private var yatzySection: some View {
+        ScrollView(showsIndicators: false) {
+            VStack(spacing: 20) {
+                // Header
+                VStack(spacing: 10) {
+                    Text("🎲")
+                        .font(.system(size: 60))
+                    Text("YATZY DUELL")
+                        .font(.system(size: 24, weight: .bold, design: .monospaced))
+                        .foregroundColor(.white)
+                    Text("Satsa din tid — vinnaren tar allt.")
+                        .font(.system(size: 13, design: .monospaced))
+                        .foregroundColor(.white.opacity(0.5))
+                }
+                .padding(.top, 20)
+
+                // Info box
+                VStack(alignment: .leading, spacing: 12) {
+                    yatzyInfoRow(icon: "timer", text: "Välj en insats i sekunder innan spelet startar")
+                    yatzyInfoRow(icon: "trophy.fill", text: "Vinnaren får sin insats + motståndarens insats")
+                    yatzyInfoRow(icon: "arrow.left.arrow.right", text: "Spela mot AI eller lokal Spelare 2 (passa telefonen)")
+                    yatzyInfoRow(icon: "dice.fill", text: "Standard Yatzy — 15 kategorier, 3 kast per runda")
+                    yatzyInfoRow(icon: "exclamationmark.triangle", text: "Förlustar dras direkt från ditt saldo")
+                }
+                .padding(16)
+                .background(.ultraThinMaterial)
+                .clipShape(RoundedRectangle(cornerRadius: 14))
+                .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.orange.opacity(0.3), lineWidth: 1))
+                .padding(.horizontal)
+
+                // Balance info
+                HStack {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("DITT SALDO")
+                            .font(.system(size: 10, design: .monospaced))
+                            .foregroundColor(.white.opacity(0.4))
+                        Text(TimeEngine.shortFormatted(engine.balance))
+                            .font(.system(size: 20, weight: .bold, design: .monospaced))
+                            .foregroundColor(.yellow)
+                    }
+                    Spacer()
+                    VStack(alignment: .trailing, spacing: 4) {
+                        Text("MIN INSATS")
+                            .font(.system(size: 10, design: .monospaced))
+                            .foregroundColor(.white.opacity(0.4))
+                        Text("100s – 7 200s")
+                            .font(.system(size: 14, design: .monospaced))
+                            .foregroundColor(.orange)
+                    }
+                }
+                .padding(14)
+                .background(Color.white.opacity(0.05))
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .padding(.horizontal)
+
+                // Play button
+                Button { showYatzy = true } label: {
+                    HStack(spacing: 10) {
+                        Image(systemName: "dice.fill")
+                            .font(.system(size: 20))
+                        Text("SPELA YATZY DUELL")
+                            .font(.system(size: 18, weight: .bold, design: .monospaced))
+                    }
+                    .foregroundColor(.black)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 18)
+                    .background(
+                        LinearGradient(colors: [Color.orange, Color.yellow], startPoint: .leading, endPoint: .trailing)
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                    .shadow(color: .orange.opacity(0.4), radius: 12)
+                }
+                .padding(.horizontal)
+
+                Spacer(minLength: 80)
+            }
+            .padding(.top, 10)
+        }
+    }
+
+    private func yatzyInfoRow(icon: String, text: String) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.system(size: 14))
+                .foregroundColor(.orange)
+                .frame(width: 20)
+            Text(text)
+                .font(.system(size: 12, design: .monospaced))
+                .foregroundColor(.white.opacity(0.7))
+            Spacer()
         }
     }
 

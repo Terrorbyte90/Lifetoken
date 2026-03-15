@@ -1,0 +1,1695 @@
+import SwiftUI
+
+// MARK: - Color Extensions
+
+private extension Color {
+    static let goldYatzy = Color(red: 1.0, green: 0.84, blue: 0.0)
+    static let accentGreen = Color(red: 0.2, green: 0.9, blue: 0.4)
+}
+
+// MARK: - Yatzy Category
+
+enum MultiYatzyCategory: String, CaseIterable, Identifiable {
+    case ettor       = "ettor"
+    case tvaor       = "tvaor"
+    case treor       = "treor"
+    case fyror       = "fyror"
+    case femmor      = "femmor"
+    case sexor       = "sexor"
+    case par         = "par"
+    case tvaPar      = "tvaPar"
+    case triss       = "triss"
+    case fyrtal      = "fyrtal"
+    case litenStege  = "litenStege"
+    case storStege   = "storStege"
+    case kas         = "kas"
+    case chans       = "chans"
+    case yatzy       = "yatzy"
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .ettor:      return "Ettor"
+        case .tvaor:      return "Tvåor"
+        case .treor:      return "Treor"
+        case .fyror:      return "Fyror"
+        case .femmor:     return "Femmor"
+        case .sexor:      return "Sexor"
+        case .par:        return "Par"
+        case .tvaPar:     return "Två Par"
+        case .triss:      return "Triss"
+        case .fyrtal:     return "Fyrtal"
+        case .litenStege: return "Liten Stege"
+        case .storStege:  return "Stor Stege"
+        case .kas:        return "Kåk"
+        case .chans:      return "Chans"
+        case .yatzy:      return "Yatzy"
+        }
+    }
+
+    var isUpperSection: Bool {
+        switch self {
+        case .ettor, .tvaor, .treor, .fyror, .femmor, .sexor: return true
+        default: return false
+        }
+    }
+
+    var upperFaceValue: Int? {
+        switch self {
+        case .ettor: return 1
+        case .tvaor: return 2
+        case .treor: return 3
+        case .fyror: return 4
+        case .femmor: return 5
+        case .sexor: return 6
+        default: return nil
+        }
+    }
+
+    var maximumScore: Int {
+        switch self {
+        case .ettor:      return 5
+        case .tvaor:      return 10
+        case .treor:      return 15
+        case .fyror:      return 20
+        case .femmor:     return 25
+        case .sexor:      return 30
+        case .par:        return 12
+        case .tvaPar:     return 22
+        case .triss:      return 18
+        case .fyrtal:     return 24
+        case .litenStege: return 15
+        case .storStege:  return 20
+        case .kas:        return 28
+        case .chans:      return 30
+        case .yatzy:      return 50
+        }
+    }
+}
+
+// MARK: - Score Calculator
+
+func multiYatzyScore(for category: MultiYatzyCategory, dice: [Int]) -> Int {
+    guard dice.count == 5 else { return 0 }
+    let counts = Dictionary(grouping: dice, by: { $0 }).mapValues { $0.count }
+    let sum = dice.reduce(0, +)
+
+    switch category {
+    case .ettor:  return dice.filter { $0 == 1 }.reduce(0, +)
+    case .tvaor:  return dice.filter { $0 == 2 }.reduce(0, +)
+    case .treor:  return dice.filter { $0 == 3 }.reduce(0, +)
+    case .fyror:  return dice.filter { $0 == 4 }.reduce(0, +)
+    case .femmor: return dice.filter { $0 == 5 }.reduce(0, +)
+    case .sexor:  return dice.filter { $0 == 6 }.reduce(0, +)
+
+    case .par:
+        let pairs = counts.filter { $0.value >= 2 }.keys.sorted(by: >)
+        return pairs.isEmpty ? 0 : pairs[0] * 2
+
+    case .tvaPar:
+        let pairs = counts.filter { $0.value >= 2 }.keys.sorted(by: >)
+        return pairs.count >= 2 ? (pairs[0] + pairs[1]) * 2 : 0
+
+    case .triss:
+        let three = counts.filter { $0.value >= 3 }.keys.sorted(by: >).first ?? 0
+        return three * 3
+
+    case .fyrtal:
+        let four = counts.filter { $0.value >= 4 }.keys.sorted(by: >).first ?? 0
+        return four * 4
+
+    case .litenStege:
+        let s = Set(dice).sorted()
+        return ([1,2,3,4,5].allSatisfy { s.contains($0) }) ? 15 : 0
+
+    case .storStege:
+        let s = Set(dice).sorted()
+        return ([2,3,4,5,6].allSatisfy { s.contains($0) }) ? 20 : 0
+
+    case .kas:
+        let has3 = counts.values.contains(3)
+        let has2 = counts.values.contains(2)
+        return (has3 && has2) ? sum : 0
+
+    case .chans:
+        return sum
+
+    case .yatzy:
+        return Set(dice).count == 1 ? 50 : 0
+    }
+}
+
+// MARK: - Player State
+
+struct YatzyPlayerState {
+    var name: String
+    var scores: [MultiYatzyCategory: Int] = [:]
+
+    var upperTotal: Int {
+        MultiYatzyCategory.allCases
+            .filter { $0.isUpperSection }
+            .compactMap { scores[$0] }
+            .reduce(0, +)
+    }
+
+    var hasBonus: Bool { upperTotal >= 63 }
+    var bonusPoints: Int { hasBonus ? 35 : 0 }
+
+    var lowerTotal: Int {
+        MultiYatzyCategory.allCases
+            .filter { !$0.isUpperSection }
+            .compactMap { scores[$0] }
+            .reduce(0, +)
+    }
+
+    var grandTotal: Int { upperTotal + bonusPoints + lowerTotal }
+
+    var isFilled: Bool {
+        MultiYatzyCategory.allCases.allSatisfy { scores[$0] != nil }
+    }
+
+    var availableCategories: Set<MultiYatzyCategory> {
+        Set(MultiYatzyCategory.allCases.filter { scores[$0] == nil })
+    }
+}
+
+// MARK: - AI Strategy
+
+private func aiChooseCategory(dice: [Int], available: Set<MultiYatzyCategory>) -> MultiYatzyCategory? {
+    // Priority order: Yatzy, large straight, small straight, full house, four of a kind,
+    // high pairs / triss, upper section based on count
+    let priority: [MultiYatzyCategory] = [
+        .yatzy, .storStege, .litenStege, .kas, .fyrtal, .triss,
+        .tvaPar, .par, .sexor, .femmor, .fyror, .treor, .tvaor, .ettor, .chans
+    ]
+
+    // Try best scoring category first
+    var bestCat: MultiYatzyCategory? = nil
+    var bestScore = -1
+
+    for cat in priority where available.contains(cat) {
+        let s = multiYatzyScore(for: cat, dice: dice)
+        if s > bestScore {
+            bestScore = s
+            bestCat = cat
+        }
+    }
+
+    // Fallback: any available category, prefer non-zero score
+    if bestScore <= 0 {
+        for cat in priority where available.contains(cat) {
+            return cat
+        }
+    }
+
+    return bestCat
+}
+
+private func aiSelectDiceToKeep(dice: [Int], available: Set<MultiYatzyCategory>) -> [Bool] {
+    // Figure out which dice to keep for the best potential category
+    var keep = [Bool](repeating: false, count: 5)
+    let counts = Dictionary(grouping: dice, by: { $0 }).mapValues { $0.count }
+
+    // Check for yatzy potential
+    if let topValue = counts.max(by: { $0.value < $1.value })?.key,
+       let topCount = counts[topValue], topCount >= 3 {
+        for i in 0..<dice.count { keep[i] = dice[i] == topValue }
+        return keep
+    }
+
+    // Check straights
+    let sorted = Set(dice).sorted()
+    if sorted.count >= 4 {
+        let litenProgress = sorted.filter { [1,2,3,4,5].contains($0) }
+        let storProgress  = sorted.filter { [2,3,4,5,6].contains($0) }
+        let progressSet = litenProgress.count >= storProgress.count ? Set(litenProgress) : Set(storProgress)
+        for i in 0..<dice.count { keep[i] = progressSet.contains(dice[i]) }
+        return keep
+    }
+
+    // Keep pairs and three-of-a-kind
+    let goodValues = counts.filter { $0.value >= 2 }.keys
+    if !goodValues.isEmpty {
+        for i in 0..<dice.count { keep[i] = goodValues.contains(dice[i]) }
+        return keep
+    }
+
+    // Keep highest dice by default
+    let threshold = dice.sorted(by: >).prefix(3).last ?? 1
+    for i in 0..<dice.count { keep[i] = dice[i] >= threshold }
+    return keep
+}
+
+// MARK: - Die Dot View
+
+private struct DieDotView: View {
+    let value: Int
+    let size: CGFloat
+
+    // Dot layout per face value: positions as (x, y) in a 3x3 grid (0-based)
+    private func dotPositions(for value: Int) -> [(Int, Int)] {
+        switch value {
+        case 1: return [(1,1)]
+        case 2: return [(0,0),(2,2)]
+        case 3: return [(0,0),(1,1),(2,2)]
+        case 4: return [(0,0),(2,0),(0,2),(2,2)]
+        case 5: return [(0,0),(2,0),(1,1),(0,2),(2,2)]
+        case 6: return [(0,0),(2,0),(0,1),(2,1),(0,2),(2,2)]
+        default: return []
+        }
+    }
+
+    var body: some View {
+        let dotSize: CGFloat = size * 0.14
+        let padding: CGFloat = size * 0.16
+
+        ZStack {
+            ForEach(Array(dotPositions(for: value).enumerated()), id: \.offset) { _, pos in
+                let col = CGFloat(pos.0)
+                let row = CGFloat(pos.1)
+                let cellSize = (size - padding * 2) / 3.0
+                let x = padding + cellSize * col + cellSize / 2
+                let y = padding + cellSize * row + cellSize / 2
+
+                Circle()
+                    .fill(Color.white)
+                    .frame(width: dotSize, height: dotSize)
+                    .shadow(color: .white.opacity(0.6), radius: 1)
+                    .offset(
+                        x: x - size / 2,
+                        y: y - size / 2
+                    )
+            }
+        }
+        .frame(width: size, height: size)
+    }
+}
+
+// MARK: - Die View
+
+struct MultiDieView: View {
+    let value: Int
+    var held: Bool = false
+    var isRolling: Bool = false
+    var isAI: Bool = false
+    var size: CGFloat = 60
+
+    @State private var rotationAngle: Double = 0
+    @State private var scale: CGFloat = 1.0
+
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: size * 0.18)
+                .fill(
+                    LinearGradient(
+                        colors: heldGradient,
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .frame(width: size, height: size)
+                .shadow(color: shadowColor, radius: held ? 8 : 4, x: 0, y: held ? 4 : 2)
+
+            RoundedRectangle(cornerRadius: size * 0.18)
+                .stroke(borderColor, lineWidth: held ? 2.5 : 1)
+                .frame(width: size, height: size)
+
+            DieDotView(value: max(1, min(6, value)), size: size)
+        }
+        .rotationEffect(.degrees(rotationAngle))
+        .scaleEffect(held ? 1.08 : scale)
+        .onChange(of: isRolling) { rolling in
+            if rolling {
+                withAnimation(.spring(response: 0.2, dampingFraction: 0.5)) {
+                    rotationAngle = Double.random(in: -25...25)
+                    scale = 0.88
+                }
+            } else {
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
+                    rotationAngle = 0
+                    scale = 1.0
+                }
+            }
+        }
+    }
+
+    private var heldGradient: [Color] {
+        if held {
+            return [
+                Color(red: 0.12, green: 0.32, blue: 0.18),
+                Color(red: 0.06, green: 0.18, blue: 0.10)
+            ]
+        } else if isAI {
+            return [
+                Color(red: 0.22, green: 0.06, blue: 0.08),
+                Color(red: 0.12, green: 0.03, blue: 0.04)
+            ]
+        } else {
+            return [
+                Color(red: 0.18, green: 0.18, blue: 0.22),
+                Color(red: 0.08, green: 0.08, blue: 0.12)
+            ]
+        }
+    }
+
+    private var borderColor: Color {
+        if held { return Color.accentGreen.opacity(0.85) }
+        if isAI { return Color.red.opacity(0.3) }
+        return Color.white.opacity(0.15)
+    }
+
+    private var shadowColor: Color {
+        if held { return Color.accentGreen.opacity(0.5) }
+        if isAI { return Color.red.opacity(0.3) }
+        return Color.black.opacity(0.5)
+    }
+}
+
+// MARK: - Game Phase
+
+private enum MultiYatzyPhase: Equatable {
+    case lobby
+    case handoff(toPlayerIndex: Int)
+    case playing
+    case gameOver
+}
+
+// MARK: - Game Mode
+
+private enum MultiYatzyMode {
+    case vsAI
+    case localPassPlay
+}
+
+// MARK: - MultiplayerYatzyView
+
+struct MultiplayerYatzyView: View {
+    @Environment(\.dismiss) private var dismiss
+    @ObservedObject private var engine = TimeEngine.shared
+
+    // MARK: Lobby state
+    @State private var player1Name: String = "Spelare 1"
+    @State private var player2Name: String = "Spelare 2"
+    @State private var betAmount: TimeInterval = 600
+    @State private var gameMode: MultiYatzyMode = .vsAI
+    @State private var showInsufficientFundsAlert = false
+
+    // MARK: Game state
+    @State private var phase: MultiYatzyPhase = .lobby
+    @State private var players: [YatzyPlayerState] = []
+    @State private var currentPlayerIndex: Int = 0
+    @State private var dice: [Int] = [1, 2, 3, 4, 5]
+    @State private var heldDice: [Bool] = [false, false, false, false, false]
+    @State private var rollsUsed: Int = 0
+    @State private var isRolling: Bool = false
+    @State private var isAIThinking: Bool = false
+    @State private var statusMessage: String = ""
+    @State private var lastScoreMessage: String = ""
+    @State private var handoffReady: Bool = false
+
+    // MARK: Result state
+    @State private var winnerIndex: Int? = nil
+    @State private var isTie: Bool = false
+    @State private var resultAnimating: Bool = false
+
+    // MARK: Computed
+
+    private var currentPlayer: YatzyPlayerState? {
+        guard players.indices.contains(currentPlayerIndex) else { return nil }
+        return players[currentPlayerIndex]
+    }
+
+    private var isCurrentPlayerAI: Bool {
+        gameMode == .vsAI && currentPlayerIndex == 1
+    }
+
+    private var canRoll: Bool {
+        rollsUsed < 3 && !isRolling && !isAIThinking
+    }
+
+    private var canScore: Bool {
+        rollsUsed > 0 && !isRolling && !isAIThinking
+    }
+
+    private var rollsRemaining: Int { max(0, 3 - rollsUsed) }
+
+    private var betFormatted: String {
+        TimeEngine.shortFormatted(betAmount)
+    }
+
+    // MARK: Body
+
+    var body: some View {
+        ZStack {
+            // Background
+            LinearGradient(
+                colors: [Color(red: 0.03, green: 0.04, blue: 0.08), .black],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
+
+            // Game phase routing
+            switch phase {
+            case .lobby:
+                lobbyView
+                    .transition(.opacity.combined(with: .scale(scale: 0.97)))
+
+            case .handoff(let idx):
+                handoffView(toPlayerIndex: idx)
+                    .transition(.asymmetric(
+                        insertion: .opacity.combined(with: .move(edge: .trailing)),
+                        removal: .opacity.combined(with: .move(edge: .leading))
+                    ))
+
+            case .playing:
+                gameplayView
+                    .transition(.opacity)
+
+            case .gameOver:
+                gameOverView
+                    .transition(.opacity.combined(with: .scale(scale: 0.97)))
+            }
+        }
+        .animation(.easeInOut(duration: 0.35), value: phase)
+        .alert("Otillräckligt saldo", isPresented: $showInsufficientFundsAlert) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text("Du har inte nog med tid för denna insats.\nDitt saldo: \(TimeEngine.shortFormatted(engine.balance))")
+        }
+    }
+
+    // MARK: - Lobby View
+
+    private var lobbyView: some View {
+        ScrollView(showsIndicators: false) {
+            VStack(spacing: 0) {
+                // Header
+                lobbyHeader
+
+                VStack(spacing: 24) {
+                    // Mode selector
+                    modeSelectorCard
+
+                    // Player names card
+                    playerNamesCard
+
+                    // Bet card
+                    betCard
+
+                    // Start button
+                    startButton
+
+                    Spacer(minLength: 40)
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 16)
+            }
+        }
+    }
+
+    private var lobbyHeader: some View {
+        VStack(spacing: 6) {
+            HStack {
+                Button(action: { dismiss() }) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.white.opacity(0.6))
+                        .frame(width: 34, height: 34)
+                        .background(Color.white.opacity(0.08))
+                        .clipShape(Circle())
+                }
+                Spacer()
+                Text(TimeEngine.shortFormatted(engine.balance))
+                    .font(.system(size: 13, design: .monospaced))
+                    .foregroundColor(.goldYatzy)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(Color.goldYatzy.opacity(0.1))
+                    .clipShape(Capsule())
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 56)
+
+            Text("YATZY")
+                .font(.system(size: 36, weight: .black, design: .monospaced))
+                .foregroundColor(.white)
+                .kerning(8)
+
+            Text("MULTIPLAYER")
+                .font(.system(size: 11, weight: .medium, design: .monospaced))
+                .foregroundColor(.accentGreen.opacity(0.8))
+                .kerning(4)
+        }
+        .padding(.bottom, 20)
+    }
+
+    private var modeSelectorCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("SPELLÄGE")
+                .font(.system(size: 10, weight: .bold, design: .monospaced))
+                .foregroundColor(.white.opacity(0.4))
+                .kerning(2)
+
+            HStack(spacing: 10) {
+                modeButton(title: "Mot AI", subtitle: "Enkelt", icon: "cpu", mode: .vsAI)
+                modeButton(title: "Lokal", subtitle: "Pass & Play", icon: "person.2", mode: .localPassPlay)
+            }
+        }
+        .padding(18)
+        .background(.ultraThinMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+    }
+
+    private func modeButton(title: String, subtitle: String, icon: String, mode: MultiYatzyMode) -> some View {
+        let selected = gameMode == mode
+        return Button { withAnimation(.spring(response: 0.3)) { gameMode = mode } } label: {
+            HStack(spacing: 10) {
+                Image(systemName: icon)
+                    .font(.system(size: 18))
+                    .foregroundColor(selected ? .black : .white.opacity(0.6))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.system(size: 13, weight: .bold, design: .monospaced))
+                        .foregroundColor(selected ? .black : .white)
+                    Text(subtitle)
+                        .font(.system(size: 10, design: .monospaced))
+                        .foregroundColor(selected ? .black.opacity(0.6) : .white.opacity(0.4))
+                }
+                Spacer()
+                if selected {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundColor(.black.opacity(0.7))
+                }
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .frame(maxWidth: .infinity)
+            .background(selected ? Color.accentGreen : Color.white.opacity(0.06))
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var playerNamesCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("SPELARE")
+                .font(.system(size: 10, weight: .bold, design: .monospaced))
+                .foregroundColor(.white.opacity(0.4))
+                .kerning(2)
+
+            nameField(label: "Spelare 1", placeholder: "Spelare 1", text: $player1Name, color: .accentGreen)
+
+            if gameMode == .localPassPlay {
+                nameField(label: "Spelare 2", placeholder: "Spelare 2", text: $player2Name, color: .orange)
+            } else {
+                HStack(spacing: 10) {
+                    ZStack {
+                        Circle()
+                            .fill(Color.red.opacity(0.15))
+                            .frame(width: 36, height: 36)
+                        Text("🤖")
+                            .font(.system(size: 18))
+                    }
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("AI-motståndare")
+                            .font(.system(size: 13, weight: .semibold, design: .monospaced))
+                            .foregroundColor(.white.opacity(0.7))
+                        Text("Spelar optimalt")
+                            .font(.system(size: 10, design: .monospaced))
+                            .foregroundColor(.red.opacity(0.7))
+                    }
+                }
+                .padding(.horizontal, 4)
+            }
+        }
+        .padding(18)
+        .background(.ultraThinMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+    }
+
+    private func nameField(label: String, placeholder: String, text: Binding<String>, color: Color) -> some View {
+        HStack(spacing: 12) {
+            Circle()
+                .fill(color.opacity(0.2))
+                .frame(width: 8, height: 8)
+            TextField(placeholder, text: text)
+                .font(.system(size: 14, design: .monospaced))
+                .foregroundColor(.white)
+                .tint(color)
+        }
+        .padding(12)
+        .background(Color.white.opacity(0.05))
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(color.opacity(0.25), lineWidth: 1)
+        )
+    }
+
+    private var betCard: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                Text("INSATS")
+                    .font(.system(size: 10, weight: .bold, design: .monospaced))
+                    .foregroundColor(.white.opacity(0.4))
+                    .kerning(2)
+                Spacer()
+                Text(betFormatted)
+                    .font(.system(size: 22, weight: .bold, design: .monospaced))
+                    .foregroundColor(.goldYatzy)
+            }
+
+            Slider(value: $betAmount, in: 100...7200, step: 60)
+                .tint(.goldYatzy)
+
+            HStack {
+                Text("100s")
+                    .font(.system(size: 9, design: .monospaced))
+                    .foregroundColor(.white.opacity(0.3))
+                Spacer()
+                Text("2h")
+                    .font(.system(size: 9, design: .monospaced))
+                    .foregroundColor(.white.opacity(0.3))
+            }
+
+            VStack(spacing: 6) {
+                betInfoRow(icon: "arrow.up.circle.fill", text: "Vinst: +\(TimeEngine.shortFormatted(betAmount * 2))", color: .accentGreen)
+                betInfoRow(icon: "equal.circle.fill", text: "Oavgjort: +\(betFormatted) tillbaka", color: .orange)
+                betInfoRow(icon: "arrow.down.circle.fill", text: "Förlust: −\(betFormatted)", color: .red.opacity(0.8))
+            }
+            .padding(12)
+            .background(Color.white.opacity(0.04))
+            .clipShape(RoundedRectangle(cornerRadius: 10))
+        }
+        .padding(18)
+        .background(.ultraThinMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+    }
+
+    private func betInfoRow(icon: String, text: String, color: Color) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: icon)
+                .font(.system(size: 12))
+                .foregroundColor(color)
+            Text(text)
+                .font(.system(size: 11, design: .monospaced))
+                .foregroundColor(color)
+            Spacer()
+        }
+    }
+
+    private var startButton: some View {
+        let canAfford = betAmount <= engine.balance
+        return Button { startGame() } label: {
+            HStack(spacing: 10) {
+                Image(systemName: "play.fill")
+                    .font(.system(size: 14, weight: .bold))
+                Text("STARTA SPELET")
+                    .font(.system(size: 16, weight: .black, design: .monospaced))
+                    .kerning(2)
+            }
+            .foregroundColor(canAfford ? .black : .white.opacity(0.4))
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 18)
+            .background(
+                canAfford
+                    ? LinearGradient(colors: [Color.accentGreen, Color(red: 0.1, green: 0.7, blue: 0.3)], startPoint: .topLeading, endPoint: .bottomTrailing)
+                    : LinearGradient(colors: [Color.white.opacity(0.1), Color.white.opacity(0.08)], startPoint: .top, endPoint: .bottom)
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+            .shadow(color: canAfford ? Color.accentGreen.opacity(0.4) : .clear, radius: 12, y: 4)
+        }
+        .disabled(!canAfford)
+    }
+
+    // MARK: - Handoff View
+
+    private func handoffView(toPlayerIndex idx: Int) -> some View {
+        let playerName = players.indices.contains(idx) ? players[idx].name : "Spelare \(idx+1)"
+        let isAI = gameMode == .vsAI && idx == 1
+        let color: Color = idx == 0 ? .accentGreen : .orange
+
+        return VStack(spacing: 32) {
+            Spacer()
+
+            VStack(spacing: 16) {
+                ZStack {
+                    Circle()
+                        .fill(color.opacity(0.15))
+                        .frame(width: 100, height: 100)
+                    if isAI {
+                        Text("🤖")
+                            .font(.system(size: 52))
+                    } else {
+                        Image(systemName: "person.circle.fill")
+                            .font(.system(size: 60))
+                            .foregroundColor(color.opacity(0.8))
+                    }
+                }
+                .scaleEffect(handoffReady ? 1 : 0.6)
+                .opacity(handoffReady ? 1 : 0)
+                .animation(.spring(response: 0.5, dampingFraction: 0.7), value: handoffReady)
+
+                VStack(spacing: 6) {
+                    Text("LÄMNA ÖVER TILL")
+                        .font(.system(size: 10, weight: .bold, design: .monospaced))
+                        .foregroundColor(.white.opacity(0.4))
+                        .kerning(3)
+                    Text(playerName)
+                        .font(.system(size: 28, weight: .black, design: .monospaced))
+                        .foregroundColor(color)
+                    Text("Det är din tur!")
+                        .font(.system(size: 13, design: .monospaced))
+                        .foregroundColor(.white.opacity(0.5))
+                }
+                .offset(y: handoffReady ? 0 : 20)
+                .opacity(handoffReady ? 1 : 0)
+                .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.1), value: handoffReady)
+            }
+
+            Spacer()
+
+            Button {
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    phase = .playing
+                }
+            } label: {
+                Text("JAG ÄR REDO")
+                    .font(.system(size: 15, weight: .bold, design: .monospaced))
+                    .foregroundColor(.black)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                    .background(color)
+                    .clipShape(RoundedRectangle(cornerRadius: 14))
+                    .padding(.horizontal, 40)
+            }
+            .opacity(handoffReady ? 1 : 0)
+            .animation(.easeIn(duration: 0.3).delay(0.3), value: handoffReady)
+            .padding(.bottom, 60)
+        }
+        .onAppear {
+            handoffReady = false
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                handoffReady = true
+            }
+        }
+    }
+
+    // MARK: - Gameplay View
+
+    private var gameplayView: some View {
+        VStack(spacing: 0) {
+            gameHeader
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 14) {
+                    turnBanner
+                    diceArea
+                    if !statusMessage.isEmpty { statusBar }
+                    actionButtons
+                    scoreCard
+                    Spacer(minLength: 40)
+                }
+                .padding(.top, 10)
+                .padding(.horizontal, 16)
+            }
+        }
+        .onAppear {
+            if isCurrentPlayerAI { triggerAITurn() }
+        }
+    }
+
+    private var gameHeader: some View {
+        HStack {
+            Button(action: { dismiss() }) {
+                Image(systemName: "xmark")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(.white.opacity(0.5))
+                    .frame(width: 32, height: 32)
+                    .background(Color.white.opacity(0.08))
+                    .clipShape(Circle())
+            }
+
+            Spacer()
+
+            VStack(spacing: 1) {
+                Text("INSATS")
+                    .font(.system(size: 8, design: .monospaced))
+                    .foregroundColor(.white.opacity(0.3))
+                    .kerning(1)
+                Text(betFormatted)
+                    .font(.system(size: 14, weight: .bold, design: .monospaced))
+                    .foregroundColor(.goldYatzy)
+            }
+
+            Spacer()
+
+            Text(TimeEngine.shortFormatted(engine.balance))
+                .font(.system(size: 11, design: .monospaced))
+                .foregroundColor(.goldYatzy.opacity(0.8))
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+                .background(Color.goldYatzy.opacity(0.08))
+                .clipShape(Capsule())
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 56)
+        .padding(.bottom, 10)
+    }
+
+    private var turnBanner: some View {
+        let idx = currentPlayerIndex
+        let name = players.indices.contains(idx) ? players[idx].name : "?"
+        let color: Color = idx == 0 ? .accentGreen : .orange
+        let isAI = isCurrentPlayerAI
+
+        return HStack(spacing: 12) {
+            ZStack {
+                Circle()
+                    .fill(color.opacity(0.2))
+                    .frame(width: 40, height: 40)
+                if isAI {
+                    Text("🤖")
+                        .font(.system(size: 20))
+                } else {
+                    Image(systemName: "person.fill")
+                        .font(.system(size: 18))
+                        .foregroundColor(color)
+                }
+            }
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(name.uppercased())
+                    .font(.system(size: 15, weight: .black, design: .monospaced))
+                    .foregroundColor(color)
+                Text(isAI ? "AI spelar..." : "Din tur")
+                    .font(.system(size: 10, design: .monospaced))
+                    .foregroundColor(color.opacity(0.6))
+            }
+
+            Spacer()
+
+            // Score pills
+            HStack(spacing: 8) {
+                ForEach(0..<players.count, id: \.self) { i in
+                    let p = players[i]
+                    let c: Color = i == 0 ? .accentGreen : .orange
+                    VStack(spacing: 1) {
+                        Text(p.name.prefix(4).uppercased())
+                            .font(.system(size: 7, design: .monospaced))
+                            .foregroundColor(c.opacity(0.6))
+                        Text("\(p.grandTotal)")
+                            .font(.system(size: 14, weight: .bold, design: .monospaced))
+                            .foregroundColor(c)
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(c.opacity(0.1))
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(i == currentPlayerIndex ? c.opacity(0.5) : Color.clear, lineWidth: 1.5)
+                    )
+                }
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(.ultraThinMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 14))
+    }
+
+    private var diceArea: some View {
+        VStack(spacing: 14) {
+            HStack(spacing: 10) {
+                ForEach(0..<5, id: \.self) { i in
+                    let isHeld = heldDice[i]
+                    let isAI = isCurrentPlayerAI
+                    Button {
+                        if !isAI && rollsUsed > 0 && rollsUsed < 3 && !isRolling {
+                            withAnimation(.spring(response: 0.25, dampingFraction: 0.6)) {
+                                heldDice[i].toggle()
+                            }
+                        }
+                    } label: {
+                        MultiDieView(
+                            value: dice[i],
+                            held: isHeld,
+                            isRolling: isRolling,
+                            isAI: isAI,
+                            size: 62
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(isAI || rollsUsed == 0 || isRolling)
+                }
+            }
+
+            if !isCurrentPlayerAI {
+                HStack(spacing: 6) {
+                    ForEach(0..<5, id: \.self) { i in
+                        Capsule()
+                            .fill(heldDice[i] ? Color.accentGreen.opacity(0.6) : Color.white.opacity(0.1))
+                            .frame(width: 16, height: 4)
+                            .animation(.easeInOut(duration: 0.2), value: heldDice[i])
+                    }
+                }
+
+                if rollsUsed > 0 {
+                    Text("Tryck på tärning för att hålla/släppa")
+                        .font(.system(size: 9, design: .monospaced))
+                        .foregroundColor(.white.opacity(0.3))
+                }
+            }
+        }
+        .padding(.vertical, 16)
+        .padding(.horizontal, 12)
+        .background(.ultraThinMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+    }
+
+    private var statusBar: some View {
+        HStack(spacing: 8) {
+            Circle()
+                .fill(Color.accentGreen.opacity(0.6))
+                .frame(width: 6, height: 6)
+            Text(statusMessage)
+                .font(.system(size: 11, design: .monospaced))
+                .foregroundColor(.white.opacity(0.7))
+                .multilineTextAlignment(.leading)
+            Spacer()
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(Color.accentGreen.opacity(0.05))
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(Color.accentGreen.opacity(0.15), lineWidth: 1)
+        )
+    }
+
+    private var actionButtons: some View {
+        HStack(spacing: 10) {
+            // Roll button
+            Button {
+                rollDice()
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "dice")
+                        .font(.system(size: 14, weight: .semibold))
+                    Text(rollsUsed == 0 ? "KASTA" : "KASTA OM")
+                        .font(.system(size: 12, weight: .bold, design: .monospaced))
+                    if rollsRemaining > 0 {
+                        Text("×\(rollsRemaining)")
+                            .font(.system(size: 11, weight: .bold, design: .monospaced))
+                            .foregroundColor(.black.opacity(0.5))
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 2)
+                            .background(Color.black.opacity(0.15))
+                            .clipShape(Capsule())
+                    }
+                }
+                .foregroundColor(canRoll && !isCurrentPlayerAI ? .black : .white.opacity(0.3))
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+                .background(
+                    canRoll && !isCurrentPlayerAI
+                        ? LinearGradient(colors: [Color.accentGreen, Color(red: 0.1, green: 0.7, blue: 0.3)], startPoint: .topLeading, endPoint: .bottomTrailing)
+                        : LinearGradient(colors: [Color.white.opacity(0.07), Color.white.opacity(0.05)], startPoint: .top, endPoint: .bottom)
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .shadow(color: canRoll && !isCurrentPlayerAI ? Color.accentGreen.opacity(0.3) : .clear, radius: 8, y: 3)
+            }
+            .disabled(!canRoll || isCurrentPlayerAI)
+
+            // Roll count indicator
+            VStack(spacing: 3) {
+                ForEach(0..<3, id: \.self) { i in
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(i < rollsUsed ? Color.accentGreen.opacity(0.8) : Color.white.opacity(0.12))
+                        .frame(width: 6, height: 14)
+                }
+            }
+        }
+    }
+
+    // MARK: - Score Card
+
+    private var scoreCard: some View {
+        VStack(spacing: 0) {
+            // Header row
+            HStack(spacing: 0) {
+                Text("KATEGORI")
+                    .font(.system(size: 8, weight: .bold, design: .monospaced))
+                    .foregroundColor(.white.opacity(0.3))
+                    .kerning(1.5)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                ForEach(0..<players.count, id: \.self) { i in
+                    let color: Color = i == 0 ? .accentGreen : .orange
+                    Text(players[i].name.prefix(5).uppercased())
+                        .font(.system(size: 8, weight: .bold, design: .monospaced))
+                        .foregroundColor(color.opacity(0.7))
+                        .kerning(0.5)
+                        .frame(width: 48, alignment: .center)
+                }
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+
+            Divider()
+                .background(Color.white.opacity(0.08))
+
+            // Upper section
+            sectionHeader(title: "ÖVRE SEKTION")
+
+            ForEach(MultiYatzyCategory.allCases.filter { $0.isUpperSection }) { cat in
+                scoreRow(category: cat)
+            }
+
+            // Bonus row
+            bonusRow
+
+            Divider()
+                .background(Color.white.opacity(0.06))
+                .padding(.vertical, 4)
+
+            // Lower section
+            sectionHeader(title: "NEDRE SEKTION")
+
+            ForEach(MultiYatzyCategory.allCases.filter { !$0.isUpperSection }) { cat in
+                scoreRow(category: cat)
+            }
+
+            // Total row
+            totalRow
+        }
+        .background(.ultraThinMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(Color.white.opacity(0.07), lineWidth: 1)
+        )
+    }
+
+    private func sectionHeader(title: String) -> some View {
+        Text(title)
+            .font(.system(size: 7, weight: .bold, design: .monospaced))
+            .foregroundColor(.white.opacity(0.25))
+            .kerning(2)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 14)
+            .padding(.top, 8)
+            .padding(.bottom, 4)
+    }
+
+    private func scoreRow(category: MultiYatzyCategory) -> some View {
+        let currentDice = dice
+        let isActive = canScore && !isCurrentPlayerAI && currentPlayerIndex < players.count
+            && players[currentPlayerIndex].scores[category] == nil
+        let potential = multiYatzyScore(for: category, dice: currentDice)
+
+        return Button {
+            if isActive { fillCategory(category) }
+        } label: {
+            HStack(spacing: 0) {
+                // Category name
+                Text(category.displayName)
+                    .font(.system(size: 12, design: .monospaced))
+                    .foregroundColor(isActive ? .white : .white.opacity(0.35))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                // Scores for each player
+                ForEach(0..<players.count, id: \.self) { i in
+                    let p = players[i]
+                    let score = p.scores[category]
+                    let isCurrent = i == currentPlayerIndex
+                    let color: Color = i == 0 ? .accentGreen : .orange
+
+                    Group {
+                        if let s = score {
+                            Text("\(s)")
+                                .font(.system(size: 12, weight: .bold, design: .monospaced))
+                                .foregroundColor(color.opacity(0.9))
+                        } else if isCurrent && isActive {
+                            Text(potential > 0 ? "\(potential)" : "0")
+                                .font(.system(size: 12, design: .monospaced))
+                                .foregroundColor(potential > 0 ? color.opacity(0.55) : .white.opacity(0.2))
+                        } else {
+                            Text("—")
+                                .font(.system(size: 12, design: .monospaced))
+                                .foregroundColor(.white.opacity(0.12))
+                        }
+                    }
+                    .frame(width: 48, alignment: .center)
+                }
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 7)
+            .background(
+                isActive && potential > 0
+                    ? Color.accentGreen.opacity(0.07)
+                    : Color.clear
+            )
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(!isActive)
+    }
+
+    private var bonusRow: some View {
+        HStack(spacing: 0) {
+            VStack(alignment: .leading, spacing: 1) {
+                Text("Bonus")
+                    .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                    .foregroundColor(.goldYatzy.opacity(0.8))
+                Text("≥63p → +35p")
+                    .font(.system(size: 8, design: .monospaced))
+                    .foregroundColor(.white.opacity(0.25))
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            ForEach(0..<players.count, id: \.self) { i in
+                let p = players[i]
+                let upper = p.upperTotal
+                let needed = max(0, 63 - upper)
+                let color: Color = i == 0 ? .accentGreen : .orange
+
+                VStack(spacing: 1) {
+                    if p.hasBonus {
+                        Text("+35")
+                            .font(.system(size: 11, weight: .bold, design: .monospaced))
+                            .foregroundColor(.goldYatzy)
+                    } else {
+                        Text("\(upper)/63")
+                            .font(.system(size: 9, design: .monospaced))
+                            .foregroundColor(color.opacity(0.5))
+                        if needed > 0 {
+                            Text("−\(needed)")
+                                .font(.system(size: 8, design: .monospaced))
+                                .foregroundColor(.white.opacity(0.25))
+                        }
+                    }
+                }
+                .frame(width: 48, alignment: .center)
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
+        .background(Color.goldYatzy.opacity(0.04))
+    }
+
+    private var totalRow: some View {
+        HStack(spacing: 0) {
+            Text("TOTAL")
+                .font(.system(size: 11, weight: .black, design: .monospaced))
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            ForEach(0..<players.count, id: \.self) { i in
+                let p = players[i]
+                let color: Color = i == 0 ? .accentGreen : .orange
+                Text("\(p.grandTotal)")
+                    .font(.system(size: 15, weight: .black, design: .monospaced))
+                    .foregroundColor(color)
+                    .frame(width: 48, alignment: .center)
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .background(
+            LinearGradient(
+                colors: [Color.white.opacity(0.06), Color.white.opacity(0.03)],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+        )
+    }
+
+    // MARK: - Game Over View
+
+    private var gameOverView: some View {
+        ScrollView(showsIndicators: false) {
+            VStack(spacing: 0) {
+                Spacer(minLength: 60)
+
+                resultHeader
+                    .padding(.bottom, 32)
+
+                finalScoreCard
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 24)
+
+                actionButtonsGameOver
+                    .padding(.horizontal, 20)
+
+                Spacer(minLength: 40)
+            }
+        }
+        .onAppear {
+            withAnimation(.spring(response: 0.6, dampingFraction: 0.7).delay(0.2)) {
+                resultAnimating = true
+            }
+        }
+    }
+
+    private var resultHeader: some View {
+        let isWin = winnerIndex == 0
+        let isLose = winnerIndex == 1
+        let tie = isTie
+
+        return VStack(spacing: 14) {
+            ZStack {
+                Circle()
+                    .fill(resultColor.opacity(0.15))
+                    .frame(width: 110, height: 110)
+                    .scaleEffect(resultAnimating ? 1 : 0.5)
+
+                Text(resultEmoji)
+                    .font(.system(size: 58))
+                    .scaleEffect(resultAnimating ? 1 : 0.3)
+                    .opacity(resultAnimating ? 1 : 0)
+            }
+            .animation(.spring(response: 0.6, dampingFraction: 0.65), value: resultAnimating)
+
+            Text(resultTitle)
+                .font(.system(size: 32, weight: .black, design: .monospaced))
+                .foregroundColor(resultColor)
+                .kerning(3)
+                .opacity(resultAnimating ? 1 : 0)
+                .offset(y: resultAnimating ? 0 : 20)
+                .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.15), value: resultAnimating)
+
+            Text(resultSubtitle)
+                .font(.system(size: 13, design: .monospaced))
+                .foregroundColor(.white.opacity(0.6))
+                .multilineTextAlignment(.center)
+                .opacity(resultAnimating ? 1 : 0)
+                .animation(.easeIn(duration: 0.4).delay(0.3), value: resultAnimating)
+
+            // Earnings display
+            VStack(spacing: 4) {
+                Text("RESULTAT")
+                    .font(.system(size: 8, weight: .bold, design: .monospaced))
+                    .foregroundColor(.white.opacity(0.3))
+                    .kerning(2)
+
+                HStack(spacing: 6) {
+                    Image(systemName: isWin ? "arrow.up.circle.fill" : (tie ? "equal.circle.fill" : "arrow.down.circle.fill"))
+                        .font(.system(size: 16))
+                        .foregroundColor(resultColor)
+                    Text(earningsText)
+                        .font(.system(size: 20, weight: .black, design: .monospaced))
+                        .foregroundColor(resultColor)
+                }
+            }
+            .padding(.horizontal, 24)
+            .padding(.vertical, 14)
+            .background(resultColor.opacity(0.08))
+            .clipShape(RoundedRectangle(cornerRadius: 14))
+            .overlay(
+                RoundedRectangle(cornerRadius: 14)
+                    .stroke(resultColor.opacity(0.25), lineWidth: 1)
+            )
+            .opacity(resultAnimating ? 1 : 0)
+            .scaleEffect(resultAnimating ? 1 : 0.85)
+            .animation(.spring(response: 0.5, dampingFraction: 0.75).delay(0.4), value: resultAnimating)
+        }
+        // Silence unused variable warnings
+        .onChange(of: isWin) { _ in }
+        .onChange(of: isLose) { _ in }
+        .onChange(of: tie) { _ in }
+    }
+
+    private var resultColor: Color {
+        if isTie { return .orange }
+        return winnerIndex == 0 ? .accentGreen : .red
+    }
+
+    private var resultEmoji: String {
+        if isTie { return "🤝" }
+        return winnerIndex == 0 ? "🏆" : "💀"
+    }
+
+    private var resultTitle: String {
+        if isTie { return "OAVGJORT" }
+        if winnerIndex == 0 {
+            return players.first.map { "\($0.name.prefix(8).uppercased())" } ?? "VINST!"
+        }
+        return gameMode == .vsAI ? "AI VANN" : (players.count > 1 ? players[1].name.prefix(8).uppercased() : "FÖRLUST")
+    }
+
+    private var resultSubtitle: String {
+        guard players.count >= 2 else { return "" }
+        let p1 = players[0].grandTotal
+        let p2 = players[1].grandTotal
+        return "\(players[0].name): \(p1)p  vs  \(players[1].name): \(p2)p"
+    }
+
+    private var earningsText: String {
+        if isTie { return "±0 (insats tillbaka)" }
+        if winnerIndex == 0 { return "+\(TimeEngine.shortFormatted(betAmount * 2))" }
+        return "−\(TimeEngine.shortFormatted(betAmount))"
+    }
+
+    private var finalScoreCard: some View {
+        VStack(spacing: 0) {
+            Text("SLUTRESULTAT")
+                .font(.system(size: 9, weight: .bold, design: .monospaced))
+                .foregroundColor(.white.opacity(0.3))
+                .kerning(2)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 16)
+                .padding(.top, 14)
+                .padding(.bottom, 8)
+
+            ForEach(0..<players.count, id: \.self) { i in
+                let p = players[i]
+                let color: Color = i == 0 ? .accentGreen : .orange
+                let isWinner = winnerIndex == i
+
+                HStack(spacing: 12) {
+                    if gameMode == .vsAI && i == 1 {
+                        Text("🤖").font(.system(size: 20))
+                    } else {
+                        Image(systemName: "person.circle.fill")
+                            .font(.system(size: 22))
+                            .foregroundColor(color)
+                    }
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack(spacing: 6) {
+                            Text(p.name)
+                                .font(.system(size: 14, weight: .bold, design: .monospaced))
+                                .foregroundColor(color)
+                            if isWinner && !isTie {
+                                Image(systemName: "crown.fill")
+                                    .font(.system(size: 10))
+                                    .foregroundColor(.goldYatzy)
+                            }
+                        }
+                        Text("Övre: \(p.upperTotal)\(p.hasBonus ? " +35 bonus" : "")  Nedre: \(p.lowerTotal)")
+                            .font(.system(size: 9, design: .monospaced))
+                            .foregroundColor(.white.opacity(0.4))
+                    }
+
+                    Spacer()
+
+                    Text("\(p.grandTotal)")
+                        .font(.system(size: 26, weight: .black, design: .monospaced))
+                        .foregroundColor(isWinner && !isTie ? .goldYatzy : color.opacity(0.8))
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+                .background(isWinner && !isTie ? color.opacity(0.08) : Color.clear)
+
+                if i < players.count - 1 {
+                    Divider().background(Color.white.opacity(0.06)).padding(.horizontal, 16)
+                }
+            }
+
+            Divider().background(Color.white.opacity(0.06))
+
+            // Bonus detail
+            if players.count > 0 {
+                HStack {
+                    Text("Bonusgräns (övre ≥63): +35p")
+                        .font(.system(size: 9, design: .monospaced))
+                        .foregroundColor(.white.opacity(0.3))
+                    Spacer()
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+            }
+        }
+        .background(.ultraThinMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.white.opacity(0.07), lineWidth: 1))
+    }
+
+    private var actionButtonsGameOver: some View {
+        VStack(spacing: 10) {
+            Button {
+                resultAnimating = false
+                resetToLobby()
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "arrow.counterclockwise")
+                    Text("SPELA IGEN")
+                        .font(.system(size: 14, weight: .bold, design: .monospaced))
+                }
+                .foregroundColor(.black)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 16)
+                .background(Color.accentGreen)
+                .clipShape(RoundedRectangle(cornerRadius: 14))
+                .shadow(color: Color.accentGreen.opacity(0.35), radius: 10, y: 4)
+            }
+
+            Button {
+                dismiss()
+            } label: {
+                Text("AVSLUTA")
+                    .font(.system(size: 13, weight: .semibold, design: .monospaced))
+                    .foregroundColor(.white.opacity(0.5))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(Color.white.opacity(0.06))
+                    .clipShape(RoundedRectangle(cornerRadius: 14))
+            }
+        }
+    }
+
+    // MARK: - Game Logic
+
+    private func startGame() {
+        let p1 = player1Name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let p2 = gameMode == .vsAI ? "🤖 AI" : player2Name.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard TimeEngine.shared.deductTime(betAmount) else {
+            showInsufficientFundsAlert = true
+            return
+        }
+
+        players = [
+            YatzyPlayerState(name: p1.isEmpty ? "Spelare 1" : p1),
+            YatzyPlayerState(name: p2.isEmpty ? "Spelare 2" : p2)
+        ]
+        currentPlayerIndex = 0
+        resetDice()
+        rollsUsed = 0
+        statusMessage = "Kasta tärningarna för att börja!"
+        resultAnimating = false
+
+        withAnimation(.easeInOut(duration: 0.35)) {
+            phase = .playing
+        }
+    }
+
+    private func resetDice() {
+        dice = (0..<5).map { _ in Int.random(in: 1...6) }
+        heldDice = [false, false, false, false, false]
+    }
+
+    private func rollDice() {
+        guard canRoll && !isCurrentPlayerAI else { return }
+        isRolling = true
+        rollsUsed += 1
+
+        // Small haptic-like delay for animation
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
+            for i in 0..<5 {
+                if !self.heldDice[i] {
+                    self.dice[i] = Int.random(in: 1...6)
+                }
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                self.isRolling = false
+                let remaining = 3 - self.rollsUsed
+                if remaining > 0 {
+                    self.statusMessage = "\(remaining) kast kvar — håll tärningar eller välj kategori"
+                } else {
+                    self.statusMessage = "Inga kast kvar — välj en kategori"
+                }
+            }
+        }
+    }
+
+    private func fillCategory(_ category: MultiYatzyCategory) {
+        guard canScore && !isCurrentPlayerAI else { return }
+        guard players.indices.contains(currentPlayerIndex) else { return }
+        guard players[currentPlayerIndex].scores[category] == nil else { return }
+
+        let score = multiYatzyScore(for: category, dice: dice)
+        players[currentPlayerIndex].scores[category] = score
+        statusMessage = "\(category.displayName): \(score) poäng"
+        lastScoreMessage = statusMessage
+
+        advanceTurn()
+    }
+
+    private func advanceTurn() {
+        // Check if game is over
+        if players.allSatisfy({ $0.isFilled }) {
+            endGame()
+            return
+        }
+
+        // Move to next player
+        let nextIndex = (currentPlayerIndex + 1) % players.count
+        currentPlayerIndex = nextIndex
+        resetDice()
+        rollsUsed = 0
+        statusMessage = ""
+
+        // If local pass-and-play, show handoff screen
+        if gameMode == .localPassPlay {
+            withAnimation(.easeInOut(duration: 0.3)) {
+                phase = .handoff(toPlayerIndex: nextIndex)
+            }
+        } else {
+            // vs AI: if next is AI, trigger AI turn
+            if nextIndex == 1 {
+                triggerAITurn()
+            } else {
+                statusMessage = "Din tur — kasta tärningarna!"
+            }
+        }
+    }
+
+    private func triggerAITurn() {
+        guard gameMode == .vsAI else { return }
+        isAIThinking = true
+        statusMessage = "🤖 AI tänker..."
+
+        // AI does up to 3 rolls
+        performAIRoll(rollsLeft: 3)
+    }
+
+    private func performAIRoll(rollsLeft: Int) {
+        guard rollsLeft > 0, players.indices.contains(1) else {
+            // AI picks category
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                self.aiPickCategory()
+            }
+            return
+        }
+
+        let delay: TimeInterval = rollsLeft == 3 ? 0.6 : 0.8
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+            // Determine which dice to keep
+            let available = self.players[1].availableCategories
+            let keepMask = aiSelectDiceToKeep(dice: self.dice, available: available)
+
+            // Roll unheld dice
+            self.isRolling = true
+            self.rollsUsed = 4 - rollsLeft  // track for display
+            for i in 0..<5 {
+                self.heldDice[i] = keepMask[i]
+                if !keepMask[i] {
+                    self.dice[i] = Int.random(in: 1...6)
+                }
+            }
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                self.isRolling = false
+
+                // Check if AI should stop early (has yatzy or full house etc)
+                let yatzyScore = multiYatzyScore(for: .yatzy, dice: self.dice)
+                if yatzyScore == 50 && self.players[1].scores[.yatzy] == nil {
+                    self.aiPickCategory()
+                    return
+                }
+
+                self.performAIRoll(rollsLeft: rollsLeft - 1)
+            }
+        }
+    }
+
+    private func aiPickCategory() {
+        guard players.indices.contains(1) else { return }
+        let available = players[1].availableCategories
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            if let chosen = aiChooseCategory(dice: self.dice, available: available) {
+                let score = multiYatzyScore(for: chosen, dice: self.dice)
+                self.players[1].scores[chosen] = score
+                self.statusMessage = "🤖 AI väljer \(chosen.displayName): \(score)p"
+            }
+
+            self.isAIThinking = false
+            self.heldDice = [false, false, false, false, false]
+
+            // Check game over
+            if self.players.allSatisfy({ $0.isFilled }) {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+                    self.endGame()
+                }
+                return
+            }
+
+            // Switch back to player 1
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+                self.currentPlayerIndex = 0
+                self.resetDice()
+                self.rollsUsed = 0
+                self.statusMessage = "Din tur — kasta tärningarna!"
+            }
+        }
+    }
+
+    private func endGame() {
+        guard players.count >= 2 else { return }
+        let p1 = players[0].grandTotal
+        let p2 = players[1].grandTotal
+
+        if p1 > p2 {
+            winnerIndex = 0
+            isTie = false
+            TimeEngine.shared.addTime(betAmount * 2)
+        } else if p2 > p1 {
+            winnerIndex = 1
+            isTie = false
+            // Loser gets nothing (bet already deducted)
+            if gameMode == .localPassPlay {
+                // In local multiplayer, player 2 wins — bet was from player 1
+                // Already handled: nothing extra
+            }
+        } else {
+            winnerIndex = nil
+            isTie = true
+            TimeEngine.shared.addTime(betAmount)
+        }
+
+        withAnimation(.easeInOut(duration: 0.4)) {
+            phase = .gameOver
+        }
+    }
+
+    private func resetToLobby() {
+        players = []
+        currentPlayerIndex = 0
+        resetDice()
+        rollsUsed = 0
+        isRolling = false
+        isAIThinking = false
+        statusMessage = ""
+        lastScoreMessage = ""
+        winnerIndex = nil
+        isTie = false
+        handoffReady = false
+
+        withAnimation(.easeInOut(duration: 0.35)) {
+            phase = .lobby
+        }
+    }
+}
+
+// MARK: - Preview
+
+#Preview {
+    MultiplayerYatzyView()
+        .preferredColorScheme(.dark)
+}
