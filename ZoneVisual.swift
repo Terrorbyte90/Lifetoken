@@ -355,9 +355,13 @@ struct ZoneVisual: View {
                 }
                 .padding(.top, 40)
 
+                let minRequired = zone.entryCostSeconds + zone.fallThresholdSeconds
+                let canAfford = engine.balance >= minRequired
                 VStack(spacing: 16) {
                     migrationRow(label: "Inträdesavgift", value: TimeEngine.shortFormatted(zone.entryCostSeconds), color: .orange)
-                    migrationRow(label: "Ditt saldo", value: TimeEngine.shortFormatted(engine.balance), color: engine.balance >= zone.entryCostSeconds ? .green : .red)
+                    migrationRow(label: "Buffert (stannar kvar)", value: TimeEngine.shortFormatted(zone.fallThresholdSeconds), color: .yellow)
+                    migrationRow(label: "Totalt behövs", value: TimeEngine.shortFormatted(minRequired), color: canAfford ? .green : .red)
+                    migrationRow(label: "Ditt saldo", value: TimeEngine.shortFormatted(engine.balance), color: canAfford ? .green : .red)
                     migrationRow(label: "Ny skattesats", value: "\(Int(zone.taxRate * 100))%", color: .yellow)
                     migrationRow(label: "Ny inflation/dag", value: "\(String(format: "%.1f", zone.inflationRatePerDay * 100))%", color: .orange)
                 }
@@ -385,15 +389,15 @@ struct ZoneVisual: View {
                         }
                     }
                 } label: {
-                    Text(engine.balance >= zone.entryCostSeconds ? "MIGRERA" : "OTILLRÄCKLIGA MEDEL")
+                    Text(canAfford ? "MIGRERA" : "OTILLRÄCKLIGA MEDEL")
                         .font(.system(size: 16, weight: .bold, design: .monospaced))
                         .foregroundColor(.black)
                         .frame(maxWidth: .infinity)
                         .padding()
-                        .background(engine.balance >= zone.entryCostSeconds ? Color.orange : Color.gray)
+                        .background(canAfford ? Color.orange : Color.gray)
                         .clipShape(RoundedRectangle(cornerRadius: 14))
                 }
-                .disabled(engine.balance < zone.entryCostSeconds)
+                .disabled(!canAfford)
                 .padding(.horizontal)
 
                 Spacer()

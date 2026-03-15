@@ -1,6 +1,7 @@
 import Foundation
 import Security
 import UIKit
+import CryptoKit
 
 struct AuthResponse: Codable {
     let token: String
@@ -26,9 +27,17 @@ struct SyncResponse: Codable {
 
 class ServerSync: ObservableObject {
     static let shared = ServerSync()
-    private let baseURL = "http://209.38.98.107:4000/api"
+    private let baseURL    = "http://209.38.98.107:4000/api"
+    private let healthURL  = "http://209.38.98.107:4000/health"
     private var syncTimer: Timer?
     private var reconnectTimer: Timer?
+
+    // MARK: - Password hash helper (deterministic per device+user)
+    private func passwordHash(username: String, deviceId: String) -> String {
+        let combined = "\(username):\(deviceId):lifetoken"
+        let hash = SHA256.hash(data: Data(combined.utf8))
+        return hash.compactMap { String(format: "%02x", $0) }.joined()
+    }
 
     @Published var isOnline: Bool = false
     @Published var lastSyncDate: Date? = nil
@@ -61,24 +70,37 @@ class ServerSync: ObservableObject {
 
     // MARK: - Startup
 
-    /// Called on app launch — auto-logins if we have stored credentials
+    /// Called on app launch — always authenticates and checks connectivity
     func startup() async {
         let storedUsername = UserDefaults.standard.string(forKey: "username") ?? ""
-        if token == nil && !storedUsername.isEmpty {
+        if !storedUsername.isEmpty {
+            // Always try to auth on startup (handles stale tokens and first launch)
             await loginOrRegister(username: storedUsername)
-        } else if token != nil {
+        } else {
             await checkHealth()
         }
     }
 
-    // MARK: - Health check
+    // MARK: - Health check (uses root /health, NOT /api/health)
 
     func checkHealth() async {
+        guard let url = URL(string: healthURL) else { return }
         do {
-            let data = try await get(path: "/health", requireAuth: false)
-            if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+            let req = URLRequest(url: url, timeoutInterval: 10)
+            let (data, resp) = try await URLSession.shared.data(for: req)
+            let statusCode = (resp as? HTTPURLResponse)?.statusCode ?? 0
+            if statusCode == 200,
+               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                json["status"] as? String == "ok" {
                 DispatchQueue.main.async { self.isOnline = true }
+                // Re-auth if we somehow have no token
+                let storedUsername = UserDefaults.standard.string(forKey: "username") ?? ""
+                if self.token == nil && !storedUsername.isEmpty {
+                    await self.loginOrRegister(username: storedUsername)
+                }
+            } else {
+                DispatchQueue.main.async { self.isOnline = false }
+                scheduleReconnect()
             }
         } catch {
             DispatchQueue.main.async { self.isOnline = false }
@@ -108,14 +130,33 @@ class ServerSync: ObservableObject {
     // MARK: - Auth
 
     func register(username: String, deviceId: String) async throws -> AuthResponse {
-        let body: [String: Any] = ["username": username, "deviceId": deviceId]
+        let hash = passwordHash(username: username, deviceId: deviceId)
+        let body: [String: Any] = [
+            "username": username,
+            "deviceId": deviceId,
+            "passwordHash": hash
+        ]
         let data = try await post(path: "/auth/register", body: body, requireAuth: false)
+        // Decode or throw if server returns error
+        if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+           let errMsg = json["error"] as? String {
+            throw NSError(domain: "ServerSync", code: 409, userInfo: [NSLocalizedDescriptionKey: errMsg])
+        }
         return try JSONDecoder().decode(AuthResponse.self, from: data)
     }
 
     func login(username: String, deviceId: String) async throws -> AuthResponse {
-        let body: [String: Any] = ["username": username, "deviceId": deviceId]
+        let hash = passwordHash(username: username, deviceId: deviceId)
+        let body: [String: Any] = [
+            "username": username,
+            "deviceId": deviceId,
+            "passwordHash": hash
+        ]
         let data = try await post(path: "/auth/login", body: body, requireAuth: false)
+        if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+           let errMsg = json["error"] as? String {
+            throw NSError(domain: "ServerSync", code: 401, userInfo: [NSLocalizedDescriptionKey: errMsg])
+        }
         return try JSONDecoder().decode(AuthResponse.self, from: data)
     }
 

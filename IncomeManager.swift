@@ -61,7 +61,8 @@ class IncomeManager: ObservableObject {
 
     func startRefreshTimer() {
         refreshTimer?.invalidate()
-        refreshTimer = Timer.scheduledTimer(withTimeInterval: 600, repeats: true) { [weak self] _ in
+        // Refresh every 60 seconds for near-real-time health data in UI
+        refreshTimer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
             self?.loadAndRefresh()
         }
     }
