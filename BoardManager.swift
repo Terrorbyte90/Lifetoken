@@ -358,9 +358,15 @@ struct BoardWidget: View {
     }
 
     private func formatBalance(_ s: TimeInterval) -> String {
-        let years  = Int(s / (365.25 * 86400))
-        let days   = Int((s.truncatingRemainder(dividingBy: 365.25 * 86400)) / 86400)
-        return "\(years)å \(days)d"
+        let total   = Int(max(0, s))
+        let years   = total / (365 * 86400)
+        let rem1    = total % (365 * 86400)
+        let days    = rem1 / 86400
+        let rem2    = rem1 % 86400
+        let hours   = rem2 / 3600
+        let minutes = (rem2 % 3600) / 60
+        let secs    = rem2 % 60
+        return String(format: "%02d:%03d:%02d:%02d:%02d", years, days, hours, minutes, secs)
     }
 }
 
@@ -501,8 +507,14 @@ struct BoardDetailView: View {
     }
 
     private func formatYears(_ s: TimeInterval) -> String {
-        let years = Int(s / (365.25 * 86400))
-        let days  = Int((s.truncatingRemainder(dividingBy: 365.25 * 86400)) / 86400)
-        return "\(years) år \(days) dagar"
+        let total   = Int(max(0, s))
+        let years   = total / (365 * 86400)
+        let rem1    = total % (365 * 86400)
+        let days    = rem1 / 86400
+        let rem2    = rem1 % 86400
+        let hours   = rem2 / 3600
+        let minutes = (rem2 % 3600) / 60
+        let secs    = rem2 % 60
+        return String(format: "%02d:%03d:%02d:%02d:%02d", years, days, hours, minutes, secs)
     }
 }

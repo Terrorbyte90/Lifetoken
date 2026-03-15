@@ -261,29 +261,74 @@ struct DashboardView: View {
 
     private var statsRow: some View {
         HStack(spacing: 0) {
-            statColumn(label: "Skatt", value: "\(Int(gameState.currentZone.taxRate * 100))%", color: .yellow)
-            Divider().background(Color.white.opacity(0.1)).frame(height: 32)
-            statColumn(label: "Steg idag", value: "\(incomeManager.dailySteps)", color: .green)
-            Divider().background(Color.white.opacity(0.1)).frame(height: 32)
-            statColumn(label: "Server", value: server.isOnline ? "Online" : "Offline", color: server.isOnline ? .green : .red)
-            Divider().background(Color.white.opacity(0.1)).frame(height: 32)
-            statColumn(label: "Online", value: "\(max(1, server.onlineCount))", color: .cyan)
+            statColumn(
+                icon: "percent",
+                label: "SKATT",
+                value: "\(Int(gameState.currentZone.taxRate * 100))%",
+                color: .yellow
+            )
+            statDivider
+            statColumn(
+                icon: "figure.walk",
+                label: "STEG",
+                value: "\(incomeManager.dailySteps)",
+                color: .green
+            )
+            statDivider
+            statColumn(
+                icon: "antenna.radiowaves.left.and.right",
+                label: "SERVER",
+                value: server.isOnline ? "● LIVE" : "○ OFF",
+                color: server.isOnline ? Color(red:0.2,green:0.9,blue:0.2) : .red
+            )
+            statDivider
+            statColumn(
+                icon: "person.2.fill",
+                label: "ONLINE",
+                value: "\(max(1, server.onlineCount))",
+                color: .cyan
+            )
         }
-        .padding(.vertical, 10)
-        .background(.ultraThinMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .padding(.vertical, 12)
+        .background(
+            ZStack {
+                Color(red:0.04,green:0.05,blue:0.07)
+                // Subtle grid texture
+                Canvas { ctx, sz in
+                    for x in stride(from: 0.0, to: sz.width, by: 40) {
+                        var p = Path()
+                        p.move(to: CGPoint(x: x, y: 0))
+                        p.addLine(to: CGPoint(x: x, y: sz.height))
+                        ctx.stroke(p, with: .color(Color.white.opacity(0.025)), lineWidth: 1)
+                    }
+                }
+            }
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 14))
+        .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.white.opacity(0.07), lineWidth: 1))
         .padding(.horizontal)
     }
 
-    private func statColumn(label: String, value: String, color: Color) -> some View {
-        VStack(spacing: 2) {
-            Text(label)
-                .font(.system(size: 8, design: .monospaced))
-                .foregroundColor(.white.opacity(0.35))
+    private var statDivider: some View {
+        Rectangle()
+            .fill(Color.white.opacity(0.07))
+            .frame(width: 1, height: 36)
+    }
+
+    private func statColumn(icon: String, label: String, value: String, color: Color) -> some View {
+        VStack(spacing: 4) {
+            Image(systemName: icon)
+                .font(.system(size: 10))
+                .foregroundColor(color.opacity(0.7))
             Text(value)
-                .font(.system(size: 12, weight: .bold, design: .monospaced))
+                .font(.system(size: 12, weight: .black, design: .monospaced))
                 .foregroundColor(color)
                 .lineLimit(1)
+                .minimumScaleFactor(0.7)
+            Text(label)
+                .font(.system(size: 7, weight: .bold, design: .monospaced))
+                .foregroundColor(.white.opacity(0.25))
+                .tracking(1)
         }
         .frame(maxWidth: .infinity)
     }
@@ -345,16 +390,49 @@ struct DashboardView: View {
     // MARK: - Dystopisk mikrotext
 
     private var microTextBar: some View {
-        Text(microTexts[microIndex])
-            .font(.system(size: 11, design: .monospaced))
-            .foregroundColor(Color(red: 0.35, green: 0.35, blue: 0.4))
-            .multilineTextAlignment(.center)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 10)
-            .frame(maxWidth: .infinity)
-            .background(Color(red: 0.04, green: 0.04, blue: 0.06))
-            .clipShape(RoundedRectangle(cornerRadius: 10))
-            .padding(.horizontal)
+        HStack(spacing: 8) {
+            // Blinking terminal dot
+            Circle()
+                .fill(Color(red:0.3,green:0.8,blue:0.3).opacity(0.7))
+                .frame(width: 5, height: 5)
+                .shadow(color: Color.green.opacity(0.5), radius: 3)
+
+            Text(microTexts[microIndex])
+                .font(.system(size: 11, design: .monospaced))
+                .foregroundColor(Color(red: 0.38, green: 0.4, blue: 0.45))
+                .multilineTextAlignment(.leading)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+                .transition(.asymmetric(
+                    insertion: .move(edge: .bottom).combined(with: .opacity),
+                    removal: .move(edge: .top).combined(with: .opacity)
+                ))
+                .id(microIndex)
+
+            Spacer()
+
+            Text("SYS//\(String(format: "%04d", (microIndex * 137 + 3721) % 9999))")
+                .font(.system(size: 9, design: .monospaced))
+                .foregroundColor(Color(red:0.2,green:0.35,blue:0.2))
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .frame(maxWidth: .infinity)
+        .background(
+            ZStack {
+                Color(red: 0.03, green: 0.04, blue: 0.05)
+                LinearGradient(
+                    colors: [Color.green.opacity(0.03), Color.clear],
+                    startPoint: .leading, endPoint: .trailing
+                )
+            }
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(Color(red:0.1,green:0.25,blue:0.1).opacity(0.5), lineWidth: 1)
+        )
+        .padding(.horizontal)
     }
 
     // MARK: - Helpers

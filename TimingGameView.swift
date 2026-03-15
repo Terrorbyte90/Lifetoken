@@ -12,10 +12,10 @@ struct TimingGameView: View {
     private let roundCounts:  [Int]    = [3, 3, 4, 5]
     private let timeLimits:   [Int]    = [90, 90, 90, 90]
     private let rewards = [
-        (best:16, normal:10, worse:5),
-        (best:28, normal:18, worse:9),
-        (best:45, normal:29, worse:14),
-        (best:75, normal:48, worse:24),
+        (best:8,  normal:5,  worse:2),
+        (best:14, normal:9,  worse:4),
+        (best:22, normal:14, worse:7),
+        (best:37, normal:24, worse:12),
     ]
 
     private var zoneWidth:   Double { zoneDegrees[difficulty] }
@@ -42,8 +42,10 @@ struct TimingGameView: View {
     @State private var renderTimer   = Timer.publish(every: 1/60.0, on: .main, in: .common).autoconnect()
     @State private var countdown     = Timer.publish(every: 1,      on: .main, in: .common).autoconnect()
 
-    // Target at 12 o'clock = 0° (top = −90° rotationEffect, so our target is 270° in the trig circle = 0 in our display)
-    private let targetDeg: Double = 270  // pointing straight up in UIKit coords
+    // Target at 12 o'clock. targetDeg = visual degrees CW from 12 o'clock.
+    // Arc center in trim coords: (targetDeg/360 + 0.75) % 1 (no rotationEffect needed).
+    // Hit detection uses (needleAngle - 90) % 360 to get visual angle.
+    private let targetDeg: Double = 0  // 0 = 12 o'clock
 
     var body: some View {
         ZStack {
@@ -209,15 +211,17 @@ struct TimingGameView: View {
             }
 
             // ── Target zone arc (glowing cyan)
-            let startA = (targetDeg - zoneWidth/2) / 360
-            let endA   = (targetDeg + zoneWidth/2) / 360
+            // Trim center: (targetDeg/360 + 0.75) % 1.0 maps 0° → 0.75 (12 o'clock, no rotation)
+            let center = ((targetDeg / 360.0) + 0.75).truncatingRemainder(dividingBy: 1.0)
+            let halfW  = zoneWidth / 2.0 / 360.0
+            let startA = center - halfW
+            let endA   = center + halfW
 
             // Glow
             Circle()
                 .trim(from: startA, to: endA)
                 .stroke(Color.cyan.opacity(0.15), style: StrokeStyle(lineWidth: 22, lineCap: .round))
                 .frame(width: size - 8, height: size - 8)
-                .rotationEffect(.degrees(-90))
 
             // Solid arc
             Circle()
@@ -228,7 +232,6 @@ struct TimingGameView: View {
                     style: StrokeStyle(lineWidth: 10, lineCap: .round)
                 )
                 .frame(width: size - 8, height: size - 8)
-                .rotationEffect(.degrees(-90))
 
             // ── Flash ring on tap
             if flashRing {
@@ -326,6 +329,15 @@ struct TimingGameView: View {
                         .font(.system(size: 10, design: .monospaced))
                         .foregroundColor(Color(white: 0.35))
                 }
+            } else if earned < 0 {
+                VStack(spacing: 4) {
+                    Text("−\(TimeEngine.shortFormatted(abs(earned)))")
+                        .font(.system(size: 32, weight: .black, design: .monospaced))
+                        .foregroundColor(.red)
+                    Text("avdragen — precision otillräcklig")
+                        .font(.system(size: 10, design: .monospaced))
+                        .foregroundColor(Color(white: 0.35))
+                }
             } else {
                 Text("Precision otillräcklig. Noll lön.")
                     .font(.system(size: 14, design: .monospaced))
@@ -368,11 +380,12 @@ struct TimingGameView: View {
     private func handleTap() {
         guard case .playing = phase, currentRound < totalRounds else { return }
 
-        // Normalize angle to [0,360)
-        var a = needleAngle.truncatingRemainder(dividingBy: 360)
+        // Convert needleAngle to visual clock position (degrees CW from 12 o'clock)
+        // Needle is drawn with rotationEffect(needleAngle - 90), so visual = needleAngle - 90
+        var a = (needleAngle - 90).truncatingRemainder(dividingBy: 360)
         if a < 0 { a += 360 }
 
-        // Deviation from target (degrees)
+        // Deviation from target (degrees CW from 12 o'clock)
         var dev = abs(a - targetDeg)
         if dev > 180 { dev = 360 - dev }
 
@@ -408,9 +421,17 @@ struct TimingGameView: View {
     private func finishGame() {
         guard case .playing = phase else { return }
         let earned = calcEarnings()
-        if earned > 0 { awardMiniJobEarnings(minutes: earned) }
-        let zone = GameState.shared.currentZone
-        let net  = earned > 0 ? TimeInterval(earned * 60) * zone.workMultiplier * (1 - zone.taxRate) * BoostManager.shared.boosterMultiplier() : 0
+        let zone   = GameState.shared.currentZone
+        var net: TimeInterval
+        if earned > 0 {
+            awardMiniJobEarnings(minutes: earned)
+            net = TimeInterval(earned * 60) * zone.workMultiplier * (1 - zone.taxRate) * BoostManager.shared.boosterMultiplier()
+        } else {
+            // 30% penalty of best reward for bad calibration
+            let penaltyMin = max(1, Int(Double(reward.best) * 0.30))
+            penalizeMiniJob(minutes: penaltyMin)
+            net = -TimeInterval(penaltyMin * 60)  // negative = penalty for display
+        }
         phase = .result(earned: net)
     }
 

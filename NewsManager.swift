@@ -22,6 +22,8 @@ struct NewsItem: Identifiable, Codable {
         case healthIncome   = "HÄLSOINKOMST"
         case stepBet        = "STEGDUELL"
         case revolution     = "REVOLUTION"
+        case playerJoin     = "REKRYTERING"
+        case miniJob        = "AKTIVT JOBB"
         case general        = "SYSTEM"
     }
 
@@ -42,6 +44,8 @@ struct NewsItem: Identifiable, Codable {
         case .healthIncome: return Color(red: 0.2, green: 0.7, blue: 0.9)
         case .stepBet:      return Color(red: 0.1, green: 0.8, blue: 0.5)
         case .revolution:   return Color(red: 0.9, green: 0.9, blue: 0.1)
+        case .playerJoin:   return Color(red: 0.3, green: 0.9, blue: 0.5)
+        case .miniJob:      return Color(red: 0.2, green: 0.7, blue: 0.9)
         case .general:      return Color(red: 0.5, green: 0.5, blue: 0.5)
         }
     }
@@ -197,6 +201,43 @@ class NewsManager: ObservableObject {
             category: .revolution,
             priority: .high
         )
+    }
+
+    // MARK: - Spelhändelser
+
+    func addPlayerJoinEvent(username: String, zoneName: String) {
+        let flavors = [
+            "Klockan har aktiverats. Nedräkningen är i gång.",
+            "En ny kugge i maskineriet. Systemet noterar.",
+            "Välkommen till dystopian. Du har redan börjat förlora tid.",
+            "Registrerad. Din tid är nu en handelsvara."
+        ]
+        addItem(
+            headline: "NY MEDBORGARE REGISTRERAD",
+            body: "\(username) har aktiverat sin tidsmätare i \(zoneName). \(flavors.randomElement()!)",
+            category: .playerJoin,
+            priority: .low
+        )
+    }
+
+    func addMiniJobCompletedEvent(jobName: String, earned: TimeInterval, won: Bool) {
+        let name = GameState.shared.username
+        if won {
+            let amt = TimeEngine.shortFormatted(earned)
+            addItem(
+                headline: "JOBB SLUTFÖRT",
+                body: "\(name) slutförde '\(jobName)' och fick \(amt) i lön.",
+                category: .miniJob,
+                priority: .low
+            )
+        } else {
+            addItem(
+                headline: "JOBB MISSLYCKAT",
+                body: "\(name) misslyckades med '\(jobName)'. Böter dragna.",
+                category: .miniJob,
+                priority: .low
+            )
+        }
     }
 
     // MARK: - Helpers

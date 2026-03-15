@@ -11,10 +11,10 @@ struct BombDefuseView: View {
     private let timeLimits:    [Int]    = [20, 15, 12, 8]
     private let clueShowTime:  [Double] = [5, 5, 5, 5]
     private let rewards = [
-        (early:20, normal:12, penalty:5),
-        (early:35, normal:20, penalty:10),
-        (early:60, normal:35, penalty:20),
-        (early:100, normal:60, penalty:40),
+        (early:10, normal:6,  penalty:5),
+        (early:17, normal:10, penalty:10),
+        (early:30, normal:17, penalty:20),
+        (early:50, normal:30, penalty:40),
     ]
 
     private var wireCount: Int { wireCountCfg[difficulty] }
@@ -42,9 +42,12 @@ struct BombDefuseView: View {
     @State private var clue:        String = ""
     @State private var wiresCut:    Set<Int> = []
     @State private var clueFade:    Double = 1
-    @State private var sparkPos:    CGPoint = .zero
-    @State private var showSpark:   Bool   = false
-    @State private var bombShake:   CGFloat = 0
+    @State private var sparkPos:       CGPoint = .zero
+    @State private var showSpark:      Bool    = false
+    @State private var bombShake:      CGFloat = 0
+    @State private var cutFlashWire:   Int?    = nil   // wire index showing flash
+    @State private var sparkParticles: [(id: UUID, angle: Double, dist: CGFloat, opacity: Double)] = []
+    @State private var wireDropOffset: [Int: CGFloat] = [:]  // extra y-drop per wire half
 
     @State private var timer     = Timer.publish(every: 1,    on: .main, in: .common).autoconnect()
     @State private var clueTimer = Timer.publish(every: 0.05, on: .main, in: .common).autoconnect()
@@ -287,7 +290,9 @@ struct BombDefuseView: View {
     @ViewBuilder
     private func wireView(index: Int, width: CGFloat) -> some View {
         let isSelected = wiresCut.contains(index)
-        let col = wireColors[index % wireColors.count]
+        let isFlashing = cutFlashWire == index
+        let col        = wireColors[index % wireColors.count]
+        let dropExtra  = wireDropOffset[index] ?? 0
 
         ZStack {
             // Wire track background
@@ -302,13 +307,22 @@ struct BombDefuseView: View {
                     .stroke(col, style: StrokeStyle(lineWidth: 9, lineCap: .round))
                     .frame(height: 50)
                     .padding(.horizontal, 24)
-                    .shadow(color: col.opacity(0.5), radius: 6)
+                    .shadow(color: col.opacity(isFlashing ? 1.0 : 0.5), radius: isFlashing ? 16 : 6)
 
                 // Inner highlight
                 WireShape(index: index)
                     .stroke(Color.white.opacity(0.25), style: StrokeStyle(lineWidth: 3, lineCap: .round))
                     .frame(height: 50)
                     .padding(.horizontal, 24)
+
+                // Flash overlay when being cut
+                if isFlashing {
+                    WireShape(index: index)
+                        .stroke(Color.white.opacity(0.9), style: StrokeStyle(lineWidth: 5, lineCap: .round))
+                        .frame(height: 50)
+                        .padding(.horizontal, 24)
+                        .transition(.opacity)
+                }
 
                 // End connectors
                 HStack {
@@ -321,25 +335,48 @@ struct BombDefuseView: View {
                 .padding(.horizontal, 18)
 
             } else {
-                // Cut wire (two dangling halves)
-                HStack(spacing: 0) {
-                    WireHalf(col: col, isLeft: true)
-                    VStack(spacing: 2) {
-                        Circle().fill(Color.white.opacity(0.7)).frame(width: 4, height: 4)
-                        Circle().fill(Color.white.opacity(0.5)).frame(width: 3, height: 3)
-                        Circle().fill(Color.white.opacity(0.3)).frame(width: 2, height: 2)
+                // Cut wire — two drooping halves with spark particles
+                ZStack {
+                    HStack(spacing: 0) {
+                        WireHalf(col: col, isLeft: true, extraDrop: dropExtra)
+                        // Cut gap with sparks
+                        ZStack {
+                            ForEach(sparkParticles.prefix(isSelected ? sparkParticles.count : 0), id: \.id) { p in
+                                Circle()
+                                    .fill(col.opacity(p.opacity))
+                                    .frame(width: 4, height: 4)
+                                    .offset(
+                                        x: CGFloat(cos(p.angle)) * p.dist,
+                                        y: CGFloat(sin(p.angle)) * p.dist
+                                    )
+                            }
+                            // Char marks at cut point
+                            VStack(spacing: 1) {
+                                Rectangle()
+                                    .fill(Color(white:0.6))
+                                    .frame(width: 2, height: 8)
+                                Circle()
+                                    .fill(col.opacity(0.7))
+                                    .frame(width: 5, height: 5)
+                                Rectangle()
+                                    .fill(Color(white:0.4))
+                                    .frame(width: 2, height: 8)
+                            }
+                        }
+                        .frame(width: 24)
+                        WireHalf(col: col, isLeft: false, extraDrop: dropExtra)
                     }
-                    WireHalf(col: col, isLeft: false)
+                    .padding(.horizontal, 24)
+                    .opacity(0.65)
                 }
-                .padding(.horizontal, 24)
-                .opacity(0.5)
             }
         }
-        .frame(height: 50)
+        .frame(height: 60)
         .contentShape(Rectangle())
         .onTapGesture { if !isSelected { cutWire(at: index) } }
-        .scaleEffect(isSelected ? 0.95 : 1)
-        .animation(.spring(response: 0.2), value: isSelected)
+        .scaleEffect(isSelected ? 0.97 : 1)
+        .animation(.spring(response: 0.25, dampingFraction: 0.6), value: isSelected)
+        .animation(.easeOut(duration: 0.15), value: isFlashing)
     }
 
     // MARK: - Result Screen
@@ -446,7 +483,32 @@ struct BombDefuseView: View {
     }
 
     private func cutWire(at index: Int) {
+        // Flash the wire white briefly
+        cutFlashWire = index
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) { cutFlashWire = nil }
+
+        // Generate spark particles
+        let newSparks = (0..<12).map { _ in
+            (id: UUID(),
+             angle: Double.random(in: 0..<(2 * .pi)),
+             dist: CGFloat.random(in: 4...16),
+             opacity: Double.random(in: 0.6...1.0))
+        }
+        withAnimation(.easeOut(duration: 0.35)) {
+            sparkParticles = newSparks
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+            withAnimation(.easeOut(duration: 0.4)) { sparkParticles = [] }
+        }
+
+        // Animate wire halves drooping
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.5)) {
+            wireDropOffset[index] = 10
+        }
+
+        // Mark as cut
         wiresCut.insert(index)
+
         // Shake bomb
         withAnimation(.default.repeatCount(4, autoreverses: true)) { bombShake = 8 }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { bombShake = 0 }
@@ -459,12 +521,14 @@ struct BombDefuseView: View {
             awardMiniJobEarnings(minutes: mins)
             let zone  = GameState.shared.currentZone
             let net   = TimeInterval(mins * 60) * zone.workMultiplier * (1 - zone.taxRate) * BoostManager.shared.boosterMultiplier()
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            NewsManager.shared.addMiniJobCompletedEvent(jobName: "Sprängämnesexperten", earned: net, won: true)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
                 phase = .result(won: true, early: isEarly, earned: net)
             }
         } else {
             penalizeMiniJob(minutes: reward.penalty)
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            NewsManager.shared.addMiniJobCompletedEvent(jobName: "Sprängämnesexperten", earned: 0, won: false)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
                 phase = .result(won: false, early: false, earned: 0)
             }
         }
@@ -526,21 +590,33 @@ private struct WireShape: Shape {
 private struct WireHalf: View {
     let col: Color
     let isLeft: Bool
+    var extraDrop: CGFloat = 0
+
     var body: some View {
         Canvas { ctx, size in
             var p = Path()
             let mid = size.height / 2
+            let drop = 14 + extraDrop
             if isLeft {
                 p.move(to: CGPoint(x: 0, y: mid))
-                p.addLine(to: CGPoint(x: size.width * 0.7, y: mid + 6))
-                p.addLine(to: CGPoint(x: size.width, y: mid + 14))
+                p.addCurve(
+                    to: CGPoint(x: size.width, y: mid + drop),
+                    control1: CGPoint(x: size.width * 0.4, y: mid + 2),
+                    control2: CGPoint(x: size.width * 0.75, y: mid + drop * 0.6)
+                )
             } else {
                 p.move(to: CGPoint(x: size.width, y: mid))
-                p.addLine(to: CGPoint(x: size.width * 0.3, y: mid - 6))
-                p.addLine(to: CGPoint(x: 0, y: mid - 14))
+                p.addCurve(
+                    to: CGPoint(x: 0, y: mid - drop),
+                    control1: CGPoint(x: size.width * 0.6, y: mid - 2),
+                    control2: CGPoint(x: size.width * 0.25, y: mid - drop * 0.6)
+                )
             }
-            ctx.stroke(p, with: .color(col), style: StrokeStyle(lineWidth: 7, lineCap: .round))
+            // Outer wire
+            ctx.stroke(p, with: .color(col), style: StrokeStyle(lineWidth: 8, lineCap: .round))
+            // Inner highlight
+            ctx.stroke(p, with: .color(Color.white.opacity(0.2)), style: StrokeStyle(lineWidth: 3, lineCap: .round))
         }
-        .frame(height: 50)
+        .frame(height: 60)
     }
 }

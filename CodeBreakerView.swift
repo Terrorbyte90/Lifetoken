@@ -12,10 +12,10 @@ struct CodeBreakerView: View {
     private let maxAttempts:  [Int] = [5, 4, 4, 4]
     private let timeLimits:   [Int] = [90, 90, 90, 60]
     private let rewards = [
-        (on2:18, on34:12, on5:6),
-        (on2:30, on34:20, on5:10),
-        (on2:50, on34:33, on5:16),
-        (on2:80, on34:53, on5:26),
+        (on2:9,  on34:6,  on5:3),
+        (on2:15, on34:10, on5:5),
+        (on2:25, on34:16, on5:8),
+        (on2:40, on34:26, on5:13),
     ]
     private var codeLen:    Int { codeLengths[difficulty] }
     private var symCount:   Int { symbolCounts[difficulty] }
@@ -51,26 +51,66 @@ struct CodeBreakerView: View {
     @State private var timer     = Timer.publish(every: 1,    on: .main, in: .common).autoconnect()
     @State private var blinkTimer = Timer.publish(every: 0.6, on: .main, in: .common).autoconnect()
 
+    @State private var crtFlicker: Double = 1.0
+    @State private var flickerTimer = Timer.publish(every: 8, on: .main, in: .common).autoconnect()
+
     var body: some View {
         ZStack {
-            // Terminal background
-            Color(red:0.02,green:0.05,blue:0.02).ignoresSafeArea()
+            // Terminal background — deep green-black
+            LinearGradient(
+                colors: [Color(red:0.01,green:0.06,blue:0.01), Color(red:0.02,green:0.03,blue:0.02)],
+                startPoint: .top, endPoint: .bottom
+            ).ignoresSafeArea()
 
-            // Scanlines
+            // Phosphor grid dots
             GeometryReader { g in
                 Canvas { ctx, sz in
-                    for y in stride(from: 0.0, to: sz.height, by: 4) {
-                        ctx.fill(Path(CGRect(x:0, y:y, width:sz.width, height:1)),
-                                 with: .color(Color.black.opacity(0.25)))
+                    let step: CGFloat = 3
+                    for x in stride(from: 0.0, to: sz.width, by: step) {
+                        for y in stride(from: 0.0, to: sz.height, by: step) {
+                            let dot = CGRect(x: x, y: y, width: 1, height: 1)
+                            ctx.fill(Path(dot), with: .color(Color(red:0,green:0.3,blue:0).opacity(0.08)))
+                        }
                     }
-                    // Vignette
-                    let vignette = CGRect(x: 0, y: 0, width: sz.width, height: sz.height)
-                    ctx.fill(
-                        Path(vignette),
-                        with: .color(Color.black.opacity(0.0))
-                    )
+                    // Horizontal scanlines
+                    for y in stride(from: 0.0, to: sz.height, by: 4) {
+                        ctx.fill(Path(CGRect(x:0, y:y, width:sz.width, height:1.5)),
+                                 with: .color(Color.black.opacity(0.18)))
+                    }
+                    // Vignette (dark corners)
+                    let r = min(sz.width, sz.height) * 1.2
+                    let cx = sz.width / 2, cy = sz.height / 2
+                    for i in stride(from: 0.0, to: 1.0, by: 0.05) {
+                        let fr = r * CGFloat(i)
+                        let vig = CGRect(x: cx - fr, y: cy - fr, width: fr*2, height: fr*2)
+                        ctx.fill(Path(ellipseIn: vig),
+                                 with: .color(Color.black.opacity(max(0, (i - 0.6) * 0.6))))
+                    }
                 }.ignoresSafeArea()
             }
+            .opacity(crtFlicker)
+
+            // Corner bracket decorations
+            GeometryReader { g in
+                let w = g.size.width, h = g.size.height
+                Canvas { ctx, sz in
+                    let bLen: CGFloat = 18, bW: CGFloat = 2
+                    let pad: CGFloat  = 20
+                    let gc: GraphicsContext.Shading = .color(Color(red:0.1,green:0.6,blue:0.1).opacity(0.5))
+                    // Top-left
+                    var p = Path(); p.move(to: CGPoint(x: pad, y: pad + bLen)); p.addLine(to: CGPoint(x: pad, y: pad)); p.addLine(to: CGPoint(x: pad + bLen, y: pad))
+                    ctx.stroke(p, with: gc, lineWidth: bW)
+                    // Top-right
+                    var p2 = Path(); p2.move(to: CGPoint(x: w-pad-bLen, y: pad)); p2.addLine(to: CGPoint(x: w-pad, y: pad)); p2.addLine(to: CGPoint(x: w-pad, y: pad+bLen))
+                    ctx.stroke(p2, with: gc, lineWidth: bW)
+                    // Bottom-left
+                    var p3 = Path(); p3.move(to: CGPoint(x: pad, y: h-pad-bLen)); p3.addLine(to: CGPoint(x: pad, y: h-pad)); p3.addLine(to: CGPoint(x: pad+bLen, y: h-pad))
+                    ctx.stroke(p3, with: gc, lineWidth: bW)
+                    // Bottom-right
+                    var p4 = Path(); p4.move(to: CGPoint(x: w-pad-bLen, y: h-pad)); p4.addLine(to: CGPoint(x: w-pad, y: h-pad)); p4.addLine(to: CGPoint(x: w-pad, y: h-pad-bLen))
+                    ctx.stroke(p4, with: gc, lineWidth: bW)
+                }
+            }.ignoresSafeArea()
 
             switch phase {
             case .ready:                        readyScreen
@@ -84,6 +124,19 @@ struct CodeBreakerView: View {
         }
         .onReceive(blinkTimer) { _ in
             cursorBlink.toggle()
+        }
+        .onReceive(flickerTimer) { _ in
+            // Occasional CRT flicker
+            withAnimation(.easeInOut(duration: 0.05)) { crtFlicker = 0.85 }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                withAnimation(.easeInOut(duration: 0.05)) { crtFlicker = 1.0 }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
+                    withAnimation(.easeInOut(duration: 0.04)) { crtFlicker = 0.92 }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.04) {
+                        withAnimation(.easeInOut(duration: 0.06)) { crtFlicker = 1.0 }
+                    }
+                }
+            }
         }
     }
 
@@ -204,50 +257,85 @@ struct CodeBreakerView: View {
     // MARK: - Guess row (submitted)
 
     private func guessRow(_ row: GuessRow) -> some View {
-        HStack(spacing: 0) {
+        let lineNum = (rows.firstIndex(where: { $0.id == row.id }) ?? 0) + 1
+        let isPerfect = row.blacks == codeLen
+        return HStack(spacing: 0) {
             // Line number
-            Text("\(rows.firstIndex(where: { $0.id == row.id }).map { $0 + 1 } ?? 0).")
-                .font(.system(size: 11, design: .monospaced))
-                .foregroundColor(Color(white:0.25))
-                .frame(width: 24)
+            Text(String(format: "%02d", lineNum))
+                .font(.system(size: 10, design: .monospaced))
+                .foregroundColor(Color(red:0.1,green:0.5,blue:0.1))
+                .frame(width: 28)
 
             // Symbols
-            HStack(spacing: 6) {
+            HStack(spacing: 5) {
                 ForEach(Array(row.guess.enumerated()), id: \.offset) { i, sym in
-                    Text(sym)
-                        .font(.system(size: 16, weight: .bold, design: .monospaced))
-                        .foregroundColor(symbolColor(sym, pos: i, in: row))
-                        .frame(width: 28, height: 28)
-                        .background(symbolBg(sym, pos: i, in: row))
-                        .clipShape(RoundedRectangle(cornerRadius: 5))
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 6)
+                            .fill(symbolBg(sym, pos: i, in: row))
+                            .frame(width: 30, height: 30)
+                        // Glow for correct position
+                        if secretCode.indices.contains(i) && secretCode[i] == sym {
+                            RoundedRectangle(cornerRadius: 6)
+                                .stroke(Color(red:0.1,green:0.9,blue:0.2).opacity(0.6), lineWidth: 1.5)
+                                .frame(width: 30, height: 30)
+                        }
+                        Text(sym)
+                            .font(.system(size: 15, weight: .bold, design: .monospaced))
+                            .foregroundColor(symbolColor(sym, pos: i, in: row))
+                    }
                 }
             }
 
             Spacer()
 
-            // Feedback pegs
-            HStack(spacing: 4) {
-                ForEach(0..<row.blacks, id: \.self) { _ in
-                    Circle()
-                        .fill(Color(red:0.1,green:0.9,blue:0.2))
-                        .frame(width: 9, height: 9)
+            // Feedback pegs in 2x grid
+            VStack(alignment: .trailing, spacing: 3) {
+                HStack(spacing: 3) {
+                    ForEach(0..<min(row.blacks, (codeLen + 1) / 2), id: \.self) { _ in
+                        Circle()
+                            .fill(Color(red:0.1,green:0.9,blue:0.2))
+                            .frame(width: 8, height: 8)
+                            .shadow(color: Color(red:0.1,green:0.9,blue:0.2).opacity(0.8), radius: 3)
+                    }
+                    ForEach(0..<min(row.whites, (codeLen + 1) / 2), id: \.self) { _ in
+                        Circle()
+                            .fill(Color(red:0.95,green:0.85,blue:0.1))
+                            .frame(width: 8, height: 8)
+                    }
                 }
-                ForEach(0..<row.whites, id: \.self) { _ in
-                    Circle()
-                        .fill(Color(red:0.95,green:0.85,blue:0.1))
-                        .frame(width: 9, height: 9)
-                }
-                ForEach(0..<(codeLen - row.blacks - row.whites), id: \.self) { _ in
-                    Circle()
-                        .stroke(Color(white:0.25), lineWidth: 1)
-                        .frame(width: 9, height: 9)
+                HStack(spacing: 3) {
+                    ForEach(0..<max(0, row.blacks - (codeLen + 1) / 2), id: \.self) { _ in
+                        Circle()
+                            .fill(Color(red:0.1,green:0.9,blue:0.2))
+                            .frame(width: 8, height: 8)
+                            .shadow(color: Color(red:0.1,green:0.9,blue:0.2).opacity(0.8), radius: 3)
+                    }
+                    ForEach(0..<max(0, row.whites - (codeLen + 1) / 2), id: \.self) { _ in
+                        Circle()
+                            .fill(Color(red:0.95,green:0.85,blue:0.1))
+                            .frame(width: 8, height: 8)
+                    }
+                    let emptyCount = codeLen - row.blacks - row.whites
+                    ForEach(0..<max(0, emptyCount), id: \.self) { _ in
+                        Circle()
+                            .stroke(Color(white:0.2), lineWidth: 1)
+                            .frame(width: 8, height: 8)
+                    }
                 }
             }
-            .frame(width: 60)
+            .frame(width: 56)
         }
         .padding(.horizontal, 20)
-        .padding(.vertical, 10)
-        .background(Color(red:0.03,green:0.07,blue:0.03))
+        .padding(.vertical, 9)
+        .background(isPerfect
+            ? Color(red:0.02,green:0.12,blue:0.02)
+            : Color(red:0.02,green:0.07,blue:0.02))
+        .overlay {
+            if isPerfect {
+                RoundedRectangle(cornerRadius: 0)
+                    .stroke(Color(red:0.1,green:0.7,blue:0.1).opacity(0.4), lineWidth: 1)
+            }
+        }
     }
 
     private func symbolColor(_ sym: String, pos: Int, in row: GuessRow) -> Color {
@@ -490,14 +578,23 @@ struct CodeBreakerView: View {
     // MARK: - Helpers
 
     private var terminalHeader: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: 8) {
+            // Status dot
+            Circle()
+                .fill(Color(red:0.1,green:0.9,blue:0.2))
+                .frame(width: 6, height: 6)
+                .shadow(color: Color(red:0.1,green:0.9,blue:0.2), radius: 4)
             Image(systemName: "terminal.fill")
-                .font(.system(size: 13))
+                .font(.system(size: 12))
                 .foregroundColor(Color(red:0.1,green:0.9,blue:0.2))
             Text("KODKNÄCKAREN")
                 .font(.system(size: 13, weight: .black, design: .monospaced))
                 .foregroundColor(Color(red:0.1,green:0.9,blue:0.2))
                 .tracking(3)
+                .shadow(color: Color(red:0.1,green:0.9,blue:0.2).opacity(0.6), radius: 4)
+            Text("v\(difficulty + 1).\(codeLen)")
+                .font(.system(size: 9, design: .monospaced))
+                .foregroundColor(Color(red:0.1,green:0.5,blue:0.1))
         }
     }
 
