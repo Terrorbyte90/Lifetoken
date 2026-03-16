@@ -223,7 +223,10 @@ class TimeEngine: ObservableObject {
     func deductTime(_ seconds: TimeInterval) -> Bool {
         guard balance >= seconds else { return false }
         DispatchQueue.main.async {
-            self.balance -= seconds
+            // Re-check balance on main thread to prevent double-spend from rapid calls
+            guard self.balance >= seconds else { return }
+            self.balance = max(0, self.balance - seconds)
+            self.isTimedOut = self.balance <= 0
             self.saveToKeychain(balance: self.balance, timestamp: Date())
         }
         return true
