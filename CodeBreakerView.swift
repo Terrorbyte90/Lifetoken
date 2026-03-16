@@ -228,7 +228,7 @@ struct CodeBreakerView: View {
                     }
                     .padding(.vertical, 8)
                 }
-                .onChange(of: rows.count) { _ in
+                .onChange(of: rows.count) { _, _ in
                     withAnimation { proxy.scrollTo("input", anchor: .bottom) }
                 }
             }
@@ -501,7 +501,7 @@ struct CodeBreakerView: View {
     // MARK: - Logic
 
     private func startGame() {
-        secretCode   = (0..<codeLen).map { _ in symbols.randomElement()! }
+        secretCode   = (0..<codeLen).map { _ in symbols.randomElement() ?? "1" }
         currentGuess = []
         rows         = []
         timeLeft     = timeLimit

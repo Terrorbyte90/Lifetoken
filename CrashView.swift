@@ -217,7 +217,7 @@ struct CrashView: View {
             }
 
             Slider(value: $betAmount, in: 60...max(120, min(engine.balance, 86400 * 7)), step: 60)
-                .accentColor(.green)
+                .tint(.green)
 
             HStack(spacing: 8) {
                 ForEach([600.0, 1800.0, 3600.0, 21600.0, 86400.0], id: \.self) { v in
@@ -316,19 +316,20 @@ struct CrashView: View {
 
     func startTimer() {
         gameTimer?.invalidate()
-        gameTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [self] _ in
-            DispatchQueue.main.async {
+        gameTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
+            DispatchQueue.main.async { [weak self] in
+                guard let self = self else { return }
                 // Guard: only process ticks while game is still running
-                guard phase == .running else { return }
+                guard self.phase == .running else { return }
 
-                elapsed += 0.1
+                self.elapsed += 0.1
                 // Multiplier grows exponentially
-                multiplier = pow(1.06, elapsed)
+                self.multiplier = pow(1.06, self.elapsed)
 
-                pathPoints.append((elapsed, multiplier))
+                self.pathPoints.append((self.elapsed, self.multiplier))
 
-                if multiplier >= crashPoint {
-                    triggerCrash()
+                if self.multiplier >= self.crashPoint {
+                    self.triggerCrash()
                 }
             }
         }

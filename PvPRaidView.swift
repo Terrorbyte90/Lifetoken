@@ -349,7 +349,7 @@ struct PvPRaidView: View {
                 phase = .result
             }
         }
-        .onChange(of: manager.raidPhase) { newPhase in
+        .onChange(of: manager.raidPhase) { _, newPhase in
             if newPhase == .done { phase = .result }
         }
     }

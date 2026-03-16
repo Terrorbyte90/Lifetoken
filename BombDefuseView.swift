@@ -460,7 +460,7 @@ struct BombDefuseView: View {
             let alt = ["Börja med den \(pos).",
                        "Räkna till \(correct+1) från vänster — klipp den.",
                        "Tråd nummer \(correct+1) är din fiende."]
-            return alt.randomElement()!
+            return alt.randomElement() ?? alt[0]
 
         case 2:
             // Logical clue

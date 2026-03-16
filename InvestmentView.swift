@@ -94,7 +94,7 @@ class InvestmentManager: ObservableObject {
         }
         investments = newInvestments
         saveInvestments()
-        crashMessage = "Marknadskrasch! Dina investeringar forlorade \(Int(lossFactor * 100))% av sitt varde."
+        crashMessage = "Marknadskrasch! Dina investeringar förlorade \(Int(lossFactor * 100))% av sitt värde."
         showCrashAlert = true
     }
 
@@ -136,7 +136,7 @@ struct InvestmentView: View {
 
                     // Rate display
                     VStack(spacing: 8) {
-                        Text("DAGLIG RANTA")
+                        Text("DAGLIG RÄNTA")
                             .font(.system(size: 11, design: .monospaced))
                             .foregroundColor(.white.opacity(0.4))
                         Text(String(format: "%.1f%%", InvestmentManager.dailyRate(for: gameState.currentZone) * 100))
@@ -165,11 +165,11 @@ struct InvestmentView: View {
                             Slider(value: $investAmount,
                                    in: 3600...max(7200, min(engine.balance * 0.8, 86400 * 365)),
                                    step: 3600)
-                                .accentColor(.green)
+                                .tint(.green)
                         }
 
                         VStack(alignment: .leading, spacing: 6) {
-                            Text("Loptid:")
+                            Text("Löptid:")
                                 .font(.system(size: 12, design: .monospaced))
                                 .foregroundColor(.white.opacity(0.6))
                             HStack(spacing: 8) {
@@ -244,13 +244,13 @@ struct InvestmentView: View {
                 }
             }
         }
-        .alert("Bekrafta Investering", isPresented: $showConfirm) {
+        .alert("Bekräfta Investering", isPresented: $showConfirm) {
             Button("Investera") {
                 _ = investMgr.invest(amount: investAmount, maturityDays: maturityDays, zone: gameState.currentZone)
             }
             Button("Avbryt", role: .cancel) {}
         } message: {
-            Text("Investera \(TimeEngine.shortFormatted(investAmount)) i \(maturityDays) dagar?\nPengarna ar lasta under loptiden.")
+            Text("Investera \(TimeEngine.shortFormatted(investAmount)) i \(maturityDays) dagar?\nPengarna är låsta under löptiden.")
         }
         .alert("Marknadskrasch!", isPresented: $investMgr.showCrashAlert) {
             Button("OK") {}
@@ -269,7 +269,7 @@ struct InvestmentCard: View {
                     Text("Insats: \(TimeEngine.shortFormatted(investment.amount))")
                         .font(.system(size: 13, weight: .bold, design: .monospaced))
                         .foregroundColor(.white)
-                    Text("Daglig ranta: \(String(format: "%.1f", investment.dailyRate * 100))%")
+                    Text("Daglig ränta: \(String(format: "%.1f", investment.dailyRate * 100))%")
                         .font(.system(size: 11, design: .monospaced))
                         .foregroundColor(.green)
                 }
@@ -285,7 +285,7 @@ struct InvestmentCard: View {
             }
 
             HStack {
-                Text("Alder: \(String(format: "%.1f", investment.ageInDays)) / \(investment.maturityDays) dagar")
+                Text("Ålder: \(String(format: "%.1f", investment.ageInDays)) / \(investment.maturityDays) dagar")
                     .font(.system(size: 11, design: .monospaced))
                     .foregroundColor(.white.opacity(0.5))
                 Spacer()

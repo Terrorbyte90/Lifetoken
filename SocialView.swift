@@ -167,7 +167,7 @@ class SocialManager: ObservableObject {
                 let npcs = NPCPlayer.all.filter { $0.zone == GameState.shared.currentZone.name }
                 if let npc = npcs.randomElement() {
                     let replies = ["Noterat.", "Intressant.", "Hmm...", "Håller med.", "Tveksam.", "OK."]
-                    let reply = ZoneMessage(id: UUID(), senderName: npc.name, text: replies.randomElement()!, date: Date(), isFromSelf: false)
+                    let reply = ZoneMessage(id: UUID(), senderName: npc.name, text: replies.randomElement() ?? "...", date: Date(), isFromSelf: false)
                     self.chatMessages.append(reply)
                 }
             }
@@ -519,7 +519,7 @@ struct SocialView: View {
                     }
                     .padding()
                 }
-                .onChange(of: social.chatMessages.count) { _ in
+                .onChange(of: social.chatMessages.count) { _, _ in
                     if let last = social.chatMessages.last {
                         withAnimation { proxy.scrollTo(last.id, anchor: .bottom) }
                     }
@@ -897,7 +897,7 @@ struct LendSheetView: View {
                     Slider(value: $lendAmount,
                            in: 3600...max(7200, min(engine.balance * 0.9, 86400 * 365)),
                            step: 3600)
-                        .accentColor(.green)
+                        .tint(.green)
 
                     HStack {
                         ForEach([3, 7, 14, 30, 60], id: \.self) { d in
@@ -985,7 +985,7 @@ struct TransferSheetView: View {
                     Slider(value: $amount,
                            in: 60...max(120, min(engine.balance * 0.5, 86400 * 7)),
                            step: 60)
-                        .accentColor(.green)
+                        .tint(.green)
 
                     HStack(spacing: 8) {
                         ForEach([600.0, 1800.0, 3600.0, 21600.0, 86400.0], id: \.self) { v in

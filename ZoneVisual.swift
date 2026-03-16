@@ -347,12 +347,22 @@ struct ZoneVisual: View {
 
             VStack(spacing: 28) {
                 HStack {
+                    Button(action: { showMigrationSheet = false }) {
+                        Image(systemName: "xmark")
+                            .foregroundColor(.white.opacity(0.7))
+                            .padding(8)
+                            .background(Color.white.opacity(0.1))
+                            .clipShape(Circle())
+                    }
                     Spacer()
                     Text("MIGRERA TILL \(zone.name.uppercased())")
                         .font(.system(size: 16, weight: .bold, design: .monospaced))
                         .foregroundColor(.white)
                     Spacer()
+                    // Balance placeholder to center the title
+                    Color.clear.frame(width: 36, height: 36)
                 }
+                .padding(.horizontal)
                 .padding(.top, 40)
 
                 let minRequired = zone.entryCostSeconds + zone.fallThresholdSeconds

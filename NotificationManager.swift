@@ -15,8 +15,8 @@ class NotificationManager {
 
         let thresholds: [(TimeInterval, String)] = [
             (3600, "Kritiskt! Du har bara 1 timme kvar att leva."),
-            (10800, "Varning: 3 timmar kvar. Borja arbeta!"),
-            (86400, "24 timmar kvar. Oka inkomsten.")
+            (10800, "Varning: 3 timmar kvar. Börja arbeta!"),
+            (86400, "24 timmar kvar. Öka inkomsten.")
         ]
 
         for (threshold, message) in thresholds {
