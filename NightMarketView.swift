@@ -143,7 +143,7 @@ class NightMarketManager: ObservableObject {
         ]
         let basePrice: TimeInterval = 3600 * 2
         offers = NightSeller.allCases.map { seller in
-            let boost = baseBoosts.randomElement()!
+            let boost = baseBoosts.randomElement() ?? baseBoosts[0]
             let price = basePrice * seller.priceMultiplier
             return NightMarketOffer(
                 id: UUID().uuidString, seller: seller,

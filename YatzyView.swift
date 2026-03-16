@@ -200,7 +200,6 @@ class YatzyAI {
     // MARK: - Kategorivärdering med bonusobsession
 
     func bestCategoryEV(dice: [Int], available: Set<YatzyCategory>, myUpperScore: Int) -> Double {
-        var bestVal = -Double.infinity
         var bestEV = -Double.infinity
 
         for cat in available {
@@ -231,9 +230,7 @@ class YatzyAI {
 
             if adjustedScore > bestEV {
                 bestEV = adjustedScore
-                bestVal = adjustedScore
             }
-            _ = bestVal
         }
         return max(0, bestEV)
     }
@@ -440,7 +437,7 @@ struct YatzyView: View {
             }
 
             Slider(value: $betAmount, in: 300...max(600, min(engine.balance, 86400 * 7)), step: 300)
-                .accentColor(.green)
+                .tint(.green)
                 .padding(.horizontal)
 
             Button { startGame() } label: {

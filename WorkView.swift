@@ -241,6 +241,7 @@ struct WorkView: View {
                 }
             }
         }
+        .onDisappear { tickTimer.upstream.connect().cancel() }
         .alert("Starta jobb?", isPresented: $showConfirm) {
             Button("Starta") {
                 if let job = selectedJob { _ = workManager.startJob(job) }
@@ -636,6 +637,7 @@ struct ActiveJobCard: View {
         .clipShape(RoundedRectangle(cornerRadius: 14))
         .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.green.opacity(0.3), lineWidth: 1))
         .padding(.horizontal)
+        .onDisappear { tickTimer.upstream.connect().cancel() }
     }
 }
 

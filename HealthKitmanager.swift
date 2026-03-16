@@ -57,7 +57,7 @@ class HealthKitManager: ObservableObject {
         guard let type = HKObjectType.categoryType(forIdentifier: .sleepAnalysis) else { completion(0); return }
         let cal = Calendar.current
         let now = Date()
-        let yesterday = cal.date(byAdding: .hour, value: -24, to: now)!
+        let yesterday = cal.date(byAdding: .hour, value: -24, to: now) ?? now.addingTimeInterval(-86400)
         let pred = HKQuery.predicateForSamples(withStart: yesterday, end: now)
         let q = HKSampleQuery(sampleType: type, predicate: pred, limit: HKObjectQueryNoLimit, sortDescriptors: nil) { _, samples, _ in
             let total = (samples as? [HKCategorySample])?.filter {

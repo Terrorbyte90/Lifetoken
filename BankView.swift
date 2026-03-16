@@ -197,7 +197,7 @@ struct BankView: View {
         .alert("Transaktion", isPresented: $social.showAlert) {
             Button("OK") {}
         } message: { Text(social.alertMessage) }
-        .onChange(of: engine.balance) { _ in
+        .onChange(of: engine.balance) { _, _ in
             // Clamp invest slider value when balance drops
             if investAmount > investUpperBound {
                 investAmount = max(3600, (investUpperBound / 3600).rounded(.down) * 3600)
@@ -412,7 +412,7 @@ struct BankView: View {
                 }
 
                 Slider(value: $loanAmount, in: 3600...Swift.max(3601, maxLoan), step: 3600)
-                    .accentColor(.cyan)
+                    .tint(.cyan)
 
                 bankRow(
                     "Total kostnad (30d)",
@@ -514,7 +514,7 @@ struct BankView: View {
                             in: 3600...investUpperBound,
                             step: 3600
                         )
-                        .accentColor(.green)
+                        .tint(.green)
                     }
 
                     // Duration picker

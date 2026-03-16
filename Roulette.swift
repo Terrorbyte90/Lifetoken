@@ -180,7 +180,7 @@ struct SlotMachineView: View {
                 in: 60...max(60, min(engine.balance, 86_400 * 7)),
                 step: 60
             )
-            .accentColor(.green)
+            .tint(.green)
             .padding(.horizontal)
 
             // Quick bet row

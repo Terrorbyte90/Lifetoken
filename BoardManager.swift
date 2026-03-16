@@ -192,8 +192,8 @@ class BoardManager: ObservableObject {
         let playerBalance = TimeEngine.shared.balance
         let fee = playerBalance * feePercent
 
-        // Dra från spelaren
-        TimeEngine.shared.balance = max(0, playerBalance - fee)
+        // Dra från spelaren via safe deductTime
+        TimeEngine.shared.deductTime(min(fee, playerBalance))
 
         // Ge till Arvid
         DispatchQueue.main.async {

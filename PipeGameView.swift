@@ -125,7 +125,7 @@ struct PipeGrid {
         for r in 0..<size {
             for c in 0..<size {
                 if !pathSet.contains("\(r)_\(c)") {
-                    let t = [PType.cap, .straight, .corner, .tee].randomElement()!
+                    let t = [PType.cap, .straight, .corner, .tee].randomElement() ?? .straight
                     cells[r][c] = PCell(type: t, rotation: Int.random(in: 0..<4))
                 }
             }
@@ -435,7 +435,7 @@ struct PipeGameView: View {
             .aspectRatio(1, contentMode: .fit)
             .padding(.horizontal, 16)
         }
-        .onChange(of: waterAnim) { val in
+        .onChange(of: waterAnim) { _, val in
             if val >= 1 {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                     let earned = calcEarnings(won: won)

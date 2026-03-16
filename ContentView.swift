@@ -206,7 +206,7 @@ struct DashboardView: View {
                             : .default,
                         value: pulseAnim
                     )
-                    .onChange(of: engine.balance < 3600) { isLow in pulseAnim = isLow }
+                    .onChange(of: engine.balance < 3600) { _, isLow in pulseAnim = isLow }
                     .onAppear { pulseAnim = engine.balance < 3600 }
             }
 
@@ -750,7 +750,7 @@ struct MainTabView: View {
             SocialView()
                 .tabItem { Label("Social", systemImage: "person.2.fill") }
         }
-        .accentColor(.green)
+        .tint(.green)
         .preferredColorScheme(.dark)
         .toolbarBackground(.ultraThinMaterial, for: .tabBar)
     }

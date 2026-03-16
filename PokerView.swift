@@ -189,7 +189,7 @@ struct PokerView: View {
                 in: bigBlind...max(bigBlind * 2, playerStack),
                 step: bigBlind
             )
-            .accentColor(.green)
+            .tint(.green)
             .padding(.horizontal)
 
             HStack(spacing: 10) {
@@ -240,9 +240,11 @@ struct PokerView: View {
         }
 
         // Deal hole cards
-        playerHand = [deck.deal()!, deck.deal()!]
+        guard let ph1 = deck.deal(), let ph2 = deck.deal() else { return }
+        playerHand = [ph1, ph2]
         for i in 0..<aiPlayers.count {
-            aiPlayers[i].holeCards = [deck.deal()!, deck.deal()!]
+            guard let ah1 = deck.deal(), let ah2 = deck.deal() else { return }
+            aiPlayers[i].holeCards = [ah1, ah2]
         }
 
         // Post blinds: player = small blind, first AI = big blind
@@ -358,7 +360,8 @@ struct PokerView: View {
 
         switch round {
         case 1:
-            communityCards = [deck.deal()!, deck.deal()!, deck.deal()!]
+            guard let f1 = deck.deal(), let f2 = deck.deal(), let f3 = deck.deal() else { return }
+            communityCards = [f1, f2, f3]
             statusMessage  = "Flop"
         case 2:
             if let card = deck.deal() { communityCards.append(card) }

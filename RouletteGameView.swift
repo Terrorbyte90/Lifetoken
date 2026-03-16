@@ -237,7 +237,7 @@ struct RouletteGameView: View {
                         ),
                         in: 0...36, step: 1
                     )
-                    .accentColor(.red)
+                    .tint(.red)
                     Text("36")
                         .font(.system(size: 11, design: .monospaced))
                         .foregroundColor(.white.opacity(0.5))
@@ -265,7 +265,7 @@ struct RouletteGameView: View {
                 in: 60...max(120, min(engine.balance, 86400 * 30)),
                 step: 60
             )
-            .accentColor(.green)
+            .tint(.green)
             .padding(.horizontal)
 
             // Quick-bet buttons

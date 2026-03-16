@@ -39,6 +39,7 @@ class MissionsManager: ObservableObject {
     @Published var rewardMessage: String = ""
 
     private let claimedKey = "claimed_missions"
+    private var uptimeTimer: Timer?
 
     // Static mission definitions
     private let allMissions: [Mission] = [
@@ -124,9 +125,9 @@ class MissionsManager: ObservableObject {
     }
 
     private func startUptimeTracking() {
-        Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { _ in
+        uptimeTimer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
             MissionsManager.incrementProgress("total_uptime_seconds", by: 60)
-            MissionsManager.shared.loadMissions()
+            self?.loadMissions()
         }
     }
 }

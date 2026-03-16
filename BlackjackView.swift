@@ -293,7 +293,7 @@ struct BlackjackView: View {
                 in: 60...max(120, min(engine.balance, 86400 * 10)),
                 step: 60
             )
-            .accentColor(.green)
+            .tint(.green)
             .padding(.horizontal)
 
             Button { startGame() } label: {
@@ -342,10 +342,12 @@ struct BlackjackView: View {
         playingSplit = false
         dealerHidden = true
 
-        playerCards.append(deck.deal()!)
-        dealerCards.append(deck.deal()!)
-        playerCards.append(deck.deal()!)
-        dealerCards.append(deck.deal()!)
+        guard let pc1 = deck.deal(), let dc1 = deck.deal(),
+              let pc2 = deck.deal(), let dc2 = deck.deal() else { return }
+        playerCards.append(pc1)
+        dealerCards.append(dc1)
+        playerCards.append(pc2)
+        dealerCards.append(dc2)
 
         playerTotal  = handValue(playerCards)
         dealerTotal  = handValue(dealerCards)

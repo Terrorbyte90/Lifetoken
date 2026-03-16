@@ -442,7 +442,7 @@ struct MultiDieView: View {
         }
         .rotationEffect(.degrees(rotationAngle))
         .scaleEffect(held ? 1.08 : scale)
-        .onChange(of: isRolling) { rolling in
+        .onChange(of: isRolling) { _, rolling in
             if rolling {
                 withAnimation(.spring(response: 0.2, dampingFraction: 0.5)) {
                     rotationAngle = Double.random(in: -25...25)
@@ -1500,9 +1500,9 @@ struct MultiplayerYatzyView: View {
             .animation(.spring(response: 0.5, dampingFraction: 0.75).delay(0.4), value: resultAnimating)
         }
         // Silence unused variable warnings
-        .onChange(of: isWin) { _ in }
-        .onChange(of: isLose) { _ in }
-        .onChange(of: tie) { _ in }
+        .onChange(of: isWin) { _, _ in }
+        .onChange(of: isLose) { _, _ in }
+        .onChange(of: tie) { _, _ in }
     }
 
     private var resultColor: Color {

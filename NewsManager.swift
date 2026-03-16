@@ -214,7 +214,7 @@ class NewsManager: ObservableObject {
         ]
         addItem(
             headline: "NY MEDBORGARE REGISTRERAD",
-            body: "\(username) har aktiverat sin tidsmätare i \(zoneName). \(flavors.randomElement()!)",
+            body: "\(username) har aktiverat sin tidsmätare i \(zoneName). \(flavors.randomElement() ?? "")",
             category: .playerJoin,
             priority: .low
         )
