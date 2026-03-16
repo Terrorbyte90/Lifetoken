@@ -318,6 +318,9 @@ struct CrashView: View {
         gameTimer?.invalidate()
         gameTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [self] _ in
             DispatchQueue.main.async {
+                // Guard: only process ticks while game is still running
+                guard phase == .running else { return }
+
                 elapsed += 0.1
                 // Multiplier grows exponentially
                 multiplier = pow(1.06, elapsed)

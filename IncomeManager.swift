@@ -95,7 +95,7 @@ class IncomeManager: ObservableObject {
         cal.timeZone = Self.stockholmTZ
         let now = Date()
         var comps = cal.dateComponents([.year, .month, .day], from: now)
-        comps.day! += 1
+        comps.day = (comps.day ?? 1) + 1
         comps.hour = 0; comps.minute = 0; comps.second = 1
         let nextMidnight = cal.date(from: comps) ?? now.addingTimeInterval(86400)
         return max(1, nextMidnight.timeIntervalSince(now))
@@ -105,7 +105,10 @@ class IncomeManager: ObservableObject {
         var cal = Calendar(identifier: .gregorian)
         cal.timeZone = Self.stockholmTZ
         let comps = cal.dateComponents([.year, .month, .day], from: Date())
-        return "\(comps.year!)-\(comps.month!)-\(comps.day!)"
+        let y = comps.year ?? 2000
+        let m = comps.month ?? 1
+        let d = comps.day ?? 1
+        return "\(y)-\(m)-\(d)"
     }
 
     // MARK: - App lifecycle

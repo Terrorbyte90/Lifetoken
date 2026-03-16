@@ -236,7 +236,7 @@ class NightMarketManager: ObservableObject {
         if hour < 5 { return 0 } // already open
         // Time until next midnight Stockholm
         var comps = cal.dateComponents([.year, .month, .day], from: now)
-        comps.day! += 1
+        comps.day = (comps.day ?? 1) + 1
         comps.hour = 0; comps.minute = 0; comps.second = 0
         let nextMidnight = cal.date(from: comps) ?? now
         return nextMidnight.timeIntervalSince(now)

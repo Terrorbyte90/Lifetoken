@@ -271,21 +271,17 @@ struct DashboardView: View {
         HStack(spacing: 10) {
             payCard(
                 icon: "heart.fill",
-                iconColor: Color(red: 0.2, green: 0.85, blue: 0.4),
+                iconColor: Color(red: 0.2, green: 0.9, blue: 0.45),
                 title: "HÄLSOINKOMST",
                 value: TimeEngine.shortFormatted(incomeManager.projectedDailyIncome),
-                sub: "projicerat efter skatt",
-                accent: Color(red: 0.05, green: 0.10, blue: 0.06),
-                border: Color(red: 0.1, green: 0.40, blue: 0.15)
+                sub: "projicerat efter skatt"
             )
             payCard(
                 icon: "clock.badge.checkmark.fill",
-                iconColor: Color(red: 0.9, green: 0.80, blue: 0.2),
+                iconColor: Color(red: 0.95, green: 0.82, blue: 0.2),
                 title: "UTBETALNING",
                 value: countdownToMidnight(),
-                sub: "tills 00:00",
-                accent: Color(red: 0.08, green: 0.07, blue: 0.03),
-                border: Color(red: 0.40, green: 0.35, blue: 0.05)
+                sub: "tills 00:00"
             )
         }
         .padding(.horizontal)
@@ -296,42 +292,51 @@ struct DashboardView: View {
         iconColor: Color,
         title: String,
         value: String,
-        sub: String,
-        accent: Color,
-        border: Color
+        sub: String
     ) -> some View {
-        VStack(spacing: 5) {
-            HStack(spacing: 5) {
-                Image(systemName: icon)
-                    .font(.system(size: 10))
-                    .foregroundColor(iconColor)
+        VStack(alignment: .leading, spacing: 8) {
+            // Header row
+            HStack(spacing: 6) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 7)
+                        .fill(iconColor.opacity(0.18))
+                        .frame(width: 26, height: 26)
+                    Image(systemName: icon)
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundColor(iconColor)
+                }
                 Text(title)
-                    .font(.system(size: 7, weight: .bold, design: .monospaced))
-                    .foregroundColor(.white.opacity(0.30))
-                    .tracking(1.5)
-                Spacer()
+                    .font(.system(size: 9, weight: .bold, design: .monospaced))
+                    .foregroundColor(.white.opacity(0.60))
+                    .tracking(1)
+                Spacer(minLength: 0)
             }
-            HStack {
-                Text(value)
-                    .font(.system(size: 18, weight: .bold, design: .monospaced))
-                    .foregroundColor(iconColor)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
-                Spacer()
-            }
-            HStack {
-                Text(sub)
-                    .font(.system(size: 9, design: .monospaced))
-                    .foregroundColor(.white.opacity(0.22))
-                Spacer()
-            }
+            // Value
+            Text(value)
+                .font(.system(size: 20, weight: .black, design: .monospaced))
+                .foregroundColor(iconColor)
+                .lineLimit(1)
+                .minimumScaleFactor(0.65)
+            // Subtitle
+            Text(sub)
+                .font(.system(size: 10, design: .monospaced))
+                .foregroundColor(.white.opacity(0.50))
         }
         .padding(.horizontal, 14)
-        .padding(.vertical, 13)
-        .frame(maxWidth: .infinity)
-        .background(accent)
-        .clipShape(RoundedRectangle(cornerRadius: 14))
-        .overlay(RoundedRectangle(cornerRadius: 14).stroke(border, lineWidth: 1))
+        .padding(.vertical, 14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            LinearGradient(
+                colors: [iconColor.opacity(0.13), iconColor.opacity(0.04)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(iconColor.opacity(0.35), lineWidth: 1)
+        )
     }
 
     // MARK: - Stats Strip
@@ -367,25 +372,32 @@ struct DashboardView: View {
     }
 
     private func statChip(icon: String, label: String, value: String, color: Color) -> some View {
-        VStack(spacing: 5) {
+        VStack(spacing: 6) {
             Image(systemName: icon)
-                .font(.system(size: 12))
+                .font(.system(size: 14))
                 .foregroundColor(color)
+                .shadow(color: color.opacity(0.5), radius: 4)
             Text(value)
-                .font(.system(size: 12, weight: .black, design: .monospaced))
-                .foregroundColor(color)
+                .font(.system(size: 13, weight: .black, design: .monospaced))
+                .foregroundColor(.white)
                 .lineLimit(1)
                 .minimumScaleFactor(0.6)
             Text(label)
-                .font(.system(size: 7, weight: .bold, design: .monospaced))
-                .foregroundColor(.white.opacity(0.22))
+                .font(.system(size: 8, weight: .bold, design: .monospaced))
+                .foregroundColor(color.opacity(0.75))
                 .tracking(0.5)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 11)
-        .background(color.opacity(0.07))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-        .overlay(RoundedRectangle(cornerRadius: 12).stroke(color.opacity(0.20), lineWidth: 1))
+        .padding(.vertical, 13)
+        .background(
+            LinearGradient(
+                colors: [color.opacity(0.14), color.opacity(0.05)],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 13))
+        .overlay(RoundedRectangle(cornerRadius: 13).stroke(color.opacity(0.35), lineWidth: 1))
     }
 
     // MARK: - Nav Section Label
