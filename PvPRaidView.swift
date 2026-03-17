@@ -158,6 +158,8 @@ class PvPRaidManager: ObservableObject {
         saveCooldowns()
 
         history.insert(record, at: 0)
+        // Notify the defender that they were raided
+        NotificationManager.shared.sendRaidNotification(from: record.attackerName, amount: TimeEngine.shortFormatted(record.stake), won: playerWon)
         activeRaid = nil
         saveHistory()
     }

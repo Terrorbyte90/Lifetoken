@@ -4,7 +4,7 @@ import Foundation
 // MARK: - Mission Types
 
 enum MissionCategory: String, Codable {
-    case survival = "Overlevnad"
+    case survival = "Överlevnad"
     case wealth = "Rikedom"
     case zone = "Zon"
     case casino = "Kasino"
@@ -44,47 +44,47 @@ class MissionsManager: ObservableObject {
     // Static mission definitions
     private let allMissions: [Mission] = [
         // Survival
-        Mission(id: "survive_1d",   title: "Overlev en dag",     description: "Ha mer an 0 sekunder efter 24h.",
+        Mission(id: "survive_1d",   title: "Överlev en dag",     description: "Ha mer än 0 sekunder efter 24h.",
                 category: .survival, icon: "heart.fill",         rewardSeconds: 7200,
                 targetValue: 86400,  progressKey: "total_uptime_seconds", isCompleted: false, isClaimed: false),
-        Mission(id: "survive_7d",   title: "Overlev en vecka",   description: "Hall dig vid liv i 7 dagar.",
+        Mission(id: "survive_7d",   title: "Överlev en vecka",   description: "Håll dig vid liv i 7 dagar.",
                 category: .survival, icon: "calendar",           rewardSeconds: 86400,
                 targetValue: 604800, progressKey: "total_uptime_seconds", isCompleted: false, isClaimed: false),
-        Mission(id: "survive_30d",  title: "Manadsoverlevare",   description: "30 dagar utan att time out.",
+        Mission(id: "survive_30d",  title: "Månadsöverlevare",   description: "30 dagar utan att time out.",
                 category: .survival, icon: "medal.fill",         rewardSeconds: 2592000,
                 targetValue: 2592000, progressKey: "total_uptime_seconds", isCompleted: false, isClaimed: false),
         // Wealth
-        Mission(id: "earn_1h",     title: "Tjana 1 timme",       description: "Tjana totalt 3 600 sekunder.",
+        Mission(id: "earn_1h",     title: "Tjäna 1 timme",       description: "Tjäna totalt 3 600 sekunder.",
                 category: .wealth,  icon: "plus.circle.fill",    rewardSeconds: 1800,
                 targetValue: 3600,  progressKey: "totalEarned",  isCompleted: false, isClaimed: false),
-        Mission(id: "earn_1d",     title: "Tjana 24 timmar",     description: "Tjana totalt 86 400 sekunder.",
+        Mission(id: "earn_1d",     title: "Tjäna 24 timmar",     description: "Tjäna totalt 86 400 sekunder.",
                 category: .wealth,  icon: "banknote.fill",       rewardSeconds: 21600,
                 targetValue: 86400, progressKey: "totalEarned",  isCompleted: false, isClaimed: false),
-        Mission(id: "earn_1w",     title: "Tjana 1 vecka",       description: "Tjana totalt 604 800 sekunder.",
+        Mission(id: "earn_1w",     title: "Tjäna 1 vecka",       description: "Tjäna totalt 604 800 sekunder.",
                 category: .wealth,  icon: "crown.fill",          rewardSeconds: 172800,
                 targetValue: 604800, progressKey: "totalEarned", isCompleted: false, isClaimed: false),
         // Zone progression
-        Mission(id: "reach_midgrey",  title: "Na Midgrey",       description: "Las upp Midgrey-zonen.",
+        Mission(id: "reach_midgrey",  title: "Nå Midgrey",       description: "Lås upp Midgrey-zonen.",
                 category: .zone,    icon: "arrow.up.circle",     rewardSeconds: 14400,
                 targetValue: 1,     progressKey: "zone_midgrey_reached", isCompleted: false, isClaimed: false),
-        Mission(id: "reach_aether",   title: "Na Aetherpoint",   description: "Las upp Aetherpoint-zonen.",
+        Mission(id: "reach_aether",   title: "Nå Aetherpoint",   description: "Lås upp Aetherpoint-zonen.",
                 category: .zone,    icon: "building.2.fill",     rewardSeconds: 86400,
                 targetValue: 1,     progressKey: "zone_aetherpoint_reached", isCompleted: false, isClaimed: false),
-        Mission(id: "reach_novalux",  title: "Na Novalux",       description: "Las upp Novalux-zonen.",
+        Mission(id: "reach_novalux",  title: "Nå Novalux",       description: "Lås upp Novalux-zonen.",
                 category: .zone,    icon: "star.fill",           rewardSeconds: 604800,
                 targetValue: 1,     progressKey: "zone_novalux_reached", isCompleted: false, isClaimed: false),
         // Casino
-        Mission(id: "win_poker",   title: "Vinn en pokerpott",   description: "Vinn din forsta pokerpott.",
+        Mission(id: "win_poker",   title: "Vinn en pokerpott",   description: "Vinn din första pokerpott.",
                 category: .casino,  icon: "suit.spade.fill",     rewardSeconds: 3600,
                 targetValue: 1,     progressKey: "poker_wins",   isCompleted: false, isClaimed: false),
         Mission(id: "casino_win_3", title: "3 kasinovinster",    description: "Vinn 3 kasinospel totalt.",
                 category: .casino,  icon: "dice.fill",           rewardSeconds: 21600,
                 targetValue: 3,     progressKey: "casino_total_wins", isCompleted: false, isClaimed: false),
         // Work
-        Mission(id: "complete_job", title: "Slutfor ett jobb",   description: "Slutfor ditt forsta arbete.",
+        Mission(id: "complete_job", title: "Slutför ett jobb",   description: "Slutför ditt första arbete.",
                 category: .work,    icon: "checkmark.circle.fill", rewardSeconds: 3600,
                 targetValue: 1,     progressKey: "jobs_completed", isCompleted: false, isClaimed: false),
-        Mission(id: "complete_10jobs", title: "10 jobb klara",   description: "Slutfor 10 jobb totalt.",
+        Mission(id: "complete_10jobs", title: "10 jobb klara",   description: "Slutför 10 jobb totalt.",
                 category: .work,    icon: "hammer.fill",         rewardSeconds: 86400,
                 targetValue: 10,    progressKey: "jobs_completed", isCompleted: false, isClaimed: false),
     ]
@@ -244,7 +244,7 @@ struct MissionCard: View {
             }
 
             if mission.isReady {
-                Button("HAMTA", action: onClaim)
+                Button("HÄMTA", action: onClaim)
                     .font(.system(size: 11, weight: .bold, design: .monospaced))
                     .foregroundColor(.black)
                     .padding(.horizontal, 10).padding(.vertical, 8)

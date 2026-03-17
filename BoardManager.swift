@@ -33,17 +33,17 @@ enum PowerRole: String, CaseIterable {
 
     var subtitle: String {
         switch self {
-        case .rank1: return "Skattemagnaten"
-        case .rank2: return "Tidsvaktaren"
-        case .rank3: return "Sedeltryckaren"
+        case .rank1: return "Skattemagnaten — uppbär skatten"
+        case .rank2: return "Tidstjuven — snor din balans"
+        case .rank3: return "Inflationsherren — tjänar på priser"
         }
     }
 
     var description: String {
         switch self {
-        case .rank1: return "Får all skatteintäkt från samtliga spelare i samtliga zoner"
-        case .rank2: return "Drar 3–12% av alla spelares balans varje vecka"
-        case .rank3: return "Utlöser inflationsspiken en gång per vecka"
+        case .rank1: return "Uppbär en del av all skatteintäkt som flödar genom systemet. Varje gång en spelare betalar skatt får Skattemagnaten sin andel."
+        case .rank2: return "Drar 3–12% av alla spelares balans varje vecka som en osynlig systemavgift. Du märker det knappt — men det summerar sig."
+        case .rank3: return "Utlöser inflationsspiken en gång per vecka. Varje gång priserna stiger tjänar han på att din sparade tid förlorar köpkraft."
         }
     }
 
@@ -412,11 +412,40 @@ struct BoardDetailView: View {
                         Text("STYRELSEN")
                             .font(.system(size: 28, weight: .bold, design: .monospaced))
                             .foregroundColor(.white)
-                        Text("De kontrollerar din tid")
+                        Text("De tre mäktigaste")
                             .font(.system(size: 13, design: .monospaced))
                             .foregroundColor(Color(red: 0.5, green: 0.5, blue: 0.5))
                     }
                     .padding(.top, 60)
+
+                    // Explanation card
+                    VStack(alignment: .leading, spacing: 10) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "crown.fill")
+                                .foregroundColor(Color(red: 1.0, green: 0.75, blue: 0.0))
+                                .font(.system(size: 14))
+                            Text("HUR FUNGERAR DET?")
+                                .font(.system(size: 10, weight: .bold, design: .monospaced))
+                                .foregroundColor(Color(red: 1.0, green: 0.75, blue: 0.0))
+                                .tracking(2)
+                        }
+                        Text("Tre mäktiga figurer kontrollerar Lifetokens ekonomi. De lever på din tid — och alla andras. Klättra förbi dem i balans och ta deras plats, deras titel och deras intäktsströmmar.")
+                            .font(.system(size: 12, design: .monospaced))
+                            .foregroundColor(Color(red: 0.65, green: 0.65, blue: 0.7))
+                            .lineSpacing(4)
+
+                        Divider().background(Color(red: 0.25, green: 0.25, blue: 0.3))
+
+                        VStack(alignment: .leading, spacing: 6) {
+                            bonusRow(rank: "RANG 1", icon: "dollarsign.circle.fill", color: Color(red: 0.9, green: 0.3, blue: 0.1), text: "Uppbär en del av alla skatteintäkter. Ju mer skatten flödar, desto mer tjänar han.")
+                            bonusRow(rank: "RANG 2", icon: "clock.fill", color: Color(red: 0.8, green: 0.6, blue: 0.1), text: "Snor 3–12% av din balans varje vecka som en tyst avgift. Du märker det knappt tills det är för sent.")
+                            bonusRow(rank: "RANG 3", icon: "printer.fill", color: Color(red: 0.5, green: 0.3, blue: 0.9), text: "Utlöser inflationsspiken varje vecka. Din sparade tid tappar köpkraft — hans balans ökar.")
+                        }
+                    }
+                    .padding(16)
+                    .background(Color(red: 0.06, green: 0.05, blue: 0.10))
+                    .clipShape(RoundedRectangle(cornerRadius: 14))
+                    .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color(red: 1.0, green: 0.75, blue: 0.0).opacity(0.2), lineWidth: 1))
 
                     // Totalt stulet
                     statCard(
@@ -464,7 +493,7 @@ struct BoardDetailView: View {
                     Text(formatYears(member.balance))
                         .font(.system(size: 14, weight: .bold, design: .monospaced))
                         .foregroundColor(.white)
-                    Text("+\(TimeEngine.shortFormatted(member.weeklyIncome))/vecka")
+                    Text("Intjänat: \(TimeEngine.shortFormatted(member.weeklyIncome))")
                         .font(.system(size: 10, design: .monospaced))
                         .foregroundColor(member.color)
                 }
@@ -516,5 +545,24 @@ struct BoardDetailView: View {
         let minutes = (rem2 % 3600) / 60
         let secs    = rem2 % 60
         return String(format: "%02d:%03d:%02d:%02d:%02d", years, days, hours, minutes, secs)
+    }
+
+    private func bonusRow(rank: String, icon: String, color: Color, text: String) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: icon)
+                .font(.system(size: 12))
+                .foregroundColor(color)
+                .frame(width: 16)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(rank)
+                    .font(.system(size: 8, weight: .bold, design: .monospaced))
+                    .foregroundColor(color)
+                    .tracking(1)
+                Text(text)
+                    .font(.system(size: 11, design: .monospaced))
+                    .foregroundColor(Color(red: 0.6, green: 0.6, blue: 0.65))
+                    .lineSpacing(2)
+            }
+        }
     }
 }

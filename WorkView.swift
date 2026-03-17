@@ -215,6 +215,8 @@ struct WorkView: View {
     @State private var showConfirm: Bool = false
     @State private var tickTimer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
     @State private var showMiniJobsFromWork = false
+    @State private var showJobCompleteToast: Bool = false
+    @State private var jobCompleteMessage: String = ""
 
     var availableJobs: [JobType] {
         workManager.availableJobs(for: gameState.currentZone)
@@ -243,20 +245,34 @@ struct WorkView: View {
             }
         }
         .onDisappear { tickTimer.upstream.connect().cancel() }
-        .alert("Starta jobb?", isPresented: $showConfirm) {
-            Button("Starta") {
-                if let job = selectedJob { _ = workManager.startJob(job) }
-            }
-            Button("Avbryt", role: .cancel) {}
-        } message: {
+        .sheet(isPresented: $showConfirm) {
             if let job = selectedJob {
-                Text("'\(job.name)' tar \(formatDuration(job.durationSeconds)).\nFörväntat nettolön: ~\(TimeEngine.shortFormatted(job.netEarningsInflated(for: gameState.currentZone))) (exkl. inflation)")
+                JobConfirmSheet(job: job, zone: gameState.currentZone) {
+                    _ = workManager.startJob(job)
+                    showConfirm = false
+                } onCancel: {
+                    showConfirm = false
+                }
+                .presentationDetents([.height(300)])
+                .presentationDragIndicator(.visible)
             }
         }
-        .alert("Jobb Klart!", isPresented: $workManager.showJobComplete) {
-            Button("OK") {}
-        } message: {
-            Text(workManager.lastCompletedJobMessage)
+        .onChange(of: workManager.showJobComplete) { _, isShowing in
+            if isShowing {
+                jobCompleteMessage = workManager.lastCompletedJobMessage
+                withAnimation(.spring()) { showJobCompleteToast = true }
+                workManager.showJobComplete = false
+                DispatchQueue.main.asyncAfter(deadline: .now() + 4.0) {
+                    withAnimation(.easeOut) { showJobCompleteToast = false }
+                }
+            }
+        }
+        .overlay(alignment: .top) {
+            if showJobCompleteToast {
+                JobCompleteToast(message: jobCompleteMessage)
+                    .padding(.top, 54)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
         }
         .sheet(isPresented: $showMiniJobsFromWork) { NavigationStack { MiniJobsView() } }
     }
@@ -573,87 +589,76 @@ struct JobCard: View {
     let inflationMultiplier: Double
     let onTap: () -> Void
 
-    var showInflationWarning: Bool { inflationMultiplier > 1.1 }
+    private var accentColor: Color {
+        if isDisabled { return .gray }
+        if job.riskPercentage > 0.20 { return Color(red: 0.9, green: 0.3, blue: 0.1) }
+        if job.riskPercentage > 0.10 { return .orange }
+        return .green
+    }
 
     var body: some View {
         Button(action: { if !isDisabled { onTap() } }) {
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(spacing: 0) {
+                // Top colored stripe
+                accentColor.opacity(isDisabled ? 0.15 : 0.6)
+                    .frame(height: 2)
+
                 HStack(spacing: 14) {
+                    // Icon
                     ZStack {
-                        Circle()
-                            .fill(isDisabled ? Color.gray.opacity(0.15) : Color.green.opacity(0.15))
-                            .frame(width: 38, height: 38)
+                        RoundedRectangle(cornerRadius: 10)
+                            .fill(accentColor.opacity(isDisabled ? 0.06 : 0.12))
+                            .frame(width: 44, height: 44)
                         Image(systemName: job.icon)
-                            .font(.system(size: 16))
-                            .foregroundColor(isDisabled ? .gray : .green)
+                            .font(.system(size: 18))
+                            .foregroundColor(isDisabled ? .gray : accentColor)
                     }
 
-                    VStack(alignment: .leading, spacing: 3) {
+                    // Info
+                    VStack(alignment: .leading, spacing: 4) {
                         Text(job.name)
-                            .font(.system(size: 14, weight: .bold, design: .monospaced))
-                            .foregroundColor(isDisabled ? .gray : .white)
+                            .font(.system(size: 13, weight: .bold, design: .monospaced))
+                            .foregroundColor(isDisabled ? .gray.opacity(0.6) : .white)
                         Text(job.description)
-                            .font(.system(size: 10, design: .monospaced))
-                            .foregroundColor(.white.opacity(0.45))
+                            .font(.system(size: 9, design: .monospaced))
+                            .foregroundColor(.white.opacity(isDisabled ? 0.2 : 0.4))
                             .lineLimit(2)
                     }
 
                     Spacer()
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 11))
-                        .foregroundColor(.white.opacity(0.2))
-                }
 
-                HStack(spacing: 10) {
-                    Label(formatDur(job.durationSeconds), systemImage: "clock")
-                        .font(.system(size: 10, design: .monospaced))
-                        .foregroundColor(.white.opacity(0.5))
-
-                    Spacer()
-
-                    // Net earnings after inflation
-                    VStack(alignment: .trailing, spacing: 1) {
-                        Text("Nettolön: ~\(TimeEngine.shortFormatted(job.netEarningsInflated(for: zone)))")
-                            .font(.system(size: 10, weight: .bold, design: .monospaced))
-                            .foregroundColor(.green.opacity(isDisabled ? 0.4 : 0.9))
-                        Text("(exkl. inflation)")
-                            .font(.system(size: 8, design: .monospaced))
-                            .foregroundColor(.white.opacity(0.3))
-                    }
-
-                    if job.riskPercentage > 0.1 {
-                        Label("\(Int(job.riskPercentage * 100))%", systemImage: "exclamationmark.triangle")
-                            .font(.system(size: 10, design: .monospaced))
-                            .foregroundColor(.yellow.opacity(0.8))
-                    }
-                }
-
-                if showInflationWarning && !isDisabled {
-                    HStack(spacing: 4) {
-                        Image(systemName: "exclamationmark.triangle.fill")
-                            .font(.system(size: 9))
-                            .foregroundColor(.orange)
-                        Text("Inflation \(String(format: "+%.1f%%", (inflationMultiplier - 1) * 100)) sänker reallönen")
+                    // Earnings column
+                    VStack(alignment: .trailing, spacing: 3) {
+                        Text("+\(TimeEngine.shortFormatted(job.netEarningsInflated(for: zone)))")
+                            .font(.system(size: 12, weight: .black, design: .monospaced))
+                            .foregroundColor(isDisabled ? .gray.opacity(0.4) : accentColor)
+                        Text(formatDur(job.durationSeconds))
                             .font(.system(size: 9, design: .monospaced))
-                            .foregroundColor(.orange.opacity(0.8))
+                            .foregroundColor(.white.opacity(0.35))
+                        if job.riskPercentage > 0.10 {
+                            Text("Risk \(Int(job.riskPercentage * 100))%")
+                                .font(.system(size: 8, weight: .bold, design: .monospaced))
+                                .foregroundColor(.red.opacity(0.7))
+                                .padding(.horizontal, 5)
+                                .padding(.vertical, 2)
+                                .background(Color.red.opacity(0.08))
+                                .clipShape(Capsule())
+                        }
                     }
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3)
-                    .background(Color.orange.opacity(0.08))
-                    .clipShape(Capsule())
                 }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 13)
             }
-            .padding(14)
-            .background(isDisabled ? Color.white.opacity(0.02) : Color.white.opacity(0.06))
-            .clipShape(RoundedRectangle(cornerRadius: 14))
-            .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.green.opacity(isDisabled ? 0 : 0.15), lineWidth: 1))
         }
         .disabled(isDisabled)
+        .background(Color(red: 0.06, green: 0.07, blue: 0.09))
+        .clipShape(RoundedRectangle(cornerRadius: 14))
+        .overlay(RoundedRectangle(cornerRadius: 14).stroke(accentColor.opacity(isDisabled ? 0.05 : 0.2), lineWidth: 1))
+        .opacity(isDisabled ? 0.5 : 1.0)
     }
 
     func formatDur(_ s: TimeInterval) -> String {
-        let h = Int(s) / 3600
-        let m = (Int(s) % 3600) / 60
+        let h = Int(s) / 3600; let m = (Int(s) % 3600) / 60
         return h > 0 ? "\(h)h\(m > 0 ? " \(m)m" : "")" : "\(m)m"
     }
 }
@@ -664,46 +669,255 @@ struct ActiveJobCard: View {
     let job: ActiveJob
     let onCancel: () -> Void
     @State private var progress: Double = 0
+    @State private var pulsing: Bool = false
     @State private var tickTimer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
+    private var jobType: JobType? {
+        WorkManager.shared.allJobs.first(where: { $0.id == job.jobId })
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                HStack(spacing: 6) {
-                    Circle()
-                        .fill(Color.green)
-                        .frame(width: 7, height: 7)
-                    Text("PÅGÅENDE JOBB")
-                        .font(.system(size: 11, weight: .bold, design: .monospaced))
+        VStack(spacing: 0) {
+            // Top accent bar
+            LinearGradient(
+                colors: [Color.green.opacity(0.8), Color.green.opacity(0.3)],
+                startPoint: .leading, endPoint: .trailing
+            )
+            .frame(height: 2)
+            .clipShape(RoundedRectangle(cornerRadius: 1))
+
+            VStack(alignment: .leading, spacing: 16) {
+                // Header row
+                HStack(spacing: 14) {
+                    // Animated icon
+                    ZStack {
+                        Circle()
+                            .fill(Color.green.opacity(0.12))
+                            .frame(width: 52, height: 52)
+                        Circle()
+                            .stroke(Color.green.opacity(pulsing ? 0.5 : 0.15), lineWidth: 2)
+                            .frame(width: 52, height: 52)
+                            .animation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true), value: pulsing)
+                        Image(systemName: jobType?.icon ?? "briefcase.fill")
+                            .font(.system(size: 22))
+                            .foregroundColor(.green)
+                    }
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack(spacing: 6) {
+                            Circle()
+                                .fill(Color.green)
+                                .frame(width: 6, height: 6)
+                                .shadow(color: .green, radius: 3)
+                            Text("PÅGÅENDE")
+                                .font(.system(size: 8, weight: .black, design: .monospaced))
+                                .foregroundColor(.green.opacity(0.8))
+                                .tracking(3)
+                        }
+                        Text(jobType?.name ?? job.jobId)
+                            .font(.system(size: 16, weight: .black, design: .monospaced))
+                            .foregroundColor(.white)
+                    }
+
+                    Spacer()
+
+                    Button(action: onCancel) {
+                        Text("Avbryt")
+                            .font(.system(size: 10, weight: .bold, design: .monospaced))
+                            .foregroundColor(.red.opacity(0.6))
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 5)
+                            .background(Color.red.opacity(0.08))
+                            .clipShape(Capsule())
+                    }
+                }
+
+                // Progress section
+                VStack(spacing: 8) {
+                    HStack {
+                        Text("\(Int(progress * 100))% klar")
+                            .font(.system(size: 12, weight: .bold, design: .monospaced))
+                            .foregroundColor(.white.opacity(0.7))
+                        Spacer()
+                        Text("Klar om \(TimeEngine.shortFormatted(job.timeRemaining))")
+                            .font(.system(size: 12, weight: .black, design: .monospaced))
+                            .foregroundColor(.green)
+                    }
+
+                    // Custom progress bar
+                    GeometryReader { geo in
+                        ZStack(alignment: .leading) {
+                            RoundedRectangle(cornerRadius: 4)
+                                .fill(Color.white.opacity(0.06))
+                                .frame(height: 8)
+                            RoundedRectangle(cornerRadius: 4)
+                                .fill(
+                                    LinearGradient(
+                                        colors: [Color(red: 0.2, green: 0.9, blue: 0.5), Color(red: 0.1, green: 0.7, blue: 0.3)],
+                                        startPoint: .leading, endPoint: .trailing
+                                    )
+                                )
+                                .frame(width: geo.size.width * progress, height: 8)
+                                .shadow(color: Color.green.opacity(0.4), radius: 4)
+                                .animation(.easeInOut(duration: 0.8), value: progress)
+                        }
+                    }
+                    .frame(height: 8)
+                }
+
+                // Earnings preview
+                if let jt = jobType {
+                    HStack {
+                        Image(systemName: "arrow.up.circle.fill")
+                            .font(.system(size: 10))
+                            .foregroundColor(.green.opacity(0.5))
+                        Text("Förväntat: ~\(TimeEngine.shortFormatted(jt.netEarnings(for: GameState.shared.currentZone)))")
+                            .font(.system(size: 10, design: .monospaced))
+                            .foregroundColor(.white.opacity(0.35))
+                    }
+                }
+            }
+            .padding(18)
+        }
+        .background(
+            LinearGradient(
+                colors: [Color(red: 0.04, green: 0.10, blue: 0.06), Color(red: 0.03, green: 0.07, blue: 0.04)],
+                startPoint: .topLeading, endPoint: .bottomTrailing
+            )
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.green.opacity(0.25), lineWidth: 1))
+        .shadow(color: Color.green.opacity(0.1), radius: 12, y: 4)
+        .padding(.horizontal)
+        .onAppear {
+            progress = job.progress
+            pulsing = true
+        }
+        .onReceive(tickTimer) { _ in
+            progress = job.progress
+        }
+        .onDisappear { tickTimer.upstream.connect().cancel() }
+    }
+}
+
+// MARK: - Job Confirm Sheet
+
+struct JobConfirmSheet: View {
+    let job: JobType
+    let zone: ZoneProfile
+    let onConfirm: () -> Void
+    let onCancel: () -> Void
+
+    var body: some View {
+        VStack(spacing: 24) {
+            VStack(spacing: 6) {
+                Image(systemName: job.icon)
+                    .font(.system(size: 32))
+                    .foregroundColor(.green)
+                Text(job.name)
+                    .font(.system(size: 18, weight: .black, design: .monospaced))
+                    .foregroundColor(.white)
+                Text(job.description)
+                    .font(.system(size: 11, design: .monospaced))
+                    .foregroundColor(.white.opacity(0.5))
+                    .multilineTextAlignment(.center)
+            }
+            .padding(.top, 24)
+
+            HStack(spacing: 20) {
+                VStack(spacing: 3) {
+                    Text("TID")
+                        .font(.system(size: 8, design: .monospaced))
+                        .foregroundColor(.white.opacity(0.4))
+                    let h = Int(job.durationSeconds) / 3600
+                    let m = (Int(job.durationSeconds) % 3600) / 60
+                    Text(h > 0 ? "\(h)h \(m)m" : "\(m)m")
+                        .font(.system(size: 14, weight: .bold, design: .monospaced))
+                        .foregroundColor(.white)
+                }
+                Divider().frame(height: 30).background(Color.white.opacity(0.2))
+                VStack(spacing: 3) {
+                    Text("NETTOLÖN")
+                        .font(.system(size: 8, design: .monospaced))
+                        .foregroundColor(.white.opacity(0.4))
+                    Text("~\(TimeEngine.shortFormatted(job.netEarnings(for: zone)))")
+                        .font(.system(size: 14, weight: .bold, design: .monospaced))
                         .foregroundColor(.green)
                 }
-                Spacer()
-                Button("Avbryt", action: onCancel)
-                    .font(.system(size: 11, design: .monospaced))
-                    .foregroundColor(.red.opacity(0.7))
+                Divider().frame(height: 30).background(Color.white.opacity(0.2))
+                VStack(spacing: 3) {
+                    Text("RISK")
+                        .font(.system(size: 8, design: .monospaced))
+                        .foregroundColor(.white.opacity(0.4))
+                    Text("\(Int(job.riskPercentage * 100))%")
+                        .font(.system(size: 14, weight: .bold, design: .monospaced))
+                        .foregroundColor(job.riskPercentage > 0.15 ? .red : .orange)
+                }
             }
+            .padding(14)
+            .background(Color.white.opacity(0.05))
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .padding(.horizontal, 24)
 
-            ProgressView(value: progress)
-                .progressViewStyle(LinearProgressViewStyle(tint: .green))
-                .onReceive(tickTimer) { _ in progress = job.progress }
-
-            HStack {
-                Text("\(Int(progress * 100))% klar")
-                    .font(.system(size: 12, design: .monospaced))
-                    .foregroundColor(.white.opacity(0.6))
-                Spacer()
-                Text("Klar om: \(TimeEngine.shortFormatted(job.timeRemaining))")
-                    .font(.system(size: 12, weight: .bold, design: .monospaced))
-                    .foregroundColor(.yellow)
+            HStack(spacing: 12) {
+                Button(action: onCancel) {
+                    Text("Avbryt")
+                        .font(.system(size: 13, weight: .bold, design: .monospaced))
+                        .foregroundColor(.white.opacity(0.5))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .background(Color.white.opacity(0.06))
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                }
+                Button(action: onConfirm) {
+                    Text("STARTA JOBB")
+                        .font(.system(size: 13, weight: .black, design: .monospaced))
+                        .foregroundColor(.black)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .background(Color.green)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                }
             }
-            .onAppear { progress = job.progress }
+            .padding(.horizontal, 24)
+            .padding(.bottom, 16)
         }
-        .padding()
-        .background(Color.green.opacity(0.08))
+        .background(Color(red: 0.05, green: 0.07, blue: 0.06))
+        .preferredColorScheme(.dark)
+    }
+}
+
+// MARK: - Job Complete Toast
+
+struct JobCompleteToast: View {
+    let message: String
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "checkmark.circle.fill")
+                .font(.system(size: 20))
+                .foregroundColor(.green)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("JOBB KLART!")
+                    .font(.system(size: 10, weight: .black, design: .monospaced))
+                    .foregroundColor(.green)
+                    .tracking(2)
+                Text(message)
+                    .font(.system(size: 11, design: .monospaced))
+                    .foregroundColor(.white.opacity(0.8))
+                    .lineLimit(2)
+            }
+            Spacer()
+        }
+        .padding(14)
+        .background(
+            LinearGradient(colors: [Color(red: 0.04, green: 0.12, blue: 0.06), Color(red: 0.03, green: 0.08, blue: 0.04)],
+                           startPoint: .leading, endPoint: .trailing)
+        )
         .clipShape(RoundedRectangle(cornerRadius: 14))
         .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.green.opacity(0.3), lineWidth: 1))
-        .padding(.horizontal)
-        .onDisappear { tickTimer.upstream.connect().cancel() }
+        .shadow(color: Color.green.opacity(0.2), radius: 12, y: 4)
+        .padding(.horizontal, 16)
     }
 }
 
