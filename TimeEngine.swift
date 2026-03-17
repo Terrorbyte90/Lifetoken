@@ -39,17 +39,18 @@ class TimeEngine: ObservableObject {
     // MARK: - One-time balance restore (runs exactly once on first launch of this build)
 
     private func applyPendingServerReset() {
-        let doneKey = "balance_reset_done_v4"
+        let doneKey = "balance_reset_done_v5"
         guard !UserDefaults.standard.bool(forKey: doneKey) else { return }
         UserDefaults.standard.set(true, forKey: doneKey)
-        // Reset to 24 hours — runs once, then never again
-        balance = 86400
+        // Reset to 78 hours — runs once, then never again
+        let targetBalance: TimeInterval = 78 * 3600 // 280800 seconds
+        balance = targetBalance
         isTimedOut = false
         cheatingDetected = false
         skipServerCorrection = true
-        saveToKeychain(balance: 86400, timestamp: Date())
+        saveToKeychain(balance: targetBalance, timestamp: Date())
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-            Task { await ServerSync.shared.syncBalance(86400) }
+            Task { await ServerSync.shared.syncBalance(targetBalance) }
         }
     }
 
