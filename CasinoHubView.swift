@@ -27,6 +27,14 @@ struct CasinoHubView: View {
         "Gå och jobba istället."
     ]
 
+    @State private var bribeAccepted: Bool = false
+    @State private var bribeMessage: String = ""
+    @State private var showBribeResult: Bool = false
+
+    private var needsDoorman: Bool {
+        gameState.currentZone.index <= 3 && !bribeAccepted
+    }
+
     var body: some View {
         ZStack {
             LinearGradient(
@@ -35,8 +43,8 @@ struct CasinoHubView: View {
                 endPoint: .bottom
             ).ignoresSafeArea()
 
-            if !gameState.currentZone.casinoAccess {
-                lockedView
+            if needsDoorman {
+                doormanView
             } else {
                 unlockedView
             }
@@ -52,59 +60,117 @@ struct CasinoHubView: View {
             case .crash:     CrashView()
             }
         }
+        .alert("Vakten låter dig in", isPresented: $showBribeResult) {
+            Button("Gå in") { bribeAccepted = true }
+        } message: { Text(bribeMessage) }
     }
 
-    // MARK: - Locked View
-    private var lockedView: some View {
+    // MARK: - Doorman View (bottom 4 zones)
+    private var doormanView: some View {
         ZStack {
-            // Blurred silhouette of cards in background
-            VStack {
-                HStack(spacing: 8) {
-                    ForEach(0..<4) { _ in
-                        RoundedRectangle(cornerRadius: 8)
-                            .fill(Color.white.opacity(0.03))
-                            .frame(width: 50, height: 70)
-                    }
+            // Smoky atmosphere
+            RadialGradient(
+                colors: [Color(red: 0.12, green: 0.06, blue: 0.02).opacity(0.8), .black],
+                center: .center, startRadius: 20, endRadius: 400
+            ).ignoresSafeArea()
+
+            VStack(spacing: 0) {
+                Spacer()
+
+                // Bouncer icon
+                ZStack {
+                    Circle()
+                        .fill(Color(red: 0.15, green: 0.08, blue: 0.04))
+                        .frame(width: 90, height: 90)
+                        .overlay(Circle().stroke(Color.red.opacity(0.4), lineWidth: 2))
+                        .shadow(color: .red.opacity(0.3), radius: 12)
+                    Image(systemName: "person.crop.circle.badge.xmark")
+                        .font(.system(size: 38))
+                        .foregroundColor(Color(red: 0.8, green: 0.3, blue: 0.1))
                 }
-                .blur(radius: 4)
-                .padding(.top, 80)
-                Spacer()
-            }
+                .padding(.bottom, 20)
 
-            // Red glow border
-            RoundedRectangle(cornerRadius: 24)
-                .stroke(Color.red.opacity(0.3), lineWidth: 1.5)
-                .blur(radius: 3)
-                .padding(24)
+                Text("DÖRRVAKT")
+                    .font(.system(size: 13, weight: .black, design: .monospaced))
+                    .foregroundColor(.red.opacity(0.6))
+                    .tracking(6)
+                    .padding(.bottom, 12)
 
-            VStack(spacing: 24) {
-                Spacer()
-
-                Image(systemName: "lock.fill")
-                    .font(.system(size: 50))
-                    .foregroundColor(.red.opacity(0.7))
-                    .shadow(color: .red.opacity(0.4), radius: 12)
-
-                Text("KASINO")
-                    .font(.system(size: 32, weight: .bold, design: .monospaced))
-                    .foregroundColor(.white)
-
-                Text(lockedMessages[lockedMessageIndex])
+                // Doorman quote
+                let quote = doormanQuotes[lockedMessageIndex % doormanQuotes.count]
+                Text("\"\(quote)\"")
                     .font(.system(size: 14, design: .monospaced))
-                    .foregroundColor(.white.opacity(0.5))
+                    .foregroundColor(.white.opacity(0.65))
                     .multilineTextAlignment(.center)
-                    .padding(.horizontal, 40)
+                    .italic()
+                    .padding(.horizontal, 32)
+                    .padding(.bottom, 32)
 
-                Text("Klättra uppåt i zonerna för att låsa upp kasinot.\nStarka spelare spelar sina sekunder på hög risk.")
-                    .font(.system(size: 12, design: .monospaced))
-                    .foregroundColor(.white.opacity(0.35))
-                    .multilineTextAlignment(.center)
+                // Bribe info
+                let bribeAmount = engine.balance * 0.05
+                VStack(spacing: 6) {
+                    Text("MUT VAKTEN")
+                        .font(.system(size: 10, weight: .bold, design: .monospaced))
+                        .foregroundColor(.yellow.opacity(0.5))
+                        .tracking(3)
+                    Text(TimeEngine.shortFormatted(bribeAmount))
+                        .font(.system(size: 28, weight: .black, design: .monospaced))
+                        .foregroundColor(.yellow)
+                    Text("5% av din tid — varje besök")
+                        .font(.system(size: 10, design: .monospaced))
+                        .foregroundColor(.white.opacity(0.35))
+                }
+                .padding(20)
+                .background(Color.yellow.opacity(0.06))
+                .clipShape(RoundedRectangle(cornerRadius: 14))
+                .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.yellow.opacity(0.2), lineWidth: 1))
+                .padding(.horizontal, 32)
+                .padding(.bottom, 24)
+
+                // Buttons
+                VStack(spacing: 10) {
+                    Button {
+                        let bribe = engine.balance * 0.05
+                        if TimeEngine.shared.deductTime(bribe) {
+                            let formatted = TimeEngine.shortFormatted(bribe)
+                            bribeMessage = "Du stack fram din klocka och förde över \(formatted) till vakten i smyg.\n\nVakten granskade dig från topp till tå, snöste och muttrade:\n\n\"Gå in då... ditt patrask.\""
+                            showBribeResult = true
+                        }
+                    } label: {
+                        Text("MUT VAKTEN")
+                            .font(.system(size: 15, weight: .bold, design: .monospaced))
+                            .foregroundColor(.black)
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(Color.yellow)
+                            .clipShape(RoundedRectangle(cornerRadius: 14))
+                    }
+                    .disabled(engine.balance < engine.balance * 0.05 + 60)
                     .padding(.horizontal, 32)
 
+                    Button {
+                        // Just dismiss / do nothing
+                    } label: {
+                        Text("Lämna platsen")
+                            .font(.system(size: 13, design: .monospaced))
+                            .foregroundColor(.white.opacity(0.4))
+                    }
+                }
+
+                Spacer()
                 Spacer()
             }
         }
     }
+
+    private let doormanQuotes = [
+        "Titta på sig själv — tror du verkligen att du hör hemma här?",
+        "Jag har sett fattigare... men inte mycket fattigare.",
+        "Listan är stängd. Kom tillbaka när du har råd att förlora.",
+        "Den där klockan du bär... den räcker inte ens till dricksen.",
+        "Eliten kliver inte i kö. Du gör det. Säger allt.",
+        "Kasino är för dom som har råd att förlora. Är du den sortens person?"
+    ]
 
     // MARK: - Unlocked View
     private var unlockedView: some View {
