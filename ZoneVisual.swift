@@ -348,7 +348,7 @@ struct ZoneVisual: View {
     func migrationSheet(zone: ZoneProfile) -> some View {
         ZStack {
             Color.black.ignoresSafeArea()
-            VStack(spacing: 24) {
+            VStack(spacing: 0) {
                 HStack {
                     Button { showMigrationSheet = false } label: {
                         Image(systemName: "xmark")
@@ -366,6 +366,10 @@ struct ZoneVisual: View {
                 }
                 .padding(.horizontal)
                 .padding(.top, 40)
+                .padding(.bottom, 16)
+
+                ScrollView(showsIndicators: false) {
+                VStack(spacing: 24) {
 
                 Text(zone.name.uppercased())
                     .font(.system(size: 28, weight: .black, design: .monospaced))
@@ -374,7 +378,12 @@ struct ZoneVisual: View {
                 let minRequired = zone.entryCostSeconds + zone.fallThresholdSeconds
                 let canAfford   = engine.balance >= minRequired
 
-                VStack(spacing: 12) {
+                // — KOSTNADER —
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("KOSTNADER")
+                        .font(.system(size: 9, weight: .black, design: .monospaced))
+                        .foregroundColor(.white.opacity(0.3))
+                        .tracking(3)
                     migrationRow(label: "Inträdesavgift", value: TimeEngine.shortFormatted(zone.entryCostSeconds), color: .orange)
                     migrationRow(label: "Buffert krävs", value: TimeEngine.shortFormatted(zone.fallThresholdSeconds), color: .yellow)
                     Divider().background(Color.white.opacity(0.1))
@@ -383,6 +392,47 @@ struct ZoneVisual: View {
                     Divider().background(Color.white.opacity(0.1))
                     migrationRow(label: "Ny skattesats", value: "\(Int(zone.taxRate * 100))%", color: .yellow)
                     migrationRow(label: "Ny inflation/dag", value: String(format: "%.1f%%", zone.inflationRatePerDay * 100), color: .orange)
+                }
+                .padding(16)
+                .background(Color.white.opacity(0.04))
+                .clipShape(RoundedRectangle(cornerRadius: 14))
+                .padding(.horizontal)
+
+                // — FÖRDELAR —
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("FÖRDELAR")
+                        .font(.system(size: 9, weight: .black, design: .monospaced))
+                        .foregroundColor(.white.opacity(0.3))
+                        .tracking(3)
+                    migrationRow(label: "Jobbmultiplikator", value: String(format: "×%.1f", zone.workMultiplier), color: .green)
+                    migrationRow(label: "Passiv inkomst/dag", value: TimeEngine.shortFormatted(TimeInterval(zone.passiveBonusSecondsPerDay)), color: .cyan)
+                    migrationRow(label: "Stegbonus", value: String(format: "×%.2f", zone.stepBonusMultiplier), color: .teal)
+                    if zone.allowBoosts {
+                        migrationRow(label: "Max boosts", value: "\(zone.maxActiveBoosts) aktiva", color: .purple)
+                        migrationRow(label: "Boosteffekt", value: String(format: "×%.1f", zone.boostEffectMultiplier), color: .purple)
+                    }
+                    if zone.casinoAccess {
+                        migrationRow(label: "Kasinoaccess", value: "✓ Upplåst", color: Color(red: 1.0, green: 0.85, blue: 0.3))
+                    }
+                    if !zone.protections.isEmpty {
+                        Divider().background(Color.white.opacity(0.1))
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("SKYDD")
+                                .font(.system(size: 9, weight: .bold, design: .monospaced))
+                                .foregroundColor(.white.opacity(0.3))
+                                .tracking(2)
+                            ForEach(zone.protections, id: \.self) { prot in
+                                HStack(spacing: 6) {
+                                    Image(systemName: "shield.fill")
+                                        .font(.system(size: 10))
+                                        .foregroundColor(.blue)
+                                    Text(prot)
+                                        .font(.system(size: 11, design: .monospaced))
+                                        .foregroundColor(.white.opacity(0.7))
+                                }
+                            }
+                        }
+                    }
                 }
                 .padding(16)
                 .background(Color.white.opacity(0.04))
@@ -419,7 +469,9 @@ struct ZoneVisual: View {
                 .disabled(!canAfford)
                 .padding(.horizontal)
 
-                Spacer()
+                Spacer(minLength: 40)
+                } // inner VStack
+                } // ScrollView
             }
         }
     }

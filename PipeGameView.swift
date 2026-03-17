@@ -115,9 +115,11 @@ struct PipeGrid {
             var cell = PCell.make(openings: conns)
             cell.isSource = i == 0
             cell.isDrain  = i == path.count-1
-            // Scramble rotation by 1..maxScramble (lower = easier)
-            let scramble = Int.random(in: 1...maxScramble)
-            cell.rotation = (cell.rotation + scramble) % 4
+            // Don't scramble source or drain — only scramble middle path cells
+            if i > 0 && i < path.count - 1 {
+                let scramble = Int.random(in: 1...maxScramble)
+                cell.rotation = (cell.rotation + scramble) % 4
+            }
             cells[r][c] = cell
         }
 
@@ -177,7 +179,7 @@ struct PipeGameView: View {
     let difficulty: Int
     @Environment(\.dismiss) var dismiss
 
-    private let gridSizes:  [Int]    = [4, 5, 7, 9]
+    private let gridSizes:  [Int]    = [4, 5, 6, 7]
     private let timeLimits: [Int]    = [45, 35, 25, 20]
     private let rewards:    [Int]    = [6, 11, 19, 32]
 
@@ -237,53 +239,92 @@ struct PipeGameView: View {
     // MARK: - Ready Screen
 
     private var readyScreen: some View {
-        VStack(spacing: 28) {
+        VStack(spacing: 32) {
             Spacer()
-            VStack(spacing: 8) {
-                Image(systemName: "drop.fill")
-                    .font(.system(size: 44))
-                    .foregroundColor(Color(red:0.2,green:0.8,blue:0.5))
+
+            // Animated drop icon
+            ZStack {
+                Circle()
+                    .fill(Color(red: 0.05, green: 0.2, blue: 0.15))
+                    .frame(width: 100, height: 100)
+                    .overlay(Circle().stroke(Color(red: 0.1, green: 0.8, blue: 0.5).opacity(0.4), lineWidth: 2))
+                    .shadow(color: Color(red: 0.1, green: 0.8, blue: 0.5).opacity(0.3), radius: 16)
+                Image(systemName: "pipe.and.drop.fill")
+                    .font(.system(size: 42))
+                    .foregroundColor(Color(red: 0.1, green: 0.9, blue: 0.6))
+            }
+
+            VStack(spacing: 6) {
                 Text("RÖRMOCKAREN")
-                    .font(.system(size: 20, weight: .black, design: .monospaced))
+                    .font(.system(size: 22, weight: .black, design: .monospaced))
                     .foregroundColor(.white)
                     .tracking(4)
                 Text(["ENKEL","MEDEL","SVÅR","EXPERT"][difficulty])
-                    .font(.system(size: 11, design: .monospaced))
-                    .foregroundColor(Color(white:0.35))
-                    .tracking(4)
+                    .font(.system(size: 10, weight: .bold, design: .monospaced))
+                    .foregroundColor(Color(red: 0.1, green: 0.8, blue: 0.5).opacity(0.7))
+                    .tracking(6)
             }
 
-            VStack(spacing: 8) {
-                pipeInfoRow("Rutnät", "\(gridSize)×\(gridSize)", .white)
-                pipeInfoRow("Tidsgräns", "\(timeLimit)s", .yellow)
-                pipeInfoRow("Lön vid vinst", "\(reward) min", Color(red:0.2,green:0.8,blue:0.5))
-                pipeInfoRow("Straff vid läcka", "−\(max(1, reward/3)) min", .red)
-                pipeInfoRow("Rotera rör", "Tryck på rör", Color(white:0.5))
-                pipeInfoRow("Vatten flödar", "automatiskt vid 0s", Color(white:0.5))
+            // Info grid
+            VStack(spacing: 0) {
+                infoRow("Rutnät", "\(gridSize)×\(gridSize)", icon: "grid")
+                Divider().background(Color.white.opacity(0.06))
+                infoRow("Tidsgräns", "\(timeLimit)s", icon: "timer")
+                Divider().background(Color.white.opacity(0.06))
+                infoRow("Belöning vid vinst", "+\(reward) min", icon: "plus.circle", valueColor: Color(red: 0.1, green: 0.9, blue: 0.6))
+                Divider().background(Color.white.opacity(0.06))
+                infoRow("Straff vid läcka", "−\(max(1, reward/3)) min", icon: "minus.circle", valueColor: .red)
             }
-            .padding(16)
-            .background(Color.white.opacity(0.04))
-            .clipShape(RoundedRectangle(cornerRadius: 12))
-            .padding(.horizontal, 32)
+            .background(Color(red: 0.05, green: 0.06, blue: 0.09))
+            .clipShape(RoundedRectangle(cornerRadius: 14))
+            .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.white.opacity(0.07), lineWidth: 1))
+            .padding(.horizontal, 28)
 
-            Button(action: startGame) {
-                Text("KOPPLA RÖREN")
-                    .font(.system(size: 14, weight: .black, design: .monospaced))
+            VStack(spacing: 10) {
+                Button(action: startGame) {
+                    HStack(spacing: 10) {
+                        Image(systemName: "play.fill")
+                        Text("KOPPLA RÖREN")
+                            .font(.system(size: 14, weight: .black, design: .monospaced))
+                            .tracking(2)
+                    }
                     .foregroundColor(.black)
-                    .tracking(2)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 16)
-                    .background(Color(red:0.2,green:0.8,blue:0.5))
+                    .background(
+                        LinearGradient(colors: [Color(red: 0.1, green: 0.9, blue: 0.6), Color(red: 0.05, green: 0.7, blue: 0.4)],
+                                       startPoint: .topLeading, endPoint: .bottomTrailing)
+                    )
                     .clipShape(RoundedRectangle(cornerRadius: 14))
-            }
-            .padding(.horizontal, 40)
+                    .shadow(color: Color(red: 0.1, green: 0.8, blue: 0.5).opacity(0.35), radius: 12, y: 4)
+                }
+                .padding(.horizontal, 28)
 
-            Button("Avbryt") { dismiss() }
-                .font(.system(size: 12, design: .monospaced))
-                .foregroundColor(Color(white:0.3))
+                Button("Avbryt") { dismiss() }
+                    .font(.system(size: 12, design: .monospaced))
+                    .foregroundColor(Color(white: 0.3))
+            }
 
             Spacer()
         }
+    }
+
+    private func infoRow(_ label: String, _ value: String, icon: String, valueColor: Color = .white) -> some View {
+        HStack {
+            Image(systemName: icon)
+                .font(.system(size: 11))
+                .foregroundColor(.white.opacity(0.3))
+                .frame(width: 20)
+            Text(label)
+                .font(.system(size: 12, design: .monospaced))
+                .foregroundColor(.white.opacity(0.5))
+            Spacer()
+            Text(value)
+                .font(.system(size: 12, weight: .bold, design: .monospaced))
+                .foregroundColor(valueColor)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
     }
 
     // MARK: - Playing Screen
@@ -291,38 +332,50 @@ struct PipeGameView: View {
     private var playingScreen: some View {
         VStack(spacing: 0) {
             // Status bar
-            HStack {
+            HStack(spacing: 12) {
                 HStack(spacing: 6) {
                     Image(systemName: "drop.fill")
-                        .foregroundColor(Color(red:0.2,green:0.8,blue:0.5))
+                        .foregroundColor(Color(red: 0.1, green: 0.9, blue: 0.6))
                     Text("RÖRMOCKAREN")
                         .font(.system(size: 12, weight: .black, design: .monospaced))
                         .foregroundColor(.white)
                 }
                 Spacer()
-                // Timer
+                // Dramatic timer
                 ZStack {
-                    Circle().stroke(Color.white.opacity(0.1), lineWidth: 3).frame(width: 44, height: 44)
+                    Circle()
+                        .stroke(Color.white.opacity(0.08), lineWidth: 3)
+                        .frame(width: 48, height: 48)
                     Circle()
                         .trim(from: 0, to: CGFloat(timeLeft) / CGFloat(timeLimit))
-                        .stroke(timeLeft < 6 ? Color.red : Color(red:0.2,green:0.8,blue:0.5),
-                                style: StrokeStyle(lineWidth: 3, lineCap: .round))
-                        .frame(width: 44, height: 44)
+                        .stroke(
+                            timeLeft < 10 ? Color.red : Color(red: 0.1, green: 0.9, blue: 0.6),
+                            style: StrokeStyle(lineWidth: 3, lineCap: .round)
+                        )
+                        .frame(width: 48, height: 48)
                         .rotationEffect(.degrees(-90))
                         .animation(.linear(duration: 1), value: timeLeft)
                     Text("\(timeLeft)")
-                        .font(.system(size: 14, weight: .black, design: .monospaced))
-                        .foregroundColor(.white)
+                        .font(.system(size: 15, weight: .black, design: .monospaced))
+                        .foregroundColor(timeLeft < 10 ? .red : .white)
+                        .scaleEffect(timeLeft < 10 ? 1.15 : 1.0)
+                        .animation(.easeInOut(duration: 0.5).repeatForever(autoreverses: true), value: timeLeft < 10)
                 }
-                Button("Flöda nu") {
-                    triggerWaterFlow()
+                Button(action: triggerWaterFlow) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "play.fill")
+                            .font(.system(size: 9))
+                        Text("STARTA FLÖDE")
+                            .font(.system(size: 10, weight: .black, design: .monospaced))
+                            .tracking(1)
+                    }
+                    .foregroundColor(Color(red: 0.1, green: 0.9, blue: 0.6))
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 7)
+                    .background(Color(red: 0.1, green: 0.9, blue: 0.6).opacity(0.12))
+                    .clipShape(Capsule())
+                    .overlay(Capsule().stroke(Color(red: 0.1, green: 0.9, blue: 0.6).opacity(0.25), lineWidth: 1))
                 }
-                .font(.system(size: 11, weight: .bold, design: .monospaced))
-                .foregroundColor(Color(red:0.2,green:0.8,blue:0.5))
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(Color(red:0.2,green:0.8,blue:0.5).opacity(0.15))
-                .clipShape(Capsule())
             }
             .padding(.horizontal, 18)
             .padding(.top, 54)
@@ -335,14 +388,14 @@ struct PipeGameView: View {
                     Text("INLOPP")
                         .font(.system(size: 9, weight: .bold, design: .monospaced))
                 }
-                .foregroundColor(Color(red:0.2,green:0.8,blue:0.5))
+                .foregroundColor(Color(red: 0.1, green: 0.9, blue: 0.6))
                 Spacer()
                 HStack(spacing: 4) {
                     Text("UTLOPP")
                         .font(.system(size: 9, weight: .bold, design: .monospaced))
                     Image(systemName: "arrow.right").font(.system(size: 10))
                 }
-                .foregroundColor(Color(red:0.2,green:0.8,blue:0.5))
+                .foregroundColor(Color(red: 0.1, green: 0.8, blue: 1.0))
             }
             .padding(.horizontal, 20)
             .padding(.bottom, 4)
@@ -448,53 +501,62 @@ struct PipeGameView: View {
     // MARK: - Result Screen
 
     private func resultScreen(won: Bool, earned: TimeInterval) -> some View {
-        VStack(spacing: 28) {
+        VStack(spacing: 0) {
             Spacer()
+
             ZStack {
                 Circle()
-                    .fill((won ? Color(red:0.2,green:0.8,blue:0.5) : Color.orange).opacity(0.12))
-                    .frame(width: 110, height: 110)
+                    .fill((won ? Color(red: 0.1, green: 0.8, blue: 0.5) : Color.red).opacity(0.1))
+                    .frame(width: 130, height: 130)
+                Circle()
+                    .stroke((won ? Color(red: 0.1, green: 0.8, blue: 0.5) : Color.red).opacity(0.3), lineWidth: 2)
+                    .frame(width: 130, height: 130)
                 Image(systemName: won ? "checkmark.circle.fill" : "xmark.octagon.fill")
-                    .font(.system(size: 54))
-                    .foregroundColor(won ? Color(red:0.2,green:0.8,blue:0.5) : .orange)
+                    .font(.system(size: 60))
+                    .foregroundColor(won ? Color(red: 0.1, green: 0.9, blue: 0.6) : .red)
+                    .shadow(color: (won ? Color(red: 0.1, green: 0.8, blue: 0.5) : Color.red).opacity(0.5), radius: 20)
             }
+            .padding(.bottom, 24)
 
-            VStack(spacing: 8) {
-                Text(won ? "SYSTEMET HÅLLER TRYCKET" : "LÄCKA DETEKTERAD")
-                    .font(.system(size: 16, weight: .black, design: .monospaced))
-                    .foregroundColor(won ? .white : .red)
-                    .tracking(2)
-                if won {
-                    Text("Flödet nådde utloppet utan läcka.")
-                        .font(.system(size: 11, design: .monospaced))
-                        .foregroundColor(Color(white:0.4))
-                } else {
-                    Text("Rörsystemet läckte. Kostnaderna dras.")
-                        .font(.system(size: 11, design: .monospaced))
-                        .foregroundColor(Color(white:0.4))
-                }
-            }
+            Text(won ? "SYSTEMET HÅLLER TRYCKET" : "LÄCKA DETEKTERAD")
+                .font(.system(size: 17, weight: .black, design: .monospaced))
+                .foregroundColor(won ? Color(red: 0.1, green: 0.9, blue: 0.6) : .red)
+                .tracking(1)
+                .multilineTextAlignment(.center)
+                .padding(.bottom, 8)
+
+            Text(won ? "Vattnet nådde utloppet utan förlust." : "Rörsystemet läckte. Kostnader dras.")
+                .font(.system(size: 12, design: .monospaced))
+                .foregroundColor(Color(white: 0.45))
+                .padding(.bottom, 28)
 
             if won && earned > 0 {
                 Text("+\(TimeEngine.shortFormatted(earned))")
-                    .font(.system(size: 32, weight: .black, design: .monospaced))
-                    .foregroundColor(Color(red:0.2,green:0.8,blue:0.5))
+                    .font(.system(size: 38, weight: .black, design: .monospaced))
+                    .foregroundColor(Color(red: 0.1, green: 0.9, blue: 0.6))
+                    .shadow(color: Color(red: 0.1, green: 0.8, blue: 0.5).opacity(0.4), radius: 10)
+                    .padding(.bottom, 36)
             } else if !won {
                 Text("−\(TimeEngine.shortFormatted(abs(earned)))")
-                    .font(.system(size: 28, weight: .black, design: .monospaced))
+                    .font(.system(size: 34, weight: .black, design: .monospaced))
                     .foregroundColor(.red)
+                    .padding(.bottom, 36)
             }
 
-            Button("Stäng") { dismiss() }
-                .font(.system(size: 14, weight: .black, design: .monospaced))
-                .foregroundColor(.black)
-                .padding(.horizontal, 40)
-                .padding(.vertical, 14)
-                .background(won ? Color(red:0.2,green:0.8,blue:0.5) : Color.orange)
-                .clipShape(Capsule())
+            Button(action: { dismiss() }) {
+                Text("STÄNG")
+                    .font(.system(size: 14, weight: .black, design: .monospaced))
+                    .foregroundColor(.black)
+                    .padding(.horizontal, 60)
+                    .padding(.vertical, 16)
+                    .background(won ? Color(red: 0.1, green: 0.9, blue: 0.6) : Color.red)
+                    .clipShape(Capsule())
+                    .shadow(color: (won ? Color(red: 0.1, green: 0.8, blue: 0.5) : Color.red).opacity(0.4), radius: 10)
+            }
 
             Spacer()
         }
+        .frame(maxWidth: .infinity)
     }
 
     // MARK: - Logic
@@ -538,97 +600,150 @@ struct PipeGameView: View {
             return -TimeInterval(penaltyMin * 60)
         }
     }
-
-    private func pipeInfoRow(_ label: String, _ value: String, _ col: Color) -> some View {
-        HStack {
-            Text(label)
-                .font(.system(size: 12, design: .monospaced))
-                .foregroundColor(Color(white:0.45))
-            Spacer()
-            Text(value)
-                .font(.system(size: 12, weight: .bold, design: .monospaced))
-                .foregroundColor(col)
-        }
-    }
 }
 
 // MARK: - Cell Renderer
 
 private struct PipeCellView: View {
-    let cell:       PCell
-    let size:       CGFloat
+    let cell: PCell
+    let size: CGFloat
     let isFlashing: Bool
+    @State private var flowOffset: CGFloat = 0
 
     private var pipeColor: Color {
-        if cell.isSource || cell.isDrain { return Color(red:0.2,green:0.9,blue:0.5) }
-        if cell.isWet { return Color(red:0.1,green:0.6,blue:1.0) }
-        return Color(red:0.45,green:0.45,blue:0.5)
+        if cell.isSource { return Color(red: 0.1, green: 1.0, blue: 0.5) }
+        if cell.isDrain  { return Color(red: 0.1, green: 0.8, blue: 1.0) }
+        if cell.isWet    { return Color(red: 0.0, green: 0.7, blue: 1.0) }
+        return Color(red: 0.4, green: 0.42, blue: 0.48)
     }
 
     private var bgColor: Color {
-        if isFlashing { return Color(white:0.15) }
-        if cell.isSource || cell.isDrain { return Color(red:0.05,green:0.15,blue:0.1) }
-        return Color(red:0.07,green:0.07,blue:0.09)
+        if isFlashing        { return Color(red: 0.2, green: 0.2, blue: 0.24) }
+        if cell.isSource     { return Color(red: 0.02, green: 0.12, blue: 0.08) }
+        if cell.isDrain      { return Color(red: 0.02, green: 0.08, blue: 0.14) }
+        if cell.isWet        { return Color(red: 0.02, green: 0.06, blue: 0.12) }
+        return Color(red: 0.06, green: 0.07, blue: 0.09)
     }
 
     var body: some View {
         ZStack {
-            // Cell background
-            RoundedRectangle(cornerRadius: 4)
+            // Background
+            RoundedRectangle(cornerRadius: size * 0.12)
                 .fill(bgColor)
-                .frame(width: size - 2, height: size - 2)
+                .frame(width: size - 3, height: size - 3)
+                .shadow(color: cell.isWet ? Color(red: 0.0, green: 0.5, blue: 1.0).opacity(0.4) : .clear, radius: 4)
 
-            // Pipe segments via Canvas
+            // Pipe canvas
             Canvas { ctx, sz in
                 let half  = sz.width / 2
-                let reach = sz.width * 0.46
-                let thick = sz.width * 0.22
+                let reach = sz.width * 0.5
+                let thick = sz.width * 0.24
 
-                func segment(_ dir: PDir) -> Path {
-                    var p = Path()
+                func rect(_ dir: PDir) -> CGRect {
                     switch dir {
-                    case .top:
-                        p.addRect(CGRect(x: half - thick/2, y: 0, width: thick, height: half + thick/2))
-                    case .bottom:
-                        p.addRect(CGRect(x: half - thick/2, y: half - thick/2, width: thick, height: reach))
-                    case .left:
-                        p.addRect(CGRect(x: 0, y: half - thick/2, width: half + thick/2, height: thick))
-                    case .right:
-                        p.addRect(CGRect(x: half - thick/2, y: half - thick/2, width: reach, height: thick))
+                    case .top:    return CGRect(x: half - thick/2, y: 0,          width: thick,  height: half + thick/2)
+                    case .bottom: return CGRect(x: half - thick/2, y: half - thick/2, width: thick, height: reach)
+                    case .left:   return CGRect(x: 0,          y: half - thick/2, width: half + thick/2, height: thick)
+                    case .right:  return CGRect(x: half - thick/2, y: half - thick/2, width: reach, height: thick)
                     }
-                    return p
                 }
 
-                let col: GraphicsContext.Shading = .color(pipeColor)
-                for dir in cell.openings { ctx.fill(segment(dir), with: col) }
+                // Pipe body
+                let baseCol: GraphicsContext.Shading = .color(pipeColor.opacity(cell.isWet ? 1.0 : 0.75))
+                for dir in cell.openings {
+                    ctx.fill(Path(roundedRect: rect(dir), cornerRadius: 2), with: baseCol)
+                }
 
                 // Center hub
-                let hub = CGRect(x: half - thick*0.6, y: half - thick*0.6, width: thick*1.2, height: thick*1.2)
-                ctx.fill(Path(roundedRect: hub, cornerRadius: 3), with: col)
+                let hub = CGRect(x: half - thick * 0.65, y: half - thick * 0.65, width: thick * 1.3, height: thick * 1.3)
+                ctx.fill(Path(roundedRect: hub, cornerRadius: 3), with: baseCol)
 
-                // Wet glow overlay
+                // Wet glow
                 if cell.isWet {
-                    let glow: GraphicsContext.Shading = .color(Color(red:0.1,green:0.7,blue:1.0).opacity(0.3))
-                    for dir in cell.openings { ctx.fill(segment(dir), with: glow) }
+                    let glow: GraphicsContext.Shading = .color(Color(red: 0.3, green: 0.8, blue: 1.0).opacity(0.35))
+                    for dir in cell.openings {
+                        ctx.fill(Path(roundedRect: rect(dir), cornerRadius: 2), with: glow)
+                    }
                     ctx.fill(Path(roundedRect: hub, cornerRadius: 3), with: glow)
                 }
-            }
-            .frame(width: size - 2, height: size - 2)
 
-            // Source/Drain arrow
+                // Metallic highlight stripe
+                let highlightCol: GraphicsContext.Shading = .color(Color.white.opacity(0.08))
+                for dir in cell.openings {
+                    let r = rect(dir)
+                    let thinR = CGRect(x: r.minX + 1, y: r.minY + 1, width: r.width * 0.35, height: r.height * 0.35)
+                    ctx.fill(Path(roundedRect: thinR, cornerRadius: 1), with: highlightCol)
+                }
+            }
+            .frame(width: size - 3, height: size - 3)
+
+            // Flow droplet animation on wet pipes
+            if cell.isWet && !cell.isSource && !cell.isDrain {
+                let dir = cell.openings.first ?? .right
+                FlowDroplet(direction: dir, size: size, color: Color(red: 0.5, green: 0.9, blue: 1.0))
+            }
+
+            // Source/drain markers
             if cell.isSource {
-                Image(systemName: "arrow.right")
-                    .font(.system(size: size * 0.16))
-                    .foregroundColor(Color(red:0.1,green:0.9,blue:0.5))
-                    .offset(x: -(size * 0.36))
+                ZStack {
+                    Circle()
+                        .fill(Color(red: 0.1, green: 1.0, blue: 0.5).opacity(0.25))
+                        .frame(width: size * 0.55, height: size * 0.55)
+                    Image(systemName: "drop.fill")
+                        .font(.system(size: size * 0.22))
+                        .foregroundColor(Color(red: 0.1, green: 1.0, blue: 0.5))
+                }
             }
             if cell.isDrain {
-                Image(systemName: "arrow.right")
-                    .font(.system(size: size * 0.16))
-                    .foregroundColor(Color(red:0.1,green:0.9,blue:0.5))
-                    .offset(x: size * 0.36)
+                ZStack {
+                    Circle()
+                        .fill(Color(red: 0.1, green: 0.8, blue: 1.0).opacity(0.25))
+                        .frame(width: size * 0.55, height: size * 0.55)
+                    Image(systemName: "arrow.down.to.line")
+                        .font(.system(size: size * 0.22))
+                        .foregroundColor(Color(red: 0.1, green: 0.8, blue: 1.0))
+                }
+            }
+
+            // Leaking water drips on open ends facing grid boundary (non-connected ends)
+            if !cell.isWet && !cell.openings.isEmpty {
+                // Show a small drip indicator on the bottom opening if not connected
+                ForEach(Array(cell.openings), id: \.rawValue) { dir in
+                    if dir == .bottom {
+                        Image(systemName: "drop")
+                            .font(.system(size: size * 0.12))
+                            .foregroundColor(Color(red: 0.4, green: 0.6, blue: 0.8).opacity(0.3))
+                            .offset(y: size * 0.32)
+                    }
+                }
             }
         }
-        .animation(isFlashing ? .easeOut(duration: 0.15) : nil, value: isFlashing)
+        .scaleEffect(isFlashing ? 0.88 : 1.0)
+        .animation(isFlashing ? .easeOut(duration: 0.12) : nil, value: isFlashing)
+    }
+}
+
+private struct FlowDroplet: View {
+    let direction: PDir
+    let size: CGFloat
+    let color: Color
+    @State private var offset: CGFloat = -1
+
+    var body: some View {
+        let travel: CGFloat = size * 0.6
+        let isHoriz = direction == .left || direction == .right
+
+        Circle()
+            .fill(color.opacity(0.6))
+            .frame(width: size * 0.12, height: size * 0.12)
+            .offset(
+                x: isHoriz ? offset * travel : 0,
+                y: isHoriz ? 0 : offset * travel
+            )
+            .onAppear {
+                withAnimation(.linear(duration: 0.9).repeatForever(autoreverses: false)) {
+                    offset = 1
+                }
+            }
     }
 }

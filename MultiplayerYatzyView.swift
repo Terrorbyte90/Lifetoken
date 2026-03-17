@@ -533,6 +533,10 @@ struct MultiplayerYatzyView: View {
     @State private var lastScoreMessage: String = ""
     @State private var handoffReady: Bool = false
 
+    // MARK: Online opponent selection
+    @State private var selectedOnlineOpponent: ServerUser? = nil
+    @State private var useRandomOpponent: Bool = false
+
     // MARK: Result state
     @State private var winnerIndex: Int? = nil
     @State private var isTie: Bool = false
@@ -742,7 +746,7 @@ struct MultiplayerYatzyView: View {
                 if opponents.isEmpty {
                     onlineOpponentRow(name: "Online-AI", subtitle: "Inga spelare online i din zon", isOnline: false)
                 } else {
-                    onlineOpponentRow(name: opponents[0].username, subtitle: "Online • \(opponents[0].zone)", isOnline: true)
+                    onlinePlayerPickerSection(opponents: opponents)
                 }
 
             case .onlineThreePlayer:
@@ -799,6 +803,94 @@ struct MultiplayerYatzyView: View {
             }
         }
         .padding(.horizontal, 4)
+    }
+
+    private func onlinePlayerPickerSection(opponents: [ServerUser]) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            // Random toggle
+            Button {
+                withAnimation(.spring(response: 0.3)) {
+                    useRandomOpponent.toggle()
+                    if useRandomOpponent { selectedOnlineOpponent = nil }
+                }
+            } label: {
+                HStack(spacing: 10) {
+                    ZStack {
+                        Circle()
+                            .fill(useRandomOpponent ? Color.cyan.opacity(0.2) : Color.white.opacity(0.06))
+                            .frame(width: 36, height: 36)
+                        Image(systemName: "shuffle")
+                            .font(.system(size: 16))
+                            .foregroundColor(useRandomOpponent ? .cyan : .white.opacity(0.5))
+                    }
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Slumpmässig motståndare")
+                            .font(.system(size: 13, weight: .semibold, design: .monospaced))
+                            .foregroundColor(useRandomOpponent ? .white : .white.opacity(0.6))
+                        Text("Välj en random spelare i din zon")
+                            .font(.system(size: 10, design: .monospaced))
+                            .foregroundColor(.white.opacity(0.35))
+                    }
+                    Spacer()
+                    if useRandomOpponent {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundColor(.cyan)
+                    }
+                }
+                .padding(.horizontal, 4)
+                .padding(.vertical, 4)
+                .background(useRandomOpponent ? Color.cyan.opacity(0.08) : Color.clear)
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+            }
+            .buttonStyle(.plain)
+
+            if !useRandomOpponent {
+                Text("VÄLJ SPECIFIK SPELARE")
+                    .font(.system(size: 8, weight: .bold, design: .monospaced))
+                    .foregroundColor(.white.opacity(0.3))
+                    .tracking(2)
+                    .padding(.top, 4)
+
+                ForEach(opponents) { opponent in
+                    let isSelected = selectedOnlineOpponent?.id == opponent.id
+                    Button {
+                        withAnimation(.spring(response: 0.25)) {
+                            selectedOnlineOpponent = isSelected ? nil : opponent
+                        }
+                    } label: {
+                        HStack(spacing: 10) {
+                            ZStack {
+                                Circle()
+                                    .fill(isSelected ? Color.accentGreen.opacity(0.2) : Color.white.opacity(0.06))
+                                    .frame(width: 36, height: 36)
+                                Text("👤").font(.system(size: 18))
+                            }
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(opponent.username)
+                                    .font(.system(size: 13, weight: .semibold, design: .monospaced))
+                                    .foregroundColor(isSelected ? .white : .white.opacity(0.75))
+                                HStack(spacing: 4) {
+                                    Circle().fill(Color.green).frame(width: 5, height: 5)
+                                    Text("Online • \(opponent.zone)")
+                                        .font(.system(size: 10, design: .monospaced))
+                                        .foregroundColor(.cyan.opacity(0.7))
+                                }
+                            }
+                            Spacer()
+                            if isSelected {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .foregroundColor(.accentGreen)
+                            }
+                        }
+                        .padding(.horizontal, 4)
+                        .padding(.vertical, 4)
+                        .background(isSelected ? Color.accentGreen.opacity(0.08) : Color.clear)
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
     }
 
     private func nameField(label: String, placeholder: String, text: Binding<String>, color: Color) -> some View {
@@ -1679,11 +1771,18 @@ struct MultiplayerYatzyView: View {
                 YatzyPlayerState(name: "🤖 AI")
             ]
         case .onlineOneVsOne:
-            let opp = zoneOpponents.first?.username ?? "Online-AI"
+            let opp: String
+            if useRandomOpponent || selectedOnlineOpponent == nil {
+                opp = zoneOpponents.shuffled().first?.username ?? "Online-AI"
+            } else {
+                opp = selectedOnlineOpponent?.username ?? zoneOpponents.first?.username ?? "Online-AI"
+            }
             newPlayers = [
                 YatzyPlayerState(name: finalP1),
                 YatzyPlayerState(name: opp)
             ]
+            // Send challenge notification to the selected opponent
+            NotificationManager.shared.sendYatzyChallenge(from: finalP1, stake: TimeEngine.shortFormatted(betAmount))
         case .onlineThreePlayer:
             let opp1 = zoneOpponents.first?.username ?? "Online-AI 1"
             let opp2 = zoneOpponents.dropFirst().first?.username ?? "Online-AI 2"
