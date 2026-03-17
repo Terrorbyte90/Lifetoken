@@ -36,7 +36,7 @@ struct InTimeClockView: View {
         let col = displayColor
 
         HStack(alignment: .top, spacing: 0) {
-            unitCell(value: String(format: "%02d",  c.yr),  label: "ÅR",  color: col)
+            unitCell(value: String(format: "%03d",  c.yr),  label: "ÅR",  color: col)
             colonSep(color: col)
             unitCell(value: String(format: "%03d",  c.day), label: "DAG", color: col)
             colonSep(color: col)
@@ -53,7 +53,7 @@ struct InTimeClockView: View {
     private func unitCell(value: String, label: String, color: Color) -> some View {
         VStack(spacing: 3) {
             Text(value)
-                .font(.system(size: 22, weight: .bold, design: .monospaced))
+                .font(.system(size: 20, weight: .bold, design: .monospaced))
                 .foregroundColor(color)
             Text(label)
                 .font(.system(size: 9, weight: .semibold, design: .monospaced))
@@ -68,7 +68,7 @@ struct InTimeClockView: View {
     private func colonSep(color: Color) -> some View {
         VStack(spacing: 3) {
             Text(":")
-                .font(.system(size: 22, weight: .bold, design: .monospaced))
+                .font(.system(size: 20, weight: .bold, design: .monospaced))
                 .foregroundColor(color.opacity(0.3))
             // Height-matching invisible spacer for the label row
             Text(" ")

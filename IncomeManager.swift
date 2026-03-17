@@ -140,7 +140,7 @@ class IncomeManager: ObservableObject {
                 self.dailySteps = steps
                 let raw = Double(steps) * Self.stepRate
                 self.todayBreakdown.stepsSeconds = raw * zone.stepBonusMultiplier
-                self.earnedSeconds = self.todayBreakdown.stepsSeconds
+                self.earnedSeconds = self.todayBreakdown.total
             }
         }
 
@@ -148,6 +148,7 @@ class IncomeManager: ObservableObject {
         HealthKitManager.shared.fetchTodayActiveCalories { kcal in
             DispatchQueue.main.async {
                 self.todayBreakdown.caloriesSeconds = kcal * Self.calorieRate
+                self.earnedSeconds = self.todayBreakdown.total
             }
         }
 
@@ -155,6 +156,7 @@ class IncomeManager: ObservableObject {
         HealthKitManager.shared.fetchTodayExerciseMinutes { mins in
             DispatchQueue.main.async {
                 self.todayBreakdown.exerciseSeconds = mins * Self.exerciseRate
+                self.earnedSeconds = self.todayBreakdown.total
             }
         }
 
@@ -164,6 +166,7 @@ class IncomeManager: ObservableObject {
             DispatchQueue.main.async {
                 let cappedHours = min(hours, Self.sleepHardCap)
                 self.todayBreakdown.sleepSeconds = cappedHours * Self.sleepRate
+                self.earnedSeconds = self.todayBreakdown.total
             }
         }
 
@@ -171,6 +174,7 @@ class IncomeManager: ObservableObject {
         HealthKitManager.shared.fetchTodayStandHours { stood in
             DispatchQueue.main.async {
                 self.todayBreakdown.standSeconds = Double(stood) * Self.standRate
+                self.earnedSeconds = self.todayBreakdown.total
             }
         }
 
@@ -178,6 +182,7 @@ class IncomeManager: ObservableObject {
         HealthKitManager.shared.fetchTodayMindfulMinutes { mins in
             DispatchQueue.main.async {
                 self.todayBreakdown.mindfulSeconds = mins * Self.mindfulRate
+                self.earnedSeconds = self.todayBreakdown.total
             }
         }
 
@@ -186,6 +191,7 @@ class IncomeManager: ObservableObject {
             DispatchQueue.main.async {
                 let v = hrv ?? 0
                 self.todayBreakdown.hrvBonus = v > 50 ? Self.hrvBonusValue : 0
+                self.earnedSeconds = self.todayBreakdown.total
             }
         }
     }
