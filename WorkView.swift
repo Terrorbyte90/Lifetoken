@@ -214,6 +214,7 @@ struct WorkView: View {
     @State private var selectedJob: JobType? = nil
     @State private var showConfirm: Bool = false
     @State private var tickTimer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
+    @State private var showMiniJobsFromWork = false
 
     var availableJobs: [JobType] {
         workManager.availableJobs(for: gameState.currentZone)
@@ -257,6 +258,7 @@ struct WorkView: View {
         } message: {
             Text(workManager.lastCompletedJobMessage)
         }
+        .sheet(isPresented: $showMiniJobsFromWork) { NavigationStack { MiniJobsView() } }
     }
 
     // MARK: Header
@@ -341,7 +343,42 @@ struct WorkView: View {
     // MARK: Jobs Section
 
     private var jobsSection: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 16) {
+            // Mini-jobs section (arcade-style instant jobs)
+            VStack(spacing: 8) {
+                HStack(spacing: 5) {
+                    Image(systemName: "gamecontroller.fill")
+                        .font(.system(size: 9))
+                        .foregroundColor(.purple)
+                    Text("AKTIVA JOBB")
+                        .font(.system(size: 11, weight: .bold, design: .monospaced))
+                        .foregroundColor(.purple.opacity(0.8))
+                        .tracking(2)
+                    Spacer()
+                    Text("Spela via Dashboard → Arbete")
+                        .font(.system(size: 8, design: .monospaced))
+                        .foregroundColor(.white.opacity(0.25))
+                }
+                .padding(.horizontal)
+
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 10) {
+                        miniJobChip(icon: "pipe.and.drop.fill",    name: "Rörmockaren",    desc: "Fixa rörläggning")
+                        miniJobChip(icon: "terminal.fill",          name: "Kodknäckaren",   desc: "Knäck koden")
+                        miniJobChip(icon: "arrow.up.arrow.down",    name: "Sorteringsverket", desc: "Sortera gods")
+                        miniJobChip(icon: "bolt.circle.fill",       name: "Sprängexperten", desc: "Defusera bomben")
+                        miniJobChip(icon: "timer",                  name: "Tidskalibratorn", desc: "Kalibreringen")
+                    }
+                    .padding(.horizontal)
+                }
+            }
+            .padding(.vertical, 10)
+            .background(Color.purple.opacity(0.05))
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.purple.opacity(0.12), lineWidth: 1))
+            .padding(.horizontal)
+
+            // Regular jobs
             Text("TILLGÄNGLIGA JOBB")
                 .font(.system(size: 11, weight: .bold, design: .monospaced))
                 .foregroundColor(.white.opacity(0.4))
@@ -415,6 +452,35 @@ struct WorkView: View {
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.white.opacity(0.08), lineWidth: 1))
         .padding(.horizontal)
+    }
+
+    private func miniJobChip(icon: String, name: String, desc: String) -> some View {
+        Button { showMiniJobsFromWork = true } label: {
+            VStack(spacing: 6) {
+                ZStack {
+                    Circle()
+                        .fill(Color.purple.opacity(0.18))
+                        .frame(width: 36, height: 36)
+                        .shadow(color: .purple.opacity(0.4), radius: 5)
+                    Image(systemName: icon)
+                        .font(.system(size: 14))
+                        .foregroundColor(.purple)
+                }
+                Text(name)
+                    .font(.system(size: 8, weight: .bold, design: .monospaced))
+                    .foregroundColor(.white.opacity(0.8))
+                    .lineLimit(1)
+                Text(desc)
+                    .font(.system(size: 7, design: .monospaced))
+                    .foregroundColor(.white.opacity(0.3))
+                    .lineLimit(1)
+            }
+            .frame(width: 80)
+            .padding(.vertical, 8)
+            .background(Color.white.opacity(0.04))
+            .clipShape(RoundedRectangle(cornerRadius: 10))
+            .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.purple.opacity(0.2), lineWidth: 1))
+        }
     }
 
     func formatDuration(_ seconds: TimeInterval) -> String {

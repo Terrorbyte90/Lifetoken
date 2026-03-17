@@ -1,16 +1,17 @@
 import SwiftUI
 
-// MARK: - ZoneVisual (Zone Map)
+// MARK: - ZoneVisual (Redesigned Map)
 
 struct ZoneVisual: View {
-    @ObservedObject private var engine = TimeEngine.shared
+    @ObservedObject private var engine    = TimeEngine.shared
     @ObservedObject private var gameState = GameState.shared
-    @StateObject private var zoneManager = ZoneManager.shared
+    @StateObject  private var zoneManager = ZoneManager.shared
 
-    @State private var showMigrationSheet = false
+    @State private var showMigrationSheet  = false
     @State private var migrationTarget: ZoneProfile? = nil
-    @State private var migrationResult: String = ""
+    @State private var migrationResult     = ""
     @State private var showMigrationResult = false
+    @State private var mapOffset: CGFloat  = 0
 
     private var currentZone: ZoneProfile {
         ZoneProfile.currentZone(forTime: engine.balance)
@@ -18,206 +19,158 @@ struct ZoneVisual: View {
 
     var body: some View {
         ZStack {
-            LinearGradient(
-                colors: [Color(red: 0.03, green: 0.04, blue: 0.06), Color.black],
-                startPoint: .top,
-                endPoint: .bottom
-            ).ignoresSafeArea()
-
+            mapBackground
             VStack(spacing: 0) {
-                // Header
-                HStack {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("ZONKARTA")
-                            .font(.system(size: 22, weight: .bold, design: .monospaced))
-                            .foregroundColor(.white)
-                        Text("Klassificerad information")
-                            .font(.system(size: 10, design: .monospaced))
-                            .foregroundColor(.white.opacity(0.3))
-                    }
-                    Spacer()
-                    HStack(spacing: 4) {
-                        Image(systemName: currentZone.zoneIcon)
-                            .font(.system(size: 11))
-                        Text(currentZone.name)
-                            .font(.system(size: 11, weight: .bold, design: .monospaced))
-                    }
-                    .foregroundColor(currentZone.color)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 5)
-                    .background(currentZone.color.opacity(0.15))
-                    .clipShape(Capsule())
-                    .overlay(Capsule().stroke(currentZone.color.opacity(0.4), lineWidth: 1))
-                }
-                .padding(.horizontal)
-                .padding(.top, 60)
-                .padding(.bottom, 16)
-
+                mapHeader
                 ScrollView(showsIndicators: false) {
-                    HStack(alignment: .top, spacing: 0) {
-                        // Vertical timeline line
-                        VStack(spacing: 0) {
-                            ForEach(ZoneProfile.allZones.reversed(), id: \.name) { zone in
-                                let rel = zoneRelation(zone)
-                                VStack(spacing: 0) {
-                                    timelineDot(zone: zone, relation: rel)
-                                    if zone.index > 0 {
-                                        Rectangle()
-                                            .fill(timelineLineColor(zone: zone, relation: rel))
-                                            .frame(width: 2, height: zoneCardHeight(rel))
-                                    }
-                                }
-                            }
+                    VStack(spacing: 0) {
+                        ForEach(ZoneProfile.allZones.reversed(), id: \.name) { zone in
+                            zoneRow(zone: zone)
                         }
-                        .frame(width: 36)
-                        .padding(.leading, 16)
-
-                        // Zone cards
-                        LazyVStack(spacing: 12) {
-                            ForEach(ZoneProfile.allZones.reversed(), id: \.name) { zone in
-                                let rel = zoneRelation(zone)
-                                zoneCard(zone: zone, relation: rel)
-                            }
-                        }
-                        .padding(.trailing, 16)
-                        .padding(.leading, 8)
+                        Spacer(minLength: 120)
                     }
-                    .padding(.bottom, 100)
+                    .padding(.top, 8)
                 }
             }
         }
         .sheet(isPresented: $showMigrationSheet) {
-            if let target = migrationTarget {
-                migrationSheet(zone: target)
-            }
+            if let target = migrationTarget { migrationSheet(zone: target) }
         }
         .alert("Migration", isPresented: $showMigrationResult) {
             Button("OK") {}
         } message: { Text(migrationResult) }
     }
 
-    // MARK: - Zone Relations
-    enum ZoneRelation { case current, nextUp, lockedNear, lockedFar, below }
+    // MARK: - Background
 
-    func zoneRelation(_ zone: ZoneProfile) -> ZoneRelation {
-        let cur = currentZone
-        if zone.index == cur.index { return .current }
-        if zone.index == cur.index + 1 { return .nextUp }
-        if zone.index == cur.index + 2 { return .lockedNear }
-        if zone.index > cur.index { return .lockedFar }
-        return .below
-    }
-
-    // MARK: - Timeline Components
-    func timelineDot(zone: ZoneProfile, relation: ZoneRelation) -> some View {
+    private var mapBackground: some View {
         ZStack {
-            switch relation {
-            case .current:
-                Circle()
-                    .fill(Color.green)
-                    .frame(width: 16, height: 16)
-                    .overlay(Circle().stroke(Color.green.opacity(0.5), lineWidth: 4))
-                    .shadow(color: .green, radius: 6)
-            case .nextUp:
-                Circle()
-                    .fill(Color.orange)
-                    .frame(width: 10, height: 10)
-                    .shadow(color: .orange.opacity(0.5), radius: 4)
-            case .lockedNear:
-                Circle()
-                    .fill(Color.white.opacity(0.3))
-                    .frame(width: 8, height: 8)
-            case .lockedFar:
-                Circle()
-                    .fill(Color.white.opacity(0.1))
-                    .frame(width: 6, height: 6)
-            case .below:
-                Circle()
-                    .fill(Color.white.opacity(0.15))
-                    .frame(width: 7, height: 7)
+            Color.black.ignoresSafeArea()
+            // Grid overlay
+            Canvas { ctx, sz in
+                let spacing: CGFloat = 28
+                for x in stride(from: 0.0, to: sz.width, by: spacing) {
+                    var p = Path(); p.move(to: CGPoint(x: x, y: 0)); p.addLine(to: CGPoint(x: x, y: sz.height))
+                    ctx.stroke(p, with: .color(Color.white.opacity(0.03)), lineWidth: 1)
+                }
+                for y in stride(from: 0.0, to: sz.height, by: spacing) {
+                    var p = Path(); p.move(to: CGPoint(x: 0, y: y)); p.addLine(to: CGPoint(x: sz.width, y: y))
+                    ctx.stroke(p, with: .color(Color.white.opacity(0.03)), lineWidth: 1)
+                }
             }
-        }
-        .frame(width: 20, height: 20)
-    }
-
-    func timelineLineColor(zone: ZoneProfile, relation: ZoneRelation) -> Color {
-        switch relation {
-        case .current, .below: return Color.white.opacity(0.2)
-        case .nextUp: return Color.orange.opacity(0.5)
-        default: return Color.white.opacity(0.08)
+            .ignoresSafeArea()
+            // Atmospheric glow at top
+            LinearGradient(
+                colors: [currentZone.color.opacity(0.08), .clear],
+                startPoint: .top, endPoint: .center
+            ).ignoresSafeArea()
         }
     }
 
-    func zoneCardHeight(_ relation: ZoneRelation) -> CGFloat {
-        switch relation {
-        case .current: return 220
-        case .nextUp: return 90
-        case .lockedNear: return 52
-        default: return 44
+    // MARK: - Header
+
+    private var mapHeader: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 3) {
+                Text("ZONKARTA")
+                    .font(.system(size: 20, weight: .black, design: .monospaced))
+                    .foregroundColor(.white)
+                    .tracking(4)
+                Text("14 TERRITORIER • KLASSIFICERAT")
+                    .font(.system(size: 8, design: .monospaced))
+                    .foregroundColor(.white.opacity(0.25))
+                    .tracking(2)
+            }
+            Spacer()
+            // Current zone badge
+            HStack(spacing: 5) {
+                Image(systemName: currentZone.zoneIcon)
+                    .font(.system(size: 10))
+                Text(currentZone.name)
+                    .font(.system(size: 10, weight: .bold, design: .monospaced))
+            }
+            .foregroundColor(currentZone.color)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(currentZone.color.opacity(0.12))
+            .clipShape(Capsule())
+            .overlay(Capsule().stroke(currentZone.color.opacity(0.5), lineWidth: 1))
+            .shadow(color: currentZone.color.opacity(0.3), radius: 6)
         }
+        .padding(.horizontal)
+        .padding(.top, 60)
+        .padding(.bottom, 14)
+        .background(
+            LinearGradient(colors: [Color.black, Color.black.opacity(0)], startPoint: .top, endPoint: .bottom)
+        )
     }
 
-    // MARK: - Zone Cards
+    // MARK: - Zone Row
+
     @ViewBuilder
-    func zoneCard(zone: ZoneProfile, relation: ZoneRelation) -> some View {
-        switch relation {
-        case .current:
-            currentZoneCard(zone: zone)
-        case .nextUp:
-            nextZoneCard(zone: zone)
-        case .lockedNear:
-            lockedNearCard(zone: zone)
-        case .lockedFar:
-            lockedFarCard(zone: zone)
-        case .below:
-            belowCard(zone: zone)
+    func zoneRow(zone: ZoneProfile) -> some View {
+        let rel = zoneRelation(zone)
+        switch rel {
+        case .current:   currentZoneRow(zone: zone)
+        case .nextUp:    nextZoneRow(zone: zone)
+        case .lockedNear, .lockedFar: lockedZoneRow(zone: zone, near: rel == .lockedNear)
+        case .below:     completedZoneRow(zone: zone)
         }
     }
 
-    func currentZoneCard(zone: ZoneProfile) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Image(systemName: zone.zoneIcon)
-                    .font(.system(size: 18))
-                    .foregroundColor(zone.color)
-                Text(zone.name.uppercased())
-                    .font(.system(size: 16, weight: .bold, design: .monospaced))
-                    .foregroundColor(zone.color)
-                Spacer()
-                Text("DIN ZON")
-                    .font(.system(size: 9, weight: .bold, design: .monospaced))
-                    .foregroundColor(.green)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3)
-                    .background(Color.green.opacity(0.15))
-                    .clipShape(Capsule())
-            }
+    // Current zone — large glowing card
+    func currentZoneRow(zone: ZoneProfile) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // Connector line above
+            connectorLine(color: zone.color, height: 20)
 
-            Text(zone.description)
-                .font(.system(size: 11, design: .monospaced))
-                .foregroundColor(.white.opacity(0.6))
-                .italic()
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(spacing: 12) {
+                    ZStack {
+                        Circle()
+                            .fill(zone.color.opacity(0.2))
+                            .frame(width: 50, height: 50)
+                            .shadow(color: zone.color.opacity(0.6), radius: 10)
+                        Image(systemName: zone.zoneIcon)
+                            .font(.system(size: 22, weight: .semibold))
+                            .foregroundColor(zone.color)
+                    }
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack(spacing: 8) {
+                            Text(zone.name.uppercased())
+                                .font(.system(size: 16, weight: .black, design: .monospaced))
+                                .foregroundColor(zone.color)
+                            Text("DIN ZON")
+                                .font(.system(size: 8, weight: .bold, design: .monospaced))
+                                .foregroundColor(.black)
+                                .padding(.horizontal, 7)
+                                .padding(.vertical, 3)
+                                .background(zone.color)
+                                .clipShape(Capsule())
+                        }
+                        Text(zone.description)
+                            .font(.system(size: 11, design: .monospaced))
+                            .foregroundColor(.white.opacity(0.5))
+                            .italic()
+                    }
+                }
 
-            Divider().background(Color.white.opacity(0.1))
+                Divider().background(zone.color.opacity(0.2))
 
-            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
-                zoneStatItem(label: "Skatt", value: "\(Int(zone.taxRate * 100))%", icon: "percent", color: .yellow)
-                zoneStatItem(label: "Arbetsmult", value: "×\(String(format: "%.1f", zone.workMultiplier))", icon: "hammer.fill", color: .cyan)
-                zoneStatItem(label: "Inflation/dag", value: "\(String(format: "%.1f", zone.inflationRatePerDay * 100))%", icon: "chart.line.uptrend.xyaxis", color: .orange)
-                zoneStatItem(label: "Passiv/dag", value: TimeEngine.shortFormatted(TimeInterval(zone.passiveBonusSecondsPerDay)), icon: "clock.arrow.circlepath", color: .green)
-            }
+                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
+                    mapStatCell(label: "SKATT", value: "\(Int(zone.taxRate * 100))%", icon: "percent", color: .yellow)
+                    mapStatCell(label: "ARBETE ×", value: String(format: "%.1f", zone.workMultiplier), icon: "hammer.fill", color: .cyan)
+                    mapStatCell(label: "INFLATION", value: String(format: "%.1f%%", zone.inflationRatePerDay * 100), icon: "chart.line.uptrend.xyaxis", color: .orange)
+                    mapStatCell(label: "PASSIV/DAG", value: TimeEngine.shortFormatted(TimeInterval(zone.passiveBonusSecondsPerDay)), icon: "clock.arrow.circlepath", color: .green)
+                }
 
-            if !zone.protections.isEmpty {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("SKYDD")
-                        .font(.system(size: 9, weight: .bold, design: .monospaced))
-                        .foregroundColor(.white.opacity(0.4))
+                if !zone.protections.isEmpty {
                     HStack(spacing: 6) {
                         ForEach(zone.protections, id: \.self) { p in
-                            Text(p)
+                            Text("🛡 \(p)")
                                 .font(.system(size: 9, design: .monospaced))
                                 .foregroundColor(.green)
-                                .padding(.horizontal, 7)
+                                .padding(.horizontal, 8)
                                 .padding(.vertical, 3)
                                 .background(Color.green.opacity(0.1))
                                 .clipShape(Capsule())
@@ -225,164 +178,220 @@ struct ZoneVisual: View {
                     }
                 }
             }
-        }
-        .padding(16)
-        .background(
-            LinearGradient(
-                colors: [zone.color.opacity(0.12), Color.white.opacity(0.04)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 16))
-        .overlay(RoundedRectangle(cornerRadius: 16).stroke(zone.color.opacity(0.4), lineWidth: 1.5))
-    }
-
-    func nextZoneCard(zone: ZoneProfile) -> some View {
-        Button {
-            migrationTarget = zone
-            showMigrationSheet = true
-        } label: {
-            HStack(spacing: 12) {
-                Image(systemName: zone.zoneIcon)
-                    .font(.system(size: 14))
-                    .foregroundColor(.orange)
-                VStack(alignment: .leading, spacing: 3) {
-                    HStack {
-                        Text(zone.name)
-                            .font(.system(size: 13, weight: .bold, design: .monospaced))
-                            .foregroundColor(.white)
-                        Text("NÄSTA")
-                            .font(.system(size: 8, weight: .bold, design: .monospaced))
-                            .foregroundColor(.orange)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(Color.orange.opacity(0.15))
-                            .clipShape(Capsule())
-                    }
-                    Text("Inträde: \(TimeEngine.shortFormatted(zone.entryCostSeconds))")
-                        .font(.system(size: 10, design: .monospaced))
-                        .foregroundColor(.white.opacity(0.5))
+            .padding(18)
+            .background(
+                ZStack {
+                    LinearGradient(colors: [zone.color.opacity(0.12), Color.black.opacity(0.8)], startPoint: .topLeading, endPoint: .bottomTrailing)
+                    LinearGradient(colors: [Color.white.opacity(0.04), .clear], startPoint: .top, endPoint: .center)
                 }
-                Spacer()
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 11))
-                    .foregroundColor(.orange.opacity(0.6))
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 20))
+            .overlay(RoundedRectangle(cornerRadius: 20).stroke(
+                LinearGradient(colors: [zone.color.opacity(0.7), zone.color.opacity(0.15)], startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 1.5
+            ))
+            .shadow(color: zone.color.opacity(0.25), radius: 16, x: 0, y: 6)
+            .padding(.horizontal)
+
+            connectorLine(color: zone.color, height: 20)
+        }
+    }
+
+    // Next zone — tappable upgrade card
+    func nextZoneRow(zone: ZoneProfile) -> some View {
+        VStack(spacing: 0) {
+            connectorLine(color: .orange.opacity(0.4), height: 10)
+            Button {
+                migrationTarget = zone
+                showMigrationSheet = true
+            } label: {
+                HStack(spacing: 14) {
+                    ZStack {
+                        Circle()
+                            .fill(Color.orange.opacity(0.15))
+                            .frame(width: 40, height: 40)
+                            .overlay(Circle().stroke(Color.orange.opacity(0.4), lineWidth: 1))
+                        Image(systemName: zone.zoneIcon)
+                            .font(.system(size: 16))
+                            .foregroundColor(.orange)
+                    }
+                    VStack(alignment: .leading, spacing: 3) {
+                        HStack(spacing: 8) {
+                            Text(zone.name)
+                                .font(.system(size: 14, weight: .bold, design: .monospaced))
+                                .foregroundColor(.white)
+                            Text("NÄSTA NIVÅ")
+                                .font(.system(size: 8, weight: .bold, design: .monospaced))
+                                .foregroundColor(.orange)
+                                .padding(.horizontal, 6).padding(.vertical, 2)
+                                .background(Color.orange.opacity(0.15))
+                                .clipShape(Capsule())
+                        }
+                        Text("Inträde: \(TimeEngine.shortFormatted(zone.entryCostSeconds)) • Skatt: \(Int(zone.taxRate * 100))%")
+                            .font(.system(size: 10, design: .monospaced))
+                            .foregroundColor(.white.opacity(0.4))
+                    }
+                    Spacer()
+                    Image(systemName: "arrow.up.circle.fill")
+                        .font(.system(size: 20))
+                        .foregroundColor(.orange.opacity(0.7))
+                }
+                .padding(14)
+                .background(LinearGradient(colors: [Color.orange.opacity(0.1), Color.black.opacity(0.6)], startPoint: .leading, endPoint: .trailing))
+                .clipShape(RoundedRectangle(cornerRadius: 14))
+                .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.orange.opacity(0.35), lineWidth: 1))
+                .shadow(color: .orange.opacity(0.1), radius: 8, x: 0, y: 4)
             }
-            .padding(12)
-            .background(.ultraThinMaterial)
-            .clipShape(RoundedRectangle(cornerRadius: 12))
-            .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.orange.opacity(0.3), lineWidth: 1))
+            .padding(.horizontal)
+            connectorLine(color: .white.opacity(0.1), height: 10)
         }
     }
 
-    func lockedNearCard(zone: ZoneProfile) -> some View {
-        HStack(spacing: 10) {
-            Image(systemName: "lock.fill")
-                .font(.system(size: 11))
-                .foregroundColor(.white.opacity(0.3))
-            Text(zone.name)
-                .font(.system(size: 12, design: .monospaced))
-                .foregroundColor(.white.opacity(0.4))
+    // Locked zone
+    func lockedZoneRow(zone: ZoneProfile, near: Bool) -> some View {
+        VStack(spacing: 0) {
+            connectorLine(color: .white.opacity(0.06), height: 8)
+            HStack(spacing: 12) {
+                Image(systemName: near ? "lock.open" : "lock.fill")
+                    .font(.system(size: 12))
+                    .foregroundColor(.white.opacity(near ? 0.3 : 0.15))
+                    .frame(width: 30)
+                Text(zone.name)
+                    .font(.system(size: near ? 12 : 11, design: .monospaced))
+                    .foregroundColor(.white.opacity(near ? 0.35 : 0.18))
+                Spacer()
+                if near {
+                    Text(TimeEngine.shortFormatted(zone.entryCostSeconds))
+                        .font(.system(size: 10, design: .monospaced))
+                        .foregroundColor(.white.opacity(0.2))
+                } else {
+                    Text("???")
+                        .font(.system(size: 10, design: .monospaced))
+                        .foregroundColor(.white.opacity(0.1))
+                }
+            }
+            .padding(.horizontal, 24)
+            .padding(.vertical, 8)
+            connectorLine(color: .white.opacity(0.06), height: 8)
+        }
+    }
+
+    // Completed zone (below current)
+    func completedZoneRow(zone: ZoneProfile) -> some View {
+        VStack(spacing: 0) {
+            connectorLine(color: .white.opacity(0.1), height: 6)
+            HStack(spacing: 10) {
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 11))
+                    .foregroundColor(.white.opacity(0.2))
+                    .frame(width: 30)
+                Text(zone.name)
+                    .font(.system(size: 11, design: .monospaced))
+                    .foregroundColor(.white.opacity(0.22))
+                    .strikethrough(true, color: .white.opacity(0.12))
+                Spacer()
+            }
+            .padding(.horizontal, 24)
+            .padding(.vertical, 6)
+            connectorLine(color: .white.opacity(0.1), height: 6)
+        }
+    }
+
+    // Vertical connector line between zones
+    func connectorLine(color: Color, height: CGFloat) -> some View {
+        HStack {
             Spacer()
-            Text("???")
-                .font(.system(size: 10, design: .monospaced))
-                .foregroundColor(.white.opacity(0.25))
+            Rectangle()
+                .fill(color)
+                .frame(width: 2, height: height)
+            Spacer()
         }
-        .padding(10)
-        .background(Color.white.opacity(0.03))
-        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .frame(maxWidth: .infinity)
     }
 
-    func lockedFarCard(zone: ZoneProfile) -> some View {
+    // Stat cell for current zone card
+    func mapStatCell(label: String, value: String, icon: String, color: Color) -> some View {
         HStack(spacing: 8) {
-            Text(zone.name)
-                .font(.system(size: 11, design: .monospaced))
-                .foregroundColor(.white.opacity(0.2))
-            Spacer()
-        }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 7)
-    }
-
-    func belowCard(zone: ZoneProfile) -> some View {
-        HStack(spacing: 8) {
-            Text(zone.name)
-                .font(.system(size: 11, design: .monospaced))
-                .foregroundColor(.white.opacity(0.2))
-                .strikethrough(true, color: .white.opacity(0.15))
-            Spacer()
-            Image(systemName: "checkmark.circle")
-                .font(.system(size: 10))
-                .foregroundColor(.white.opacity(0.2))
-        }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 7)
-    }
-
-    func zoneStatItem(label: String, value: String, icon: String, color: Color) -> some View {
-        HStack(spacing: 6) {
             Image(systemName: icon)
-                .font(.system(size: 10))
+                .font(.system(size: 11))
                 .foregroundColor(color)
-            VStack(alignment: .leading, spacing: 1) {
+                .frame(width: 16)
+            VStack(alignment: .leading, spacing: 2) {
                 Text(label)
-                    .font(.system(size: 8, design: .monospaced))
-                    .foregroundColor(.white.opacity(0.4))
+                    .font(.system(size: 7, design: .monospaced))
+                    .foregroundColor(.white.opacity(0.35))
                 Text(value)
-                    .font(.system(size: 11, weight: .bold, design: .monospaced))
+                    .font(.system(size: 12, weight: .bold, design: .monospaced))
                     .foregroundColor(color)
             }
         }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .background(color.opacity(0.07))
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+    }
+
+    // MARK: - Zone Relations
+
+    enum ZoneRelation { case current, nextUp, lockedNear, lockedFar, below }
+
+    func zoneRelation(_ zone: ZoneProfile) -> ZoneRelation {
+        let cur = currentZone
+        if zone.index == cur.index     { return .current   }
+        if zone.index == cur.index + 1 { return .nextUp    }
+        if zone.index == cur.index + 2 { return .lockedNear }
+        if zone.index > cur.index      { return .lockedFar  }
+        return .below
     }
 
     // MARK: - Migration Sheet
+
     func migrationSheet(zone: ZoneProfile) -> some View {
         ZStack {
-            LinearGradient(
-                colors: [Color(red: 0.03, green: 0.04, blue: 0.06), Color.black],
-                startPoint: .top,
-                endPoint: .bottom
-            ).ignoresSafeArea()
-
-            VStack(spacing: 28) {
+            Color.black.ignoresSafeArea()
+            VStack(spacing: 24) {
                 HStack {
-                    Button(action: { showMigrationSheet = false }) {
+                    Button { showMigrationSheet = false } label: {
                         Image(systemName: "xmark")
-                            .foregroundColor(.white.opacity(0.7))
+                            .foregroundColor(.white.opacity(0.6))
                             .padding(8)
                             .background(Color.white.opacity(0.1))
                             .clipShape(Circle())
                     }
                     Spacer()
-                    Text("MIGRERA TILL \(zone.name.uppercased())")
+                    Text("MIGRERA")
                         .font(.system(size: 16, weight: .bold, design: .monospaced))
                         .foregroundColor(.white)
                     Spacer()
-                    // Balance placeholder to center the title
-                    Color.clear.frame(width: 36, height: 36)
+                    Color.clear.frame(width: 34, height: 34)
                 }
                 .padding(.horizontal)
                 .padding(.top, 40)
 
+                Text(zone.name.uppercased())
+                    .font(.system(size: 28, weight: .black, design: .monospaced))
+                    .foregroundColor(zone.color)
+
                 let minRequired = zone.entryCostSeconds + zone.fallThresholdSeconds
-                let canAfford = engine.balance >= minRequired
-                VStack(spacing: 16) {
+                let canAfford   = engine.balance >= minRequired
+
+                VStack(spacing: 12) {
                     migrationRow(label: "Inträdesavgift", value: TimeEngine.shortFormatted(zone.entryCostSeconds), color: .orange)
-                    migrationRow(label: "Buffert (stannar kvar)", value: TimeEngine.shortFormatted(zone.fallThresholdSeconds), color: .yellow)
+                    migrationRow(label: "Buffert krävs", value: TimeEngine.shortFormatted(zone.fallThresholdSeconds), color: .yellow)
+                    Divider().background(Color.white.opacity(0.1))
                     migrationRow(label: "Totalt behövs", value: TimeEngine.shortFormatted(minRequired), color: canAfford ? .green : .red)
                     migrationRow(label: "Ditt saldo", value: TimeEngine.shortFormatted(engine.balance), color: canAfford ? .green : .red)
+                    Divider().background(Color.white.opacity(0.1))
                     migrationRow(label: "Ny skattesats", value: "\(Int(zone.taxRate * 100))%", color: .yellow)
-                    migrationRow(label: "Ny inflation/dag", value: "\(String(format: "%.1f", zone.inflationRatePerDay * 100))%", color: .orange)
+                    migrationRow(label: "Ny inflation/dag", value: String(format: "%.1f%%", zone.inflationRatePerDay * 100), color: .orange)
                 }
-                .padding(20)
-                .background(.ultraThinMaterial)
-                .clipShape(RoundedRectangle(cornerRadius: 16))
+                .padding(16)
+                .background(Color.white.opacity(0.04))
+                .clipShape(RoundedRectangle(cornerRadius: 14))
                 .padding(.horizontal)
 
                 Text(zone.description)
-                    .font(.system(size: 13, design: .monospaced))
-                    .foregroundColor(.white.opacity(0.6))
+                    .font(.system(size: 12, design: .monospaced))
+                    .foregroundColor(.white.opacity(0.5))
                     .italic()
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 24)
@@ -399,12 +408,12 @@ struct ZoneVisual: View {
                         }
                     }
                 } label: {
-                    Text(canAfford ? "MIGRERA" : "OTILLRÄCKLIGA MEDEL")
-                        .font(.system(size: 16, weight: .bold, design: .monospaced))
+                    Text(canAfford ? "MIGRERA TILL \(zone.name.uppercased())" : "OTILLRÄCKLIGA MEDEL")
+                        .font(.system(size: 15, weight: .bold, design: .monospaced))
                         .foregroundColor(.black)
                         .frame(maxWidth: .infinity)
                         .padding()
-                        .background(canAfford ? Color.orange : Color.gray)
+                        .background(canAfford ? zone.color : Color.gray)
                         .clipShape(RoundedRectangle(cornerRadius: 14))
                 }
                 .disabled(!canAfford)
@@ -419,7 +428,7 @@ struct ZoneVisual: View {
         HStack {
             Text(label)
                 .font(.system(size: 12, design: .monospaced))
-                .foregroundColor(.white.opacity(0.6))
+                .foregroundColor(.white.opacity(0.55))
             Spacer()
             Text(value)
                 .font(.system(size: 13, weight: .bold, design: .monospaced))
@@ -429,6 +438,5 @@ struct ZoneVisual: View {
 }
 
 #Preview {
-    ZoneVisual()
-        .preferredColorScheme(.dark)
+    ZoneVisual().preferredColorScheme(.dark)
 }
