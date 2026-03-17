@@ -76,6 +76,8 @@ class ServerSync: ObservableObject {
         if !storedUsername.isEmpty {
             // Always try to auth on startup (handles stale tokens and first launch)
             await loginOrRegister(username: storedUsername)
+            // Pull server's stored balance so admin changes propagate immediately
+            await fetchServerBalance()
         } else {
             await checkHealth()
         }
@@ -202,11 +204,9 @@ class ServerSync: ObservableObject {
             DispatchQueue.main.async {
                 self.isOnline = true
                 self.lastSyncDate = Date()
+                // Server is authoritative: always apply adjustedBalance if present
                 if let adj = resp.adjustedBalance,
-                   adj < TimeEngine.shared.balance * 0.95,
                    !TimeEngine.shared.skipServerCorrection {
-                    // Only apply server correction if significantly lower (anti-cheat)
-                    // and no manual reset is in progress
                     TimeEngine.shared.balance = adj
                 }
                 TimeEngine.shared.skipServerCorrection = false
@@ -215,6 +215,23 @@ class ServerSync: ObservableObject {
             DispatchQueue.main.async { self.isOnline = false }
             scheduleReconnect()
         }
+    }
+
+    /// Pull the server's stored balance for this user and apply it locally.
+    /// Call this on app startup or foreground to pick up admin-set balances.
+    func fetchServerBalance() async {
+        guard token != nil else { return }
+        do {
+            let data = try await get(path: "/user/balance", requireAuth: true)
+            if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let serverBalance = json["timeBalance"] as? Double {
+                DispatchQueue.main.async {
+                    if !TimeEngine.shared.skipServerCorrection {
+                        TimeEngine.shared.balance = serverBalance
+                    }
+                }
+            }
+        } catch { /* endpoint may not exist on all server versions */ }
     }
 
     func fetchServerTime() async -> TimeInterval? {

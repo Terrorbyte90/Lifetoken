@@ -436,9 +436,17 @@ struct YatzyView: View {
                 }
             }
 
-            Slider(value: $betAmount, in: 300...max(600, min(engine.balance, 86400 * 7)), step: 300)
-                .tint(.green)
-                .padding(.horizontal)
+            let sliderMax = max(600.0, min(engine.balance, 86400 * 7))
+            Slider(
+                value: Binding(
+                    get: { min(max(300, betAmount), sliderMax) },
+                    set: { betAmount = $0 }
+                ),
+                in: 300...sliderMax,
+                step: 300
+            )
+            .tint(.green)
+            .padding(.horizontal)
 
             Button { startGame() } label: {
                 Text("STARTA SPELET")
@@ -682,8 +690,9 @@ struct YatzyView: View {
         isRolling = true
         rollsLeft -= 1
         withAnimation(.easeInOut(duration: 0.25)) {
-            for i in 0..<dice.count {
-                if !dice[i].held { dice[i].value = Int.random(in: 1...6) }
+            dice = dice.map { die in
+                guard !die.held else { return die }
+                return YatzyDie(id: die.id, value: Int.random(in: 1...6))
             }
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.28) {
@@ -761,7 +770,7 @@ struct YatzyView: View {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) {
             isPlayerTurn = true
             rollsLeft = 3
-            for i in 0..<dice.count { dice[i].held = false; dice[i].value = Int.random(in: 1...6) }
+            dice = (0..<5).map { YatzyDie(id: $0, value: Int.random(in: 1...6)) }
             aiHolds = Array(repeating: false, count: 5)
             gamePhase = .playerRoll
             statusMessage = "Din tur"

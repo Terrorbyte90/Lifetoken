@@ -652,50 +652,59 @@ struct NavCard: View {
     let color: Color
     let action: () -> Void
 
-    @State private var pressed = false
-
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 12) {
-                // Icon container
+            VStack(alignment: .leading, spacing: 10) {
                 ZStack {
-                    RoundedRectangle(cornerRadius: 11)
+                    Circle()
                         .fill(color.opacity(0.18))
-                        .frame(width: 44, height: 44)
+                        .frame(width: 40, height: 40)
+                        .shadow(color: color.opacity(0.55), radius: 8, x: 0, y: 2)
                     Image(systemName: icon)
-                        .font(.system(size: 17, weight: .semibold))
+                        .font(.system(size: 16, weight: .semibold))
                         .foregroundColor(color)
+                        .shadow(color: color.opacity(0.9), radius: 3)
                 }
-                // Labels
                 VStack(alignment: .leading, spacing: 3) {
                     Text(title)
-                        .font(.system(size: 13, weight: .bold, design: .monospaced))
+                        .font(.system(size: 12, weight: .bold, design: .monospaced))
                         .foregroundColor(.white)
-                        .lineLimit(1)
+                        .tracking(0.3)
                     Text(sub)
-                        .font(.system(size: 9, design: .monospaced))
-                        .foregroundColor(.white.opacity(0.32))
+                        .font(.system(size: 8, design: .monospaced))
+                        .foregroundColor(color.opacity(0.55))
                         .lineLimit(1)
                 }
-                Spacer(minLength: 0)
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 9, weight: .semibold))
-                    .foregroundColor(color.opacity(0.35))
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 13)
-            .frame(maxWidth: .infinity, minHeight: 68)
+            .padding(14)
+            .frame(maxWidth: .infinity, minHeight: 96, alignment: .topLeading)
             .background(
-                LinearGradient(
-                    colors: [color.opacity(0.10), Color(red: 0.04, green: 0.05, blue: 0.09)],
-                    startPoint: .topLeading, endPoint: .bottomTrailing
-                )
+                ZStack {
+                    LinearGradient(
+                        colors: [color.opacity(0.14), Color(red: 0.03, green: 0.04, blue: 0.08)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                    LinearGradient(
+                        colors: [Color.white.opacity(0.055), .clear],
+                        startPoint: .top,
+                        endPoint: .init(x: 0.5, y: 0.4)
+                    )
+                }
             )
-            .clipShape(RoundedRectangle(cornerRadius: 16))
+            .clipShape(RoundedRectangle(cornerRadius: 18))
             .overlay(
-                RoundedRectangle(cornerRadius: 16)
-                    .stroke(color.opacity(0.22), lineWidth: 1)
+                RoundedRectangle(cornerRadius: 18)
+                    .stroke(
+                        LinearGradient(
+                            colors: [color.opacity(0.50), color.opacity(0.08)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 1
+                    )
             )
+            .shadow(color: color.opacity(0.13), radius: 10, x: 0, y: 5)
         }
         .buttonStyle(PlainButtonStyle())
     }
