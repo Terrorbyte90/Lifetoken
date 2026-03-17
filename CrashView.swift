@@ -316,20 +316,19 @@ struct CrashView: View {
 
     func startTimer() {
         gameTimer?.invalidate()
-        gameTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
-            DispatchQueue.main.async { [weak self] in
-                guard let self = self else { return }
+        gameTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { _ in
+            DispatchQueue.main.async {
                 // Guard: only process ticks while game is still running
-                guard self.phase == .running else { return }
+                guard phase == .running else { return }
 
-                self.elapsed += 0.1
+                elapsed += 0.1
                 // Multiplier grows exponentially
-                self.multiplier = pow(1.06, self.elapsed)
+                multiplier = pow(1.06, elapsed)
 
-                self.pathPoints.append((self.elapsed, self.multiplier))
+                pathPoints.append((elapsed, multiplier))
 
-                if self.multiplier >= self.crashPoint {
-                    self.triggerCrash()
+                if multiplier >= crashPoint {
+                    triggerCrash()
                 }
             }
         }
