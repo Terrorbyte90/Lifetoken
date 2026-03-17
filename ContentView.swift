@@ -48,6 +48,7 @@ struct DashboardView: View {
                     if inflation.isWarning { inflationBanner }
                     payrollRow
                     statsStrip
+                    eliteTicker
                     BoardWidget().padding(.horizontal)
                     NewsFeedWidget(maxItems: 3).padding(.horizontal)
                     navSectionLabel
@@ -467,6 +468,62 @@ struct DashboardView: View {
                     color: Color(red: 0.2, green: 0.8, blue: 0.5))  { showMiniJobs = true }
         }
         .padding(.horizontal)
+    }
+
+    // MARK: - Elite Ticker
+
+    private let elitePerks = [
+        "Topp 3 rikaste spelare får unika fördelar",
+        "★ Plats 1: Skatteimmunitet — betalar 0% skatt",
+        "★ Plats 2: Tidsskydd — kan ej rånas",
+        "★ Plats 3: Dubbel hälsoinkomst varje dag"
+    ]
+    @State private var eliteTickerIndex = 0
+    @State private var eliteTickerTimer = Timer.publish(every: 4, on: .main, in: .common).autoconnect()
+
+    private var eliteTicker: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "crown.fill")
+                .font(.system(size: 9))
+                .foregroundColor(Color(red: 1.0, green: 0.8, blue: 0.1))
+                .shadow(color: Color.yellow.opacity(0.6), radius: 3)
+            Text(elitePerks[eliteTickerIndex])
+                .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                .foregroundColor(eliteTickerIndex == 0
+                    ? Color(red: 1.0, green: 0.85, blue: 0.3)
+                    : Color.white.opacity(0.75))
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+                .transition(.asymmetric(
+                    insertion: .move(edge: .trailing).combined(with: .opacity),
+                    removal:   .move(edge: .leading).combined(with: .opacity)
+                ))
+                .id(eliteTickerIndex)
+            Spacer()
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 7)
+        .background(
+            LinearGradient(
+                colors: [
+                    Color(red: 0.18, green: 0.14, blue: 0.02),
+                    Color(red: 0.08, green: 0.06, blue: 0.01)
+                ],
+                startPoint: .leading,
+                endPoint: .trailing
+            )
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(Color(red: 1.0, green: 0.8, blue: 0.1).opacity(0.3), lineWidth: 1)
+        )
+        .padding(.horizontal)
+        .onReceive(eliteTickerTimer) { _ in
+            withAnimation(.easeInOut(duration: 0.35)) {
+                eliteTickerIndex = (eliteTickerIndex + 1) % elitePerks.count
+            }
+        }
     }
 
     // MARK: - Banners
