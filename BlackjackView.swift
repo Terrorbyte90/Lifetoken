@@ -465,6 +465,7 @@ struct BlackjackView: View {
                     let win = betAmount * 2.0 * (1.0 - taxRate)
                     TimeEngine.shared.addTime(win)
                     netGain += win - betAmount
+                    MissionsManager.incrementProgress("casino_total_wins")
                     msgs.append("\(label): Vinst! +\(TimeEngine.shortFormatted(win - betAmount))")
                 } else if hTotal == dealerTotal {
                     TimeEngine.shared.addTime(betAmount)
@@ -483,11 +484,13 @@ struct BlackjackView: View {
                 let net = betAmount * 2.5 * (1.0 - taxRate)
                 TimeEngine.shared.addTime(net)
                 GameState.shared.recordEarning(net - betAmount)
+                MissionsManager.incrementProgress("casino_total_wins")
                 resultMessage = "BLACKJACK! +\(TimeEngine.shortFormatted(net - betAmount)) (efter \(Int(taxRate * 100))% skatt)"
             } else if dealerTotal > 21 || pTotal > dealerTotal {
                 let net = betAmount * 2.0 * (1.0 - taxRate)
                 TimeEngine.shared.addTime(net)
                 GameState.shared.recordEarning(net - betAmount)
+                MissionsManager.incrementProgress("casino_total_wins")
                 resultMessage = "Du vann! +\(TimeEngine.shortFormatted(net - betAmount)) (efter skatt)"
             } else if pTotal == dealerTotal {
                 TimeEngine.shared.addTime(betAmount)

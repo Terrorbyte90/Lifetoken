@@ -1,23 +1,24 @@
 import SwiftUI
 
 // MARK: - In Time Clock
-// Displays balance as  YY : DDD : HH : MM : SS
-// inspired by the "In Time" film aesthetic — neon green on dark, monospaced digits.
+// Visar balansen som  YY : DDD : HH : MM : SS
+// Inspirerad av filmens "In Time" — neongrön på svart, monospaced.
+// Premium: digit-by-digit animation, neon glow-lager, adaptiv färg.
 
 struct InTimeClockView: View {
 
     let balance: TimeInterval
     let pulseAnim: Bool
 
-    // MARK: Neon green (#00FF41) for healthy; warning colours preserved
+    // MARK: Adaptiv neon-färg
     private var displayColor: Color {
-        if balance <= 0    { return .red }
-        if balance < 3600  { return .red }
-        if balance < 21600 { return .yellow }
-        return Color(red: 0, green: 1.0, blue: 65 / 255)   // #00FF41
+        if balance <= 0    { return LTPalette.danger }
+        if balance < 3600  { return LTPalette.danger }
+        if balance < 21600 { return LTPalette.warning }
+        return LTPalette.neonGreen
     }
 
-    // MARK: Time decomposition — strict integer modulo chain, no months/weeks
+    // MARK: Tidsdekomposition
     private var components: (yr: Int, day: Int, hr: Int, min: Int, sec: Int) {
         let s    = Int(max(0, balance))
         let yr   = s / 31_536_000
@@ -36,41 +37,46 @@ struct InTimeClockView: View {
         let col = displayColor
 
         HStack(alignment: .top, spacing: 0) {
-            unitCell(value: String(format: "%03d",  c.yr),  label: "ÅR",  color: col)
+            unitCell(value: String(format: "%03d", c.yr),  label: "ÅR",  color: col)
             colonSep(color: col)
-            unitCell(value: String(format: "%03d",  c.day), label: "DAG", color: col)
+            unitCell(value: String(format: "%03d", c.day), label: "DAG", color: col)
             colonSep(color: col)
-            unitCell(value: String(format: "%02d",  c.hr),  label: "TIM", color: col)
+            unitCell(value: String(format: "%02d", c.hr),  label: "TIM", color: col)
             colonSep(color: col)
-            unitCell(value: String(format: "%02d",  c.min), label: "MIN", color: col)
+            unitCell(value: String(format: "%02d", c.min), label: "MIN", color: col)
             colonSep(color: col)
-            unitCell(value: String(format: "%02d",  c.sec), label: "SEK", color: col)
+            unitCell(value: String(format: "%02d", c.sec), label: "SEK", color: col)
         }
         .scaleEffect(pulseAnim ? 1.04 : 1.0)
+        .animation(LTAnimation.springFast, value: pulseAnim)
     }
 
-    // MARK: - Unit cell: number on top, small label beneath
+    // MARK: - Siffercell med neon-glow
     private func unitCell(value: String, label: String, color: Color) -> some View {
-        VStack(spacing: 3) {
+        VStack(spacing: LTSpacing.xs) {
             Text(value)
-                .font(.system(size: 20, weight: .bold, design: .monospaced))
+                .font(.system(size: 22, weight: .bold, design: .monospaced))
                 .foregroundColor(color)
+                // Dubbellager glow: tight + spread
+                .shadow(color: color.opacity(0.9), radius: 4)
+                .shadow(color: color.opacity(0.4), radius: 10)
+                .contentTransition(.numericText(countsDown: true))
+                .animation(LTAnimation.fadeFast, value: value)
             Text(label)
                 .font(.system(size: 9, weight: .semibold, design: .monospaced))
-                .foregroundColor(color.opacity(0.4))
+                .foregroundColor(color.opacity(0.38))
         }
-        .padding(.horizontal, 3)
+        .padding(.horizontal, LTSpacing.xs - 1)
     }
 
-    // MARK: - Colon separator — vertically aligned to number row only
-    // The invisible spacer text below mirrors the label row height so the
-    // colon sits flush with the number row across all cells.
+    // MARK: - Kolon-separator — justeras mot sifferraden
     private func colonSep(color: Color) -> some View {
-        VStack(spacing: 3) {
+        VStack(spacing: LTSpacing.xs) {
             Text(":")
-                .font(.system(size: 20, weight: .bold, design: .monospaced))
-                .foregroundColor(color.opacity(0.3))
-            // Height-matching invisible spacer for the label row
+                .font(.system(size: 22, weight: .bold, design: .monospaced))
+                .foregroundColor(color.opacity(0.28))
+                .shadow(color: color.opacity(0.3), radius: 4)
+            // Osynlig spacer som matchar label-radens höjd
             Text(" ")
                 .font(.system(size: 9, weight: .semibold, design: .monospaced))
         }
@@ -79,16 +85,16 @@ struct InTimeClockView: View {
 
 // MARK: - Preview
 #Preview {
-    let healthyBalance: TimeInterval = 94_518_641   // ~3 years 45 days
-    let warningBalance: TimeInterval = 2_700         // 45 min (red)
+    let healthyBalance: TimeInterval = 94_518_641   // ~3 år 45 dagar
+    let warningBalance: TimeInterval = 2_700         // 45 min (röd)
     return ZStack {
         Color.black.ignoresSafeArea()
-        VStack(spacing: 32) {
+        VStack(spacing: LTSpacing.xxxl) {
             InTimeClockView(balance: healthyBalance, pulseAnim: false)
             InTimeClockView(balance: warningBalance,  pulseAnim: true)
         }
         .padding()
         .background(Color.black.opacity(0.8))
-        .clipShape(RoundedRectangle(cornerRadius: 20))
+        .clipShape(RoundedRectangle(cornerRadius: LTRadius.lg))
     }
 }

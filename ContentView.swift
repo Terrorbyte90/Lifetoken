@@ -55,7 +55,7 @@ struct DashboardView: View {
                     navGrid
                     activeBoostsSection
                     microTextBar
-                    Spacer(minLength: 100)
+                    Spacer(minLength: LTSpacing.scrollBottom)
                 }
                 .padding(.top, 4)
             }
@@ -87,7 +87,7 @@ struct DashboardView: View {
             Button("Tack!", role: .cancel) {}
         } message: { Text(incomeManager.summaryMessage) }
         .onReceive(microTimer) { _ in
-            withAnimation(.easeInOut(duration: 0.4)) {
+            withAnimation(LTAnimation.fade) {
                 microIndex = (microIndex + 1) % microTexts.count
             }
         }
@@ -198,9 +198,10 @@ struct DashboardView: View {
                 Text("TIMED OUT")
                     .font(.system(size: 40, weight: .black, design: .monospaced))
                     .foregroundColor(.red)
-                    .shadow(color: .red.opacity(0.7), radius: 14)
+                    .neonGlow(.red, intensity: 1.2)
             } else {
                 InTimeClockView(balance: engine.balance, pulseAnim: pulseAnim)
+                    .neonGlow(clockColor, intensity: engine.balance < 3600 ? 0.8 : 0.3)
                     .animation(
                         engine.balance < 3600
                             ? .easeInOut(duration: 0.5).repeatForever(autoreverses: true)
@@ -212,7 +213,7 @@ struct DashboardView: View {
             }
 
             // Time progress bar + drain rate
-            HStack(spacing: 8) {
+            HStack(spacing: LTSpacing.sm) {
                 Image(systemName: "hourglass")
                     .font(.system(size: 8))
                     .foregroundColor(.white.opacity(0.2))
@@ -229,6 +230,8 @@ struct DashboardView: View {
                                 )
                             )
                             .frame(width: geo.size.width * timePercent, height: 3)
+                            .shadow(color: clockColor.opacity(0.5), radius: 4)
+                            .animation(LTAnimation.fade, value: timePercent)
                     }
                 }
                 .frame(height: 3)
@@ -257,19 +260,21 @@ struct DashboardView: View {
                 )
             }
         )
-        .clipShape(RoundedRectangle(cornerRadius: 22))
+        .clipShape(RoundedRectangle(cornerRadius: LTRadius.xl))
         .overlay(
-            RoundedRectangle(cornerRadius: 22)
+            RoundedRectangle(cornerRadius: LTRadius.xl)
                 .stroke(clockColor.opacity(0.28), lineWidth: 1)
         )
-        .shadow(color: clockColor.opacity(0.18), radius: 18, x: 0, y: 4)
+        .shadow(color: clockColor.opacity(0.22), radius: 20, x: 0, y: 6)
         .padding(.horizontal)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Livsbalans: \(clockLabel.lowercased()). \(TimeEngine.formatted(engine.balance)) återstår.")
     }
 
     // MARK: - Payroll Row
 
     private var payrollRow: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: LTSpacing.sm + 2) {
             payCard(
                 icon: "heart.fill",
                 iconColor: Color(red: 0.2, green: 0.9, blue: 0.45),
@@ -373,7 +378,7 @@ struct DashboardView: View {
     }
 
     private func statChip(icon: String, label: String, value: String, color: Color) -> some View {
-        VStack(spacing: 6) {
+        VStack(spacing: LTSpacing.xs + 2) {
             Image(systemName: icon)
                 .font(.system(size: 14))
                 .foregroundColor(color)
@@ -383,6 +388,8 @@ struct DashboardView: View {
                 .foregroundColor(.white)
                 .lineLimit(1)
                 .minimumScaleFactor(0.6)
+                .contentTransition(.numericText())
+                .animation(LTAnimation.fadeFast, value: value)
             Text(label)
                 .font(.system(size: 8, weight: .bold, design: .monospaced))
                 .foregroundColor(color.opacity(0.75))
@@ -397,8 +404,10 @@ struct DashboardView: View {
                 endPoint: .bottom
             )
         )
-        .clipShape(RoundedRectangle(cornerRadius: 13))
-        .overlay(RoundedRectangle(cornerRadius: 13).stroke(color.opacity(0.35), lineWidth: 1))
+        .clipShape(RoundedRectangle(cornerRadius: LTRadius.xs + 5))
+        .overlay(RoundedRectangle(cornerRadius: LTRadius.xs + 5).stroke(color.opacity(0.35), lineWidth: 1))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(label): \(value)")
     }
 
     // MARK: - Nav Section Label
@@ -424,7 +433,7 @@ struct DashboardView: View {
     private var navGrid: some View {
         LazyVGrid(
             columns: [GridItem(.flexible()), GridItem(.flexible())],
-            spacing: 10
+            spacing: LTSpacing.sm + 2
         ) {
             NavCard(icon: "cart.fill",
                     title: "Butik",
@@ -520,7 +529,7 @@ struct DashboardView: View {
         )
         .padding(.horizontal)
         .onReceive(eliteTickerTimer) { _ in
-            withAnimation(.easeInOut(duration: 0.35)) {
+            withAnimation(LTAnimation.fadeFast) {
                 eliteTickerIndex = (eliteTickerIndex + 1) % elitePerks.count
             }
         }
@@ -559,25 +568,32 @@ struct DashboardView: View {
     }
 
     private var lowBalanceBanner: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: LTSpacing.sm + 2) {
             Image(systemName: "exclamationmark.circle.fill")
                 .font(.system(size: 15))
-                .foregroundColor(.red)
-            VStack(alignment: .leading, spacing: 2) {
+                .foregroundColor(LTPalette.danger)
+                .neonGlow(LTPalette.danger, intensity: 0.6)
+            VStack(alignment: .leading, spacing: LTSpacing.xs - 2) {
                 Text("KRITISK TIDSNIVÅ")
-                    .font(.system(size: 10, weight: .black, design: .monospaced))
-                    .foregroundColor(.red)
+                    .font(LTFont.label(10))
+                    .foregroundColor(LTPalette.danger)
                 Text("Du har mindre än en dag kvar.")
-                    .font(.system(size: 10, design: .monospaced))
-                    .foregroundColor(.red.opacity(0.70))
+                    .font(LTFont.body(10))
+                    .foregroundColor(LTPalette.danger.opacity(0.70))
             }
             Spacer()
+            Image(systemName: "chevron.right")
+                .font(.system(size: 9))
+                .foregroundColor(LTPalette.danger.opacity(0.4))
         }
-        .padding(12)
-        .background(Color.red.opacity(0.10))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.red.opacity(0.35), lineWidth: 1))
+        .padding(LTSpacing.md)
+        .background(LTPalette.danger.opacity(0.10))
+        .clipShape(RoundedRectangle(cornerRadius: LTRadius.sm))
+        .overlay(RoundedRectangle(cornerRadius: LTRadius.sm).stroke(LTPalette.danger.opacity(0.35), lineWidth: 1))
+        .shadow(color: LTPalette.danger.opacity(0.12), radius: 8)
         .padding(.horizontal)
+        .accessibilityLabel("Varning: Kritisk tidsnivå. Du har mindre än en dag kvar.")
+        .accessibilityAddTraits(.isStaticText)
     }
 
     // MARK: - Active Boosts
@@ -710,31 +726,35 @@ struct NavCard: View {
     let action: () -> Void
 
     var body: some View {
-        Button(action: action) {
-            VStack(alignment: .leading, spacing: 10) {
+        Button(action: {
+            let impact = UIImpactFeedbackGenerator(style: .light)
+            impact.impactOccurred()
+            action()
+        }) {
+            VStack(alignment: .leading, spacing: LTSpacing.sm) {
                 ZStack {
                     Circle()
                         .fill(color.opacity(0.18))
-                        .frame(width: 40, height: 40)
+                        .frame(width: 42, height: 42)
                         .shadow(color: color.opacity(0.55), radius: 8, x: 0, y: 2)
                     Image(systemName: icon)
-                        .font(.system(size: 16, weight: .semibold))
+                        .font(.system(size: 17, weight: .semibold))
                         .foregroundColor(color)
                         .shadow(color: color.opacity(0.9), radius: 3)
                 }
-                VStack(alignment: .leading, spacing: 3) {
+                VStack(alignment: .leading, spacing: LTSpacing.xs - 1) {
                     Text(title)
-                        .font(.system(size: 12, weight: .bold, design: .monospaced))
+                        .font(LTFont.heading(12))
                         .foregroundColor(.white)
                         .tracking(0.3)
                     Text(sub)
-                        .font(.system(size: 8, design: .monospaced))
+                        .font(LTFont.body(8))
                         .foregroundColor(color.opacity(0.55))
                         .lineLimit(1)
                 }
             }
-            .padding(14)
-            .frame(maxWidth: .infinity, minHeight: 96, alignment: .topLeading)
+            .padding(LTSpacing.lg - 2)
+            .frame(maxWidth: .infinity, minHeight: 100, alignment: .topLeading)
             .background(
                 ZStack {
                     LinearGradient(
@@ -749,9 +769,9 @@ struct NavCard: View {
                     )
                 }
             )
-            .clipShape(RoundedRectangle(cornerRadius: 18))
+            .clipShape(RoundedRectangle(cornerRadius: LTRadius.lg))
             .overlay(
-                RoundedRectangle(cornerRadius: 18)
+                RoundedRectangle(cornerRadius: LTRadius.lg)
                     .stroke(
                         LinearGradient(
                             colors: [color.opacity(0.50), color.opacity(0.08)],
@@ -761,9 +781,11 @@ struct NavCard: View {
                         lineWidth: 1
                     )
             )
-            .shadow(color: color.opacity(0.13), radius: 10, x: 0, y: 5)
+            .shadow(color: color.opacity(0.15), radius: 12, x: 0, y: 5)
         }
-        .buttonStyle(PlainButtonStyle())
+        .buttonStyle(LTPressEffect(scale: 0.95))
+        .accessibilityLabel(title)
+        .accessibilityHint(sub)
     }
 }
 
@@ -776,8 +798,12 @@ struct ShortcutButton: View {
     let action: () -> Void
 
     var body: some View {
-        Button(action: action) {
-            VStack(spacing: 7) {
+        Button(action: {
+            let impact = UIImpactFeedbackGenerator(style: .light)
+            impact.impactOccurred()
+            action()
+        }) {
+            VStack(spacing: LTSpacing.sm - 1) {
                 ZStack {
                     Circle()
                         .fill(color.opacity(0.15))
@@ -787,38 +813,48 @@ struct ShortcutButton: View {
                         .foregroundColor(color)
                 }
                 Text(label)
-                    .font(.system(size: 9, weight: .medium, design: .monospaced))
+                    .font(LTFont.body(9))
                     .foregroundColor(.white.opacity(0.75))
                     .lineLimit(1)
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 12)
             .background(.ultraThinMaterial)
-            .clipShape(RoundedRectangle(cornerRadius: 12))
-            .overlay(RoundedRectangle(cornerRadius: 12).stroke(color.opacity(0.2), lineWidth: 1))
+            .clipShape(RoundedRectangle(cornerRadius: LTRadius.sm))
+            .overlay(RoundedRectangle(cornerRadius: LTRadius.sm).stroke(color.opacity(0.2), lineWidth: 1))
         }
+        .buttonStyle(LTPressEffect())
+        .accessibilityLabel(label)
     }
 }
 
 // MARK: - MainTabView
 
 struct MainTabView: View {
+    @AppStorage("selectedTab") private var selectedTab: Int = 0
+
     var body: some View {
-        TabView {
+        TabView(selection: $selectedTab) {
             DashboardView()
                 .tabItem { Label("Hem", systemImage: "clock.fill") }
+                .tag(0)
             WorkView()
                 .tabItem { Label("Arbete", systemImage: "hammer.fill") }
+                .tag(1)
             CasinoHubView()
                 .tabItem { Label("Kasino", systemImage: "suit.spade.fill") }
+                .tag(2)
             ZoneVisual()
                 .tabItem { Label("Zoner", systemImage: "map.fill") }
+                .tag(3)
             SocialView()
                 .tabItem { Label("Social", systemImage: "person.2.fill") }
+                .tag(4)
         }
-        .tint(.green)
+        .tint(LTPalette.neonGreen)
         .preferredColorScheme(.dark)
         .toolbarBackground(.ultraThinMaterial, for: .tabBar)
+        .toolbarColorScheme(.dark, for: .tabBar)
     }
 }
 

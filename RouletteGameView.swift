@@ -358,6 +358,7 @@ struct RouletteGameView: View {
             let net     = gross * (1.0 - taxRate)
             TimeEngine.shared.addTime(net)
             GameState.shared.recordEarning(net - betAmount)
+            MissionsManager.incrementProgress("casino_total_wins")
             resultMessage = "Vinst! Nummer \(n)\n+\(TimeEngine.shortFormatted(net - betAmount)) (efter \(Int(taxRate * 100))% skatt)"
         } else {
             resultMessage = "Nummer \(n) — ingen vinst.\nFörlorade \(TimeEngine.shortFormatted(betAmount))."

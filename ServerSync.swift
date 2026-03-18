@@ -25,7 +25,7 @@ struct SyncResponse: Codable {
     let antiCheatFlag: Bool?
 }
 
-class ServerSync: ObservableObject {
+class ServerSync: ObservableObject, @unchecked Sendable {
     static let shared = ServerSync()
     private let baseURL    = "http://209.38.98.107:4000/api"
     private let healthURL  = "http://209.38.98.107:4000/health"
@@ -163,7 +163,7 @@ class ServerSync: ObservableObject {
     }
 
     func loginOrRegister(username: String) async {
-        let deviceId = UIDevice.current.identifierForVendor?.uuidString ?? UUID().uuidString
+        let deviceId = await MainActor.run { UIDevice.current.identifierForVendor?.uuidString ?? UUID().uuidString }
         do {
             let resp = try await register(username: username, deviceId: deviceId)
             token = resp.token

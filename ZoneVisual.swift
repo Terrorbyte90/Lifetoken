@@ -201,6 +201,8 @@ struct ZoneVisual: View {
         VStack(spacing: 0) {
             connectorLine(color: .orange.opacity(0.4), height: 10)
             Button {
+                let impact = UIImpactFeedbackGenerator(style: .medium)
+                impact.impactOccurred()
                 migrationTarget = zone
                 showMigrationSheet = true
             } label: {
@@ -447,6 +449,9 @@ struct ZoneVisual: View {
                     .padding(.horizontal, 24)
 
                 Button {
+                    let notif = UINotificationFeedbackGenerator()
+                    notif.notificationOccurred(canAfford ? .success : .error)
+                    guard canAfford else { return }
                     let result = zoneManager.migrateToZone(zone)
                     migrationResult = result.message
                     showMigrationSheet = false
@@ -459,13 +464,15 @@ struct ZoneVisual: View {
                     }
                 } label: {
                     Text(canAfford ? "MIGRERA TILL \(zone.name.uppercased())" : "OTILLRÄCKLIGA MEDEL")
-                        .font(.system(size: 15, weight: .bold, design: .monospaced))
-                        .foregroundColor(.black)
+                        .font(LTFont.heading(15))
+                        .foregroundColor(canAfford ? .black : .white.opacity(0.35))
                         .frame(maxWidth: .infinity)
                         .padding()
-                        .background(canAfford ? zone.color : Color.gray)
-                        .clipShape(RoundedRectangle(cornerRadius: 14))
+                        .background(canAfford ? zone.color : Color.white.opacity(0.08))
+                        .clipShape(RoundedRectangle(cornerRadius: LTRadius.sm))
+                        .shadow(color: canAfford ? zone.color.opacity(0.3) : .clear, radius: 10, y: 4)
                 }
+                .buttonStyle(LTPressEffect())
                 .disabled(!canAfford)
                 .padding(.horizontal)
 

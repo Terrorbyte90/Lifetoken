@@ -204,7 +204,6 @@ class BoardManager: ObservableObject {
             self.pendingSystemFee = feePercent
 
             // Nyhet
-            let pct = String(format: "%.0f", feePercent * 100)
             NewsManager.shared.addSystemFeeEvent(percent: feePercent, totalStolen: fee)
         }
     }

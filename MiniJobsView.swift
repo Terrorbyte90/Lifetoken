@@ -174,7 +174,11 @@ private struct MiniJobCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             // ── Tap header ──────────────────────────────
-            Button(action: { withAnimation(.spring(response: 0.35)) { expanded.toggle() } }) {
+            Button(action: {
+                let impact = UIImpactFeedbackGenerator(style: .light)
+                impact.impactOccurred()
+                withAnimation(LTAnimation.springFast) { expanded.toggle() }
+            }) {
                 HStack(spacing: 14) {
                     ZStack {
                         RoundedRectangle(cornerRadius: 12)
@@ -264,21 +268,28 @@ private struct MiniJobCard: View {
                     .padding(.horizontal, 16)
 
                     // Start button
-                    Button(action: onStart) {
-                        HStack(spacing: 8) {
+                    Button(action: {
+                        let impact = UIImpactFeedbackGenerator(style: .medium)
+                        impact.impactOccurred()
+                        onStart()
+                    }) {
+                        HStack(spacing: LTSpacing.sm) {
                             Image(systemName: "play.fill").font(.system(size: 13))
                             Text("STARTA — \(diff.label.uppercased())")
-                                .font(.system(size: 13, weight: .black, design: .monospaced))
+                                .font(LTFont.heading(13))
                                 .tracking(1)
                         }
                         .foregroundColor(.black)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)
                         .background(color)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .clipShape(RoundedRectangle(cornerRadius: LTRadius.sm))
+                        .shadow(color: color.opacity(0.35), radius: 8, y: 3)
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 16)
+                    .buttonStyle(LTPressEffect())
+                    .accessibilityLabel("Starta \(name) på svårighetsgrad \(diff.label)")
+                    .padding(.horizontal, LTSpacing.lg)
+                    .padding(.bottom, LTSpacing.lg)
                 }
                 .transition(.opacity.combined(with: .move(edge: .top)))
             }
