@@ -1,6 +1,49 @@
 import SwiftUI
 import Foundation
 
+// MARK: - Transaction Ledger (persistent transaktionshistorik)
+
+struct BankTransaction: Codable, Identifiable {
+    let id: String
+    let label: String
+    let amount: TimeInterval
+    let date: Date
+
+    init(label: String, amount: TimeInterval) {
+        self.id = UUID().uuidString
+        self.label = label
+        self.amount = amount
+        self.date = Date()
+    }
+}
+
+class TransactionLedger {
+    static let shared = TransactionLedger()
+    private let storageKey = "bankTransactions"
+
+    private(set) var transactions: [BankTransaction] = []
+
+    private init() { load() }
+
+    func record(label: String, amount: TimeInterval) {
+        let tx = BankTransaction(label: label, amount: amount)
+        transactions.insert(tx, at: 0)
+        if transactions.count > 100 { transactions = Array(transactions.prefix(100)) }
+        save()
+    }
+
+    private func load() {
+        guard let data = UserDefaults.standard.data(forKey: storageKey),
+              let decoded = try? JSONDecoder().decode([BankTransaction].self, from: data) else { return }
+        transactions = decoded
+    }
+
+    private func save() {
+        guard let data = try? JSONEncoder().encode(transactions) else { return }
+        UserDefaults.standard.set(data, forKey: storageKey)
+    }
+}
+
 // MARK: - PlayerLoan
 
 struct PlayerLoan: Codable {
@@ -64,6 +107,7 @@ class BankManager: ObservableObject {
             dueDays: 30
         )
         save()
+        TransactionLedger.shared.record(label: "Tidslån beviljat", amount: amount)
         return true
     }
 
@@ -75,6 +119,7 @@ class BankManager: ObservableObject {
             showAlert = true
             return
         }
+        TransactionLedger.shared.record(label: "Lån återbetalt (inkl. ränta)", amount: -total)
         activeLoan = nil
         save()
     }
@@ -101,11 +146,11 @@ class BankManager: ObservableObject {
 
 struct BankView: View {
     @Environment(\.dismiss) var dismiss
-    @ObservedObject private var engine    = TimeEngine.shared
-    @ObservedObject private var gameState = GameState.shared
+    @ObservedObject private var engine      = TimeEngine.shared
+    @ObservedObject private var gameState   = GameState.shared
     @ObservedObject private var bankManager = BankManager.shared
-    @ObservedObject private var investMgr = InvestmentManager.shared
-    @ObservedObject private var social    = SocialManager.shared
+    @ObservedObject private var investMgr   = InvestmentManager.shared
+    @ObservedObject private var social      = SocialManager.shared
 
     @State private var selectedTab: BankTab = .tidskonto
     @State private var loanAmount:   TimeInterval = 3600
@@ -113,7 +158,11 @@ struct BankView: View {
     @State private var maturityDays: Int = 7
     @State private var showLoanConfirm    = false
     @State private var showInvestConfirm  = false
-    @State private var transactionHistory: [(label: String, amount: TimeInterval, date: Date)] = []
+    @State private var transactionHistory: [BankTransaction] = []
+
+    private let hapticLight  = UIImpactFeedbackGenerator(style: .light)
+    private let hapticMedium = UIImpactFeedbackGenerator(style: .medium)
+    private let hapticNotif  = UINotificationFeedbackGenerator()
 
     enum BankTab: String, CaseIterable {
         case tidslaan    = "Tidslån"
@@ -122,12 +171,10 @@ struct BankView: View {
         case historik    = "Historik"
     }
 
-    // Safe upper bound for invest slider — always a multiple of 3600 and at least 7200
-    // (range needs width ≥ step to avoid "max stride must be positive" fatal error)
     private var investUpperBound: TimeInterval {
         let raw = min(engine.balance * 0.8, TimeInterval(86400 * 365))
-        let floored = (raw / 3600).rounded(.down) * 3600   // snap to step grid
-        return max(7200.0, floored)                         // at minimum 2 steps
+        let floored = (raw / 3600).rounded(.down) * 3600
+        return max(7200.0, floored)
     }
     private var investAmountClamped: TimeInterval {
         min(investAmount, investUpperBound)
@@ -135,7 +182,6 @@ struct BankView: View {
 
     var body: some View {
         ZStack {
-            // Rich dark gradient
             LinearGradient(
                 colors: [
                     Color(red: 0.03, green: 0.05, blue: 0.09),
@@ -145,7 +191,6 @@ struct BankView: View {
                 startPoint: .top, endPoint: .bottom
             ).ignoresSafeArea()
 
-            // Subtle grid lines
             Canvas { ctx, size in
                 for y in stride(from: 0.0, to: size.height, by: 48) {
                     var p = Path(); p.move(to: .init(x: 0, y: y)); p.addLine(to: .init(x: size.width, y: y))
@@ -156,19 +201,19 @@ struct BankView: View {
             VStack(spacing: 0) {
                 bankHeader
                 tabBar
-                    .padding(.bottom, 6)
+                    .padding(.bottom, LTSpacing.xs + 2)
 
                 ScrollView(showsIndicators: false) {
-                    VStack(spacing: 16) {
+                    VStack(spacing: LTSpacing.lg) {
                         switch selectedTab {
                         case .tidslaan:    tidslaanSection
                         case .tidskonto:   tidskontoSection
                         case .npcUtlaning: npcUtlaningSection
                         case .historik:    historikSection
                         }
-                        Spacer(minLength: 100)
+                        Spacer(minLength: LTSpacing.scrollBottom)
                     }
-                    .padding(.horizontal)
+                    .padding(.horizontal, LTSpacing.horizontal)
                 }
             }
         }
@@ -176,7 +221,10 @@ struct BankView: View {
             Button("OK") {}
         } message: { Text(bankManager.alertMessage) }
         .alert("Bekräfta Lån", isPresented: $showLoanConfirm) {
-            Button("Ta Lån") { _ = bankManager.takeLoan(amount: loanAmount) }
+            Button("Ta Lån") {
+                hapticNotif.notificationOccurred(.success)
+                _ = bankManager.takeLoan(amount: loanAmount)
+            }
             Button("Avbryt", role: .cancel) {}
         } message: {
             let zone = gameState.currentZone
@@ -185,6 +233,7 @@ struct BankView: View {
         }
         .alert("Bekräfta Investering", isPresented: $showInvestConfirm) {
             Button("Investera") {
+                hapticNotif.notificationOccurred(.success)
                 _ = investMgr.invest(amount: investAmountClamped, maturityDays: maturityDays, zone: gameState.currentZone)
             }
             Button("Avbryt", role: .cancel) {}
@@ -198,9 +247,17 @@ struct BankView: View {
             Button("OK") {}
         } message: { Text(social.alertMessage) }
         .onChange(of: engine.balance) { _, _ in
-            // Clamp invest slider value when balance drops
             if investAmount > investUpperBound {
                 investAmount = max(3600, (investUpperBound / 3600).rounded(.down) * 3600)
+            }
+        }
+        .onAppear {
+            transactionHistory = TransactionLedger.shared.transactions
+        }
+        .onChange(of: selectedTab) { _, tab in
+            hapticLight.impactOccurred()
+            if tab == .historik {
+                transactionHistory = TransactionLedger.shared.transactions
             }
         }
     }
@@ -218,29 +275,36 @@ struct BankView: View {
                         .background(Color.white.opacity(0.08))
                         .clipShape(Circle())
                 }
+                .buttonStyle(LTPressEffect())
+                .accessibilityLabel("Stäng banken")
+
                 Spacer()
                 VStack(spacing: 2) {
                     Text("TIDBANKEN")
-                        .font(.system(size: 17, weight: .black, design: .monospaced))
+                        .font(LTFont.heading(17))
                         .foregroundColor(.white)
                         .tracking(3)
                     Text(gameState.currentZone.name)
-                        .font(.system(size: 10, design: .monospaced))
+                        .font(LTFont.body(10))
                         .foregroundColor(gameState.currentZone.color)
                 }
                 Spacer()
                 VStack(alignment: .trailing, spacing: 2) {
                     Text(TimeEngine.shortFormatted(engine.balance))
-                        .font(.system(size: 13, weight: .bold, design: .monospaced))
+                        .font(LTFont.heading(13))
                         .foregroundColor(.yellow)
+                        .contentTransition(.numericText())
+                        .animation(LTAnimation.springFast, value: engine.balance)
                     Text("saldo")
-                        .font(.system(size: 9, design: .monospaced))
+                        .font(LTFont.body(9))
                         .foregroundColor(.white.opacity(0.3))
                 }
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("Saldo: \(TimeEngine.shortFormatted(engine.balance))")
             }
-            .padding(.horizontal, 16)
+            .padding(.horizontal, LTSpacing.horizontal)
             .padding(.top, 58)
-            .padding(.bottom, 14)
+            .padding(.bottom, LTSpacing.md)
 
             Divider().background(Color.white.opacity(0.06))
         }
@@ -250,13 +314,15 @@ struct BankView: View {
 
     private var tabBar: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 6) {
+            HStack(spacing: LTSpacing.xs + 2) {
                 ForEach(BankTab.allCases, id: \.self) { tab in
-                    Button { withAnimation(.spring(response: 0.3)) { selectedTab = tab } } label: {
+                    Button {
+                        withAnimation(LTAnimation.springFast) { selectedTab = tab }
+                    } label: {
                         Text(tab.rawValue)
-                            .font(.system(size: 11, weight: .bold, design: .monospaced))
+                            .font(LTFont.label(11))
                             .foregroundColor(selectedTab == tab ? .black : .white.opacity(0.6))
-                            .padding(.horizontal, 14)
+                            .padding(.horizontal, LTSpacing.md)
                             .padding(.vertical, 7)
                             .background(selectedTab == tab
                                 ? tabColor(tab)
@@ -264,10 +330,13 @@ struct BankView: View {
                             .clipShape(Capsule())
                             .overlay(Capsule().stroke(tabColor(tab).opacity(selectedTab == tab ? 0 : 0.3), lineWidth: 1))
                     }
+                    .buttonStyle(LTPressEffect())
+                    .accessibilityLabel(tab.rawValue)
+                    .accessibilityAddTraits(selectedTab == tab ? .isSelected : [])
                 }
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 8)
+            .padding(.horizontal, LTSpacing.horizontal)
+            .padding(.vertical, LTSpacing.sm)
         }
     }
 
@@ -283,45 +352,38 @@ struct BankView: View {
     // MARK: - Tidslån Section
 
     private var tidslaanSection: some View {
-        VStack(spacing: 14) {
+        VStack(spacing: LTSpacing.md) {
             let zone    = gameState.currentZone
             let maxLoan = BankManager.maxLoan(for: zone)
             let rate    = BankManager.dailyRate(for: zone) * 100
 
-            // Loan terms card
             VStack(spacing: 0) {
                 HStack {
                     Image(systemName: "building.columns.fill")
                         .foregroundColor(.cyan)
                         .font(.system(size: 14))
                     Text("LÅNEVILLKOR")
-                        .font(.system(size: 11, weight: .black, design: .monospaced))
+                        .font(LTFont.heading(11))
                         .foregroundColor(.white)
                         .tracking(2)
                     Spacer()
                     Text("30 DAGAR")
-                        .font(.system(size: 9, design: .monospaced))
+                        .font(LTFont.body(9))
                         .foregroundColor(Color.cyan.opacity(0.7))
                 }
-                .padding(14)
+                .padding(LTSpacing.md)
 
                 Divider().background(Color.cyan.opacity(0.1))
 
-                VStack(spacing: 8) {
+                VStack(spacing: LTSpacing.sm) {
                     bankRow("Maxbelopp", TimeEngine.shortFormatted(maxLoan), .yellow)
                     bankRow("Daglig ränta", String(format: "%.2f%%", rate), .orange)
                     bankRow("Din zon", "\(zone.name) (niv. \(zone.index))", zone.color)
                 }
-                .padding(14)
+                .padding(LTSpacing.md)
             }
-            .background(
-                LinearGradient(colors: [Color.cyan.opacity(0.07), Color.clear],
-                               startPoint: .topLeading, endPoint: .bottomTrailing)
-            )
-            .clipShape(RoundedRectangle(cornerRadius: 16))
-            .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.cyan.opacity(0.2), lineWidth: 1))
+            .ltAccentCard(color: .cyan)
 
-            // Active loan or new loan form
             if let loan = bankManager.activeLoan {
                 activeLoanCard(loan: loan)
             } else {
@@ -333,55 +395,55 @@ struct BankView: View {
     private func activeLoanCard(loan: PlayerLoan) -> some View {
         VStack(spacing: 0) {
             HStack {
-                HStack(spacing: 6) {
+                HStack(spacing: LTSpacing.xs + 2) {
                     Circle().fill(loan.isPastDue ? Color.red : Color.yellow)
                         .frame(width: 6, height: 6)
                     Text(loan.isPastDue ? "FÖRFALLET LÅN" : "AKTIVT LÅN")
-                        .font(.system(size: 11, weight: .black, design: .monospaced))
+                        .font(LTFont.heading(11))
                         .foregroundColor(loan.isPastDue ? .red : .yellow)
                         .tracking(2)
                 }
                 Spacer()
                 Text("\(max(0, loan.dueDays - Int(loan.daysElapsed)))d kvar")
-                    .font(.system(size: 10, design: .monospaced))
+                    .font(LTFont.body(10))
                     .foregroundColor(.white.opacity(0.4))
+                    .contentTransition(.numericText())
             }
-            .padding(14)
+            .padding(LTSpacing.md)
 
             Divider().background(Color.yellow.opacity(0.1))
 
-            VStack(spacing: 8) {
-                bankRow("Lånebelopp",       TimeEngine.shortFormatted(loan.principal), .white)
-                bankRow("Upplupen ränta",   TimeEngine.shortFormatted(loan.interest), .orange)
-                bankRow("Totalt att betala",TimeEngine.shortFormatted(loan.totalDue), .red)
+            VStack(spacing: LTSpacing.sm) {
+                bankRow("Lånebelopp",        TimeEngine.shortFormatted(loan.principal), .white)
+                bankRow("Upplupen ränta",    TimeEngine.shortFormatted(loan.interest), .orange)
+                bankRow("Totalt att betala", TimeEngine.shortFormatted(loan.totalDue), .red)
             }
-            .padding(.horizontal, 14)
-            .padding(.top, 12)
+            .padding(.horizontal, LTSpacing.md)
+            .padding(.top, LTSpacing.md)
 
             Button {
+                hapticMedium.impactOccurred()
                 bankManager.repayLoan()
             } label: {
-                HStack(spacing: 6) {
+                HStack(spacing: LTSpacing.xs + 2) {
                     Image(systemName: "checkmark.circle.fill").font(.system(size: 13))
                     Text("BETALA TILLBAKA — \(TimeEngine.shortFormatted(loan.totalDue))")
-                        .font(.system(size: 12, weight: .black, design: .monospaced))
+                        .font(LTFont.heading(12))
                         .tracking(1)
                 }
                 .foregroundColor(.black)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 13)
                 .background(engine.balance >= loan.totalDue ? Color.green : Color.gray.opacity(0.5))
-                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .clipShape(RoundedRectangle(cornerRadius: LTRadius.sm))
             }
             .disabled(engine.balance < loan.totalDue)
-            .padding(14)
+            .buttonStyle(LTPressEffect())
+            .padding(LTSpacing.md)
+            .accessibilityLabel("Betala tillbaka lånet: \(TimeEngine.shortFormatted(loan.totalDue))")
+            .accessibilityHint(engine.balance >= loan.totalDue ? "Tryck för att betala" : "Otillräcklig balans")
         }
-        .background(
-            LinearGradient(colors: [Color.yellow.opacity(0.08), Color.clear],
-                           startPoint: .top, endPoint: .bottom)
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 16))
-        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.yellow.opacity(0.3), lineWidth: 1))
+        .ltAccentCard(color: .yellow)
     }
 
     private func newLoanForm(maxLoan: TimeInterval, rate: Double) -> some View {
@@ -391,28 +453,32 @@ struct BankView: View {
                     .foregroundColor(.cyan)
                     .font(.system(size: 13))
                 Text("NY ANSÖKAN")
-                    .font(.system(size: 11, weight: .black, design: .monospaced))
+                    .font(LTFont.heading(11))
                     .foregroundColor(.white)
                     .tracking(2)
                 Spacer()
             }
-            .padding(14)
+            .padding(LTSpacing.md)
 
             Divider().background(Color.white.opacity(0.06))
 
-            VStack(spacing: 12) {
+            VStack(spacing: LTSpacing.md) {
                 HStack {
                     Text("Belopp")
-                        .font(.system(size: 11, design: .monospaced))
+                        .font(LTFont.body(11))
                         .foregroundColor(.white.opacity(0.5))
                     Spacer()
                     Text(TimeEngine.shortFormatted(loanAmount))
-                        .font(.system(size: 15, weight: .bold, design: .monospaced))
+                        .font(LTFont.value(15))
                         .foregroundColor(.cyan)
+                        .contentTransition(.numericText())
+                        .animation(LTAnimation.springFast, value: loanAmount)
                 }
 
                 Slider(value: $loanAmount, in: 3600...Swift.max(3601, maxLoan), step: 3600)
                     .tint(.cyan)
+                    .accessibilityLabel("Lånebelopp")
+                    .accessibilityValue(TimeEngine.shortFormatted(loanAmount))
 
                 bankRow(
                     "Total kostnad (30d)",
@@ -420,41 +486,44 @@ struct BankView: View {
                     .orange
                 )
 
-                Button { showLoanConfirm = true } label: {
+                Button {
+                    hapticMedium.impactOccurred()
+                    showLoanConfirm = true
+                } label: {
                     Text("ANSÖK OM LÅN")
-                        .font(.system(size: 13, weight: .black, design: .monospaced))
+                        .font(LTFont.heading(13))
                         .foregroundColor(.black)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 13)
                         .background(Color.cyan)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .clipShape(RoundedRectangle(cornerRadius: LTRadius.sm))
                 }
+                .buttonStyle(LTPressEffect())
+                .accessibilityLabel("Ansök om lån på \(TimeEngine.shortFormatted(loanAmount))")
             }
-            .padding(14)
+            .padding(LTSpacing.md)
         }
-        .background(Color.white.opacity(0.04))
-        .clipShape(RoundedRectangle(cornerRadius: 16))
-        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.white.opacity(0.08), lineWidth: 1))
+        .ltCard(radius: LTRadius.md)
     }
 
     // MARK: - Tidskonto Section
 
     private var tidskontoSection: some View {
-        VStack(spacing: 14) {
+        VStack(spacing: LTSpacing.md) {
             let rate = InvestmentManager.dailyRate(for: gameState.currentZone)
 
-            // Rate banner
             HStack(spacing: 0) {
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: LTSpacing.xs) {
                     Text("DAGLIG RÄNTA")
-                        .font(.system(size: 9, weight: .bold, design: .monospaced))
+                        .font(LTFont.label(9))
                         .foregroundColor(.white.opacity(0.4))
                         .tracking(2)
                     Text(String(format: "%.2f%%", rate * 100))
-                        .font(.system(size: 34, weight: .black, design: .monospaced))
+                        .font(LTFont.value(34))
                         .foregroundColor(.green)
+                        .contentTransition(.numericText())
                     Text("Marknaden kan krascha (5% risk/vecka)")
-                        .font(.system(size: 9, design: .monospaced))
+                        .font(LTFont.body(9))
                         .foregroundColor(.red.opacity(0.7))
                 }
                 Spacer()
@@ -466,45 +535,41 @@ struct BankView: View {
                         .font(.system(size: 22))
                         .foregroundColor(.green)
                 }
+                .accessibilityHidden(true)
             }
-            .padding(16)
-            .background(
-                LinearGradient(colors: [Color.green.opacity(0.1), Color.clear],
-                               startPoint: .topLeading, endPoint: .bottomTrailing)
-            )
-            .clipShape(RoundedRectangle(cornerRadius: 16))
-            .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.green.opacity(0.25), lineWidth: 1))
+            .padding(LTSpacing.lg)
+            .ltAccentCard(color: .green)
 
-            // New investment form
             VStack(spacing: 0) {
                 HStack {
                     Image(systemName: "plus.circle.fill")
                         .foregroundColor(.green)
                         .font(.system(size: 13))
                     Text("NY INVESTERING")
-                        .font(.system(size: 11, weight: .black, design: .monospaced))
+                        .font(LTFont.heading(11))
                         .foregroundColor(.white)
                         .tracking(2)
                     Spacer()
                     Text("LÖPTID")
-                        .font(.system(size: 9, design: .monospaced))
+                        .font(LTFont.body(9))
                         .foregroundColor(.white.opacity(0.3))
                 }
-                .padding(14)
+                .padding(LTSpacing.md)
 
                 Divider().background(Color.white.opacity(0.06))
 
-                VStack(spacing: 14) {
-                    // Amount slider — clamped binding prevents crash
-                    VStack(spacing: 6) {
+                VStack(spacing: LTSpacing.md) {
+                    VStack(spacing: LTSpacing.xs + 2) {
                         HStack {
                             Text("Belopp")
-                                .font(.system(size: 11, design: .monospaced))
+                                .font(LTFont.body(11))
                                 .foregroundColor(.white.opacity(0.5))
                             Spacer()
                             Text(TimeEngine.shortFormatted(investAmountClamped))
-                                .font(.system(size: 15, weight: .bold, design: .monospaced))
+                                .font(LTFont.value(15))
                                 .foregroundColor(.yellow)
+                                .contentTransition(.numericText())
+                                .animation(LTAnimation.springFast, value: investAmountClamped)
                         }
                         Slider(
                             value: Binding(
@@ -515,20 +580,27 @@ struct BankView: View {
                             step: 3600
                         )
                         .tint(.green)
+                        .accessibilityLabel("Investeringsbelopp")
+                        .accessibilityValue(TimeEngine.shortFormatted(investAmountClamped))
                     }
 
-                    // Duration picker
-                    HStack(spacing: 6) {
+                    HStack(spacing: LTSpacing.xs + 2) {
                         ForEach([1, 7, 14, 30, 90], id: \.self) { days in
-                            Button { maturityDays = days } label: {
+                            Button {
+                                hapticLight.impactOccurred()
+                                withAnimation(LTAnimation.springFast) { maturityDays = days }
+                            } label: {
                                 Text("\(days)d")
-                                    .font(.system(size: 11, weight: .bold, design: .monospaced))
+                                    .font(LTFont.label(11))
                                     .foregroundColor(maturityDays == days ? .black : .white.opacity(0.7))
-                                    .padding(.horizontal, 10)
-                                    .padding(.vertical, 6)
+                                    .padding(.horizontal, LTSpacing.sm + 2)
+                                    .padding(.vertical, LTSpacing.xs + 2)
                                     .background(maturityDays == days ? Color.green : Color.white.opacity(0.07))
                                     .clipShape(RoundedRectangle(cornerRadius: 7))
                             }
+                            .buttonStyle(LTPressEffect())
+                            .accessibilityLabel("\(days) dagar")
+                            .accessibilityAddTraits(maturityDays == days ? .isSelected : [])
                         }
                     }
 
@@ -536,39 +608,43 @@ struct BankView: View {
                     bankRow("Prognos efter \(maturityDays)d", TimeEngine.shortFormatted(projected), .green)
                     bankRow("Vinst", "+" + TimeEngine.shortFormatted(projected - investAmountClamped), .cyan)
 
-                    Button { showInvestConfirm = true } label: {
+                    Button {
+                        hapticMedium.impactOccurred()
+                        showInvestConfirm = true
+                    } label: {
                         Text("INVESTERA \(TimeEngine.shortFormatted(investAmountClamped))")
-                            .font(.system(size: 13, weight: .black, design: .monospaced))
+                            .font(LTFont.heading(13))
                             .foregroundColor(.black)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 13)
                             .background(investAmountClamped <= engine.balance ? Color.green : Color.gray.opacity(0.4))
-                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                            .clipShape(RoundedRectangle(cornerRadius: LTRadius.sm))
                     }
                     .disabled(investAmountClamped > engine.balance)
+                    .buttonStyle(LTPressEffect())
+                    .accessibilityLabel("Investera \(TimeEngine.shortFormatted(investAmountClamped))")
+                    .accessibilityHint(investAmountClamped > engine.balance ? "Otillräcklig balans" : "Låser beloppet under \(maturityDays) dagar")
                 }
-                .padding(14)
+                .padding(LTSpacing.md)
             }
-            .background(Color.white.opacity(0.04))
-            .clipShape(RoundedRectangle(cornerRadius: 16))
-            .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.white.opacity(0.08), lineWidth: 1))
+            .ltCard(radius: LTRadius.md)
 
-            // Active investments
             if !investMgr.investments.isEmpty {
-                VStack(spacing: 8) {
+                VStack(spacing: LTSpacing.sm) {
                     HStack {
                         Text("AKTIVA INVESTERINGAR")
-                            .font(.system(size: 10, weight: .bold, design: .monospaced))
+                            .font(LTFont.label(10))
                             .foregroundColor(.white.opacity(0.35))
                             .tracking(2)
                         Spacer()
                         Text("\(investMgr.investments.count) aktiva")
-                            .font(.system(size: 10, design: .monospaced))
+                            .font(LTFont.body(10))
                             .foregroundColor(.green.opacity(0.7))
                     }
 
                     ForEach(investMgr.investments) { inv in
                         InvestmentCard(investment: inv) {
+                            hapticNotif.notificationOccurred(inv.isMatured ? .success : .warning)
                             investMgr.withdraw(inv)
                         }
                     }
@@ -580,54 +656,55 @@ struct BankView: View {
     // MARK: - NPC-utlåning Section
 
     private var npcUtlaningSection: some View {
-        VStack(spacing: 12) {
-            HStack(spacing: 8) {
+        VStack(spacing: LTSpacing.md) {
+            HStack(spacing: LTSpacing.sm) {
                 Image(systemName: "info.circle.fill")
                     .foregroundColor(.orange)
                     .font(.system(size: 13))
                 Text("Lån till NPC:er ger ränteintäkter. Risk: NPC betalar inte tillbaka.")
-                    .font(.system(size: 11, design: .monospaced))
+                    .font(LTFont.body(11))
                     .foregroundColor(.white.opacity(0.6))
             }
-            .padding(12)
-            .background(Color.orange.opacity(0.08))
-            .clipShape(RoundedRectangle(cornerRadius: 12))
-            .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.orange.opacity(0.2), lineWidth: 1))
+            .padding(LTSpacing.md)
+            .ltAccentCard(color: .orange, radius: LTRadius.sm)
 
             if !social.activeLoans.isEmpty {
-                VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: LTSpacing.sm) {
                     Text("DINA AKTIVA LÅN")
-                        .font(.system(size: 10, weight: .bold, design: .monospaced))
+                        .font(LTFont.label(10))
                         .foregroundColor(.yellow)
                         .tracking(2)
 
                     ForEach(social.activeLoans.filter { $0.lentToNPC }) { loan in
                         let npc = NPCPlayer.all.first(where: { $0.name == loan.npcName })
                         LoanCard(loan: loan) {
-                            if let n = npc { social.collectFromNPC(loan, npc: n) }
+                            if let n = npc {
+                                hapticMedium.impactOccurred()
+                                social.collectFromNPC(loan, npc: n)
+                            }
                         }
                     }
                 }
             }
 
             Text("TILLGÄNGLIGA NPC:ER")
-                .font(.system(size: 10, weight: .bold, design: .monospaced))
+                .font(LTFont.label(10))
                 .foregroundColor(.white.opacity(0.35))
                 .tracking(2)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
             let zoneNPCs = NPCPlayer.all.filter { $0.zone == gameState.currentZone.name }
             if zoneNPCs.isEmpty {
-                VStack(spacing: 8) {
+                VStack(spacing: LTSpacing.sm) {
                     Image(systemName: "person.slash.fill")
                         .font(.system(size: 28))
                         .foregroundColor(.white.opacity(0.2))
                     Text("Inga NPC:er i \(gameState.currentZone.name)")
-                        .font(.system(size: 12, design: .monospaced))
+                        .font(LTFont.body(12))
                         .foregroundColor(.white.opacity(0.3))
                 }
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 30)
+                .padding(.vertical, LTSpacing.xxxl - 2)
             } else {
                 ForEach(zoneNPCs) { npc in
                     npcLendCard(npc: npc)
@@ -637,87 +714,91 @@ struct BankView: View {
     }
 
     private func npcLendCard(npc: NPCPlayer) -> some View {
-        HStack(spacing: 12) {
+        HStack(spacing: LTSpacing.md) {
             Text(npc.avatar)
                 .font(.system(size: 28))
                 .frame(width: 44, height: 44)
                 .background(Color.white.opacity(0.05))
                 .clipShape(Circle())
+                .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 3) {
                 HStack {
                     Text(npc.name)
-                        .font(.system(size: 13, weight: .bold, design: .monospaced))
+                        .font(LTFont.heading(13))
                         .foregroundColor(.white)
                     Spacer()
                     Text(String(format: "%.0f%%/mån", npc.loanInterestRate * 100))
-                        .font(.system(size: 10, weight: .bold, design: .monospaced))
+                        .font(LTFont.label(10))
                         .foregroundColor(.yellow)
                 }
                 Text(npc.bio)
-                    .font(.system(size: 10, design: .monospaced))
+                    .font(LTFont.body(10))
                     .foregroundColor(.white.opacity(0.5))
                     .lineLimit(1)
-                HStack(spacing: 4) {
+                HStack(spacing: LTSpacing.xs) {
                     Circle().fill(npc.reliability > 0.8 ? Color.green : Color.orange)
                         .frame(width: 5, height: 5)
                     Text(String(format: "Pålitlighet: %.0f%%", npc.reliability * 100))
-                        .font(.system(size: 9, design: .monospaced))
+                        .font(LTFont.body(9))
                         .foregroundColor(npc.reliability > 0.8 ? .green : .orange)
                 }
             }
 
             Button("LÅN") {
+                hapticMedium.impactOccurred()
                 _ = social.lendToNPC(npc, amount: 3600, days: 7)
             }
-            .font(.system(size: 11, weight: .black, design: .monospaced))
+            .font(LTFont.heading(11))
             .foregroundColor(.black)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
+            .padding(.horizontal, LTSpacing.md)
+            .padding(.vertical, LTSpacing.sm)
             .background(Color.orange)
-            .clipShape(RoundedRectangle(cornerRadius: 8))
+            .clipShape(RoundedRectangle(cornerRadius: LTRadius.xs))
+            .buttonStyle(LTPressEffect())
+            .accessibilityLabel("Ge lån till \(npc.name)")
+            .accessibilityHint("Ränta \(Int(npc.loanInterestRate * 100))% per månad, pålitlighet \(Int(npc.reliability * 100))%")
         }
-        .padding(12)
-        .background(Color.white.opacity(0.04))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.orange.opacity(0.15), lineWidth: 1))
+        .padding(LTSpacing.md)
+        .ltCard(radius: LTRadius.sm)
     }
 
     // MARK: - Historik Section
 
     private var historikSection: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: LTSpacing.sm) {
             if transactionHistory.isEmpty {
-                VStack(spacing: 12) {
+                VStack(spacing: LTSpacing.md) {
                     Image(systemName: "clock.badge.xmark")
                         .font(.system(size: 32))
                         .foregroundColor(.white.opacity(0.15))
                     Text("Ingen transaktionshistorik ännu.")
-                        .font(.system(size: 12, design: .monospaced))
+                        .font(LTFont.body(12))
                         .foregroundColor(.white.opacity(0.3))
                 }
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 40)
+                .padding(.vertical, LTSpacing.xxxl + LTSpacing.sm)
             } else {
-                ForEach(transactionHistory.indices, id: \.self) { i in
-                    let tx = transactionHistory[i]
+                ForEach(transactionHistory) { tx in
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(tx.label)
-                                .font(.system(size: 12, design: .monospaced))
+                                .font(LTFont.body(12))
                                 .foregroundColor(.white)
                             Text(tx.date.formatted(.dateTime.day().month().hour().minute()))
-                                .font(.system(size: 9, design: .monospaced))
+                                .font(LTFont.body(9))
                                 .foregroundColor(.white.opacity(0.4))
                         }
                         Spacer()
                         Text(tx.amount >= 0 ? "+\(TimeEngine.shortFormatted(tx.amount))" : "−\(TimeEngine.shortFormatted(abs(tx.amount)))")
-                            .font(.system(size: 12, weight: .bold, design: .monospaced))
+                            .font(LTFont.heading(12))
                             .foregroundColor(tx.amount >= 0 ? .green : .red)
+                            .contentTransition(.numericText())
                     }
-                    .padding(10)
-                    .background(Color.white.opacity(0.04))
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                    .padding(LTSpacing.sm + 2)
+                    .ltCard(radius: LTRadius.sm)
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("\(tx.label): \(tx.amount >= 0 ? "plus" : "minus") \(TimeEngine.shortFormatted(abs(tx.amount)))")
                 }
             }
         }
@@ -728,11 +809,11 @@ struct BankView: View {
     private func bankRow(_ label: String, _ value: String, _ color: Color) -> some View {
         HStack {
             Text(label)
-                .font(.system(size: 11, design: .monospaced))
+                .font(LTFont.body(11))
                 .foregroundColor(.white.opacity(0.45))
             Spacer()
             Text(value)
-                .font(.system(size: 12, weight: .bold, design: .monospaced))
+                .font(LTFont.heading(12))
                 .foregroundColor(color)
         }
     }

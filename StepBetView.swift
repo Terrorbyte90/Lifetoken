@@ -181,11 +181,14 @@ class StepBetManager: ObservableObject {
             let netPayout = grossPayout - houseFee
             TimeEngine.shared.addTime(netPayout)
             BoardManager.shared.collectTax(amount: houseFee)
+            TransactionLedger.shared.record(label: "Stegduell — vinst", amount: netPayout - bet.stake)
             NewsManager.shared.addStepBetEvent(
                 winner: iChallenger ? bet.challengerName : bet.opponentName,
                 loser:  iChallenger ? bet.opponentName : bet.challengerName,
                 amount: netPayout
             )
+        } else {
+            TransactionLedger.shared.record(label: "Stegduell — förlust", amount: -bet.stake)
         }
 
         history.insert(bet, at: 0)

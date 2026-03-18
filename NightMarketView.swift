@@ -173,6 +173,7 @@ class NightMarketManager: ObservableObject {
         )
         purchaseHistory.insert(purchase, at: 0)
         saveHistory()
+        MissionsManager.incrementProgress("nightmarket_purchases")
         NewsManager.shared.addNightMarketEvent(sellerName: offer.seller.rawValue, outcome: outcome)
         completion(outcome)
     }
@@ -233,8 +234,7 @@ class NightMarketManager: ObservableObject {
         cal.timeZone = Self.stockholmTZ
         let now = Date()
         let hour = cal.component(.hour, from: now)
-        if hour < 5 { return 0 } // already open
-        // Time until next midnight Stockholm
+        if hour < 5 { return 0 }
         var comps = cal.dateComponents([.year, .month, .day], from: now)
         comps.day = (comps.day ?? 1) + 1
         comps.hour = 0; comps.minute = 0; comps.second = 0
@@ -253,29 +253,31 @@ struct NightMarketView: View {
     @State private var purchaseResult: String = ""
     @State private var showResult: Bool = false
     @State private var confirmIndex: Int? = nil
-    @State private var particleSeed: Int = 0
+    @State private var pulseOpen: Bool = false
+    @State private var countdownTick = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
+
+    private let hapticImpact = UIImpactFeedbackGenerator(style: .medium)
+    private let hapticNotif  = UINotificationFeedbackGenerator()
 
     var body: some View {
         ZStack {
-            // ── Atmospheric background ──
             nightBackground
 
             VStack(spacing: 0) {
-                // Header bar
                 nmHeader
 
                 if !market.isOpen {
                     closedView
                 } else {
                     ScrollView(showsIndicators: false) {
-                        VStack(spacing: 18) {
+                        VStack(spacing: LTSpacing.lg + 2) {
                             openStatusBar
                             ForEach(market.offers.indices, id: \.self) { sellerCard($0) }
                             historySection
-                            Spacer(minLength: 60)
+                            Spacer(minLength: LTSpacing.scrollBottom)
                         }
-                        .padding(.horizontal, 16)
-                        .padding(.top, 8)
+                        .padding(.horizontal, LTSpacing.horizontal)
+                        .padding(.top, LTSpacing.sm)
                     }
                 }
             }
@@ -290,14 +292,25 @@ struct NightMarketView: View {
         ) {
             if let idx = confirmIndex {
                 Button("Köp för \(TimeEngine.shortFormatted(market.offers[idx].currentPrice))") {
+                    hapticImpact.impactOccurred()
                     market.purchase(offerIndex: idx) { result in
-                        DispatchQueue.main.async { purchaseResult = result; showResult = true; confirmIndex = nil }
+                        DispatchQueue.main.async {
+                            purchaseResult = result
+                            showResult = true
+                            confirmIndex = nil
+                            let isGood = result.hasPrefix("✅") || result.hasPrefix("💥")
+                            hapticNotif.notificationOccurred(isGood ? .success : .error)
+                        }
                     }
                 }
                 Button("Avbryt", role: .cancel) { confirmIndex = nil }
             }
         }
         .preferredColorScheme(.dark)
+        .onReceive(countdownTick) { _ in
+            market.updateOpenStatus()
+        }
+        .onAppear { pulseOpen = true }
     }
 
     // MARK: - Background
@@ -306,7 +319,6 @@ struct NightMarketView: View {
         ZStack {
             Color.black.ignoresSafeArea()
 
-            // Deep purple-blue haze
             LinearGradient(
                 colors: [
                     Color(red: 0.04, green: 0.02, blue: 0.10),
@@ -316,7 +328,6 @@ struct NightMarketView: View {
                 startPoint: .top, endPoint: .bottom
             ).ignoresSafeArea()
 
-            // Star field
             Canvas { ctx, size in
                 let rng = seededRandom(seed: 42)
                 for _ in 0..<80 {
@@ -346,62 +357,72 @@ struct NightMarketView: View {
                     .background(Color.white.opacity(0.07))
                     .clipShape(Circle())
             }
+            .buttonStyle(LTPressEffect())
+            .accessibilityLabel("Stäng nattmarknaden")
+
             Spacer()
             VStack(spacing: 2) {
                 Text("NATTMARKNADEN")
-                    .font(.system(size: 16, weight: .black, design: .monospaced))
+                    .font(LTFont.heading(16))
                     .foregroundColor(.white)
                     .tracking(3)
                 Text(market.isOpen ? "ÖPPEN" : "STÄNGD")
-                    .font(.system(size: 9, weight: .bold, design: .monospaced))
+                    .font(LTFont.label(9))
                     .foregroundColor(market.isOpen
                         ? Color(red: 0.3, green: 0.95, blue: 0.5)
                         : Color(red: 0.6, green: 0.3, blue: 0.6))
                     .tracking(4)
+                    .animation(LTAnimation.fadeFast, value: market.isOpen)
             }
             Spacer()
             Text(TimeEngine.shortFormatted(engine.balance))
-                .font(.system(size: 11, weight: .bold, design: .monospaced))
-                .foregroundColor(Color(red: 0.9, green: 0.8, blue: 0.1))
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
-                .background(Color(red: 0.9, green: 0.8, blue: 0.1).opacity(0.1))
+                .font(LTFont.label(11))
+                .foregroundColor(LTPalette.gold)
+                .contentTransition(.numericText())
+                .animation(LTAnimation.springFast, value: engine.balance)
+                .padding(.horizontal, LTSpacing.sm)
+                .padding(.vertical, LTSpacing.xs)
+                .background(LTPalette.gold.opacity(0.1))
                 .clipShape(Capsule())
+                .accessibilityLabel("Saldo: \(TimeEngine.shortFormatted(engine.balance))")
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, LTSpacing.horizontal)
         .padding(.top, 58)
-        .padding(.bottom, 14)
+        .padding(.bottom, LTSpacing.md)
     }
 
     // MARK: - Open status bar
 
     private var openStatusBar: some View {
-        HStack(spacing: 10) {
-            // Pulsing dot
+        HStack(spacing: LTSpacing.sm + 2) {
             ZStack {
                 Circle()
-                    .fill(Color(red: 0.2, green: 0.9, blue: 0.4).opacity(0.2))
+                    .fill(Color(red: 0.2, green: 0.9, blue: 0.4).opacity(pulseOpen ? 0.3 : 0.1))
                     .frame(width: 16, height: 16)
+                    .animation(LTAnimation.ambientPulse, value: pulseOpen)
                 Circle()
                     .fill(Color(red: 0.2, green: 0.9, blue: 0.4))
                     .frame(width: 7, height: 7)
+                    .neonGlow(LTPalette.neonGreen, intensity: 0.5)
             }
             Text("MARKNADEN ÄR ÖPPEN — STÄNGER KL 05:00 STOCKHOLMSTID")
-                .font(.system(size: 8, weight: .bold, design: .monospaced))
+                .font(LTFont.caption(8))
                 .foregroundColor(Color(red: 0.3, green: 0.7, blue: 0.4))
                 .tracking(1)
             Spacer()
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 10)
+        .padding(.horizontal, LTSpacing.md)
+        .padding(.vertical, LTSpacing.sm + 2)
         .background(
             LinearGradient(
                 colors: [Color(red: 0.04, green: 0.10, blue: 0.06), Color.clear],
                 startPoint: .leading, endPoint: .trailing
             )
         )
-        .clipShape(RoundedRectangle(cornerRadius: 10))
-        .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color(red: 0.1, green: 0.4, blue: 0.2).opacity(0.5), lineWidth: 1))
+        .clipShape(RoundedRectangle(cornerRadius: LTRadius.xs))
+        .overlay(RoundedRectangle(cornerRadius: LTRadius.xs).stroke(Color(red: 0.1, green: 0.4, blue: 0.2).opacity(0.5), lineWidth: 1))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Marknaden är öppen och stänger klockan 05:00 Stockholmstid")
     }
 
     // MARK: - Stängd vy
@@ -410,7 +431,6 @@ struct NightMarketView: View {
         VStack(spacing: 0) {
             Spacer()
 
-            // Moon + atmospheric art
             ZStack {
                 Circle()
                     .fill(Color(red: 0.15, green: 0.08, blue: 0.25).opacity(0.4))
@@ -421,51 +441,53 @@ struct NightMarketView: View {
                     .foregroundColor(Color(red: 0.55, green: 0.35, blue: 0.80))
                     .shadow(color: Color(red: 0.5, green: 0.2, blue: 0.9).opacity(0.5), radius: 16)
             }
-            .padding(.bottom, 16)
+            .padding(.bottom, LTSpacing.lg)
+            .accessibilityHidden(true)
 
             Text("NATTMARKNADEN ÄR STÄNGD")
-                .font(.system(size: 15, weight: .black, design: .monospaced))
+                .font(LTFont.heading(15))
                 .foregroundColor(Color(red: 0.65, green: 0.45, blue: 0.80))
                 .tracking(2)
-                .padding(.bottom, 6)
+                .padding(.bottom, LTSpacing.xs + 2)
 
             Text("Öppnar 00:00 — Stänger 05:00 Stockholmstid")
-                .font(.system(size: 11, design: .monospaced))
+                .font(LTFont.body(11))
                 .foregroundColor(Color(red: 0.45, green: 0.35, blue: 0.55))
-                .padding(.bottom, 4)
+                .padding(.bottom, LTSpacing.xs)
 
             Text("Stänger utan förvarning.")
-                .font(.system(size: 10, design: .monospaced))
+                .font(LTFont.body(10))
                 .foregroundColor(Color(red: 0.35, green: 0.25, blue: 0.45))
-                .padding(.bottom, 24)
+                .padding(.bottom, LTSpacing.xxl)
 
-            // Countdown card
             let secs = market.secondsUntilOpen
             if secs > 0 {
-                VStack(spacing: 4) {
+                let h = Int(secs) / 3600
+                let m = (Int(secs) % 3600) / 60
+                let s = Int(secs) % 60
+                VStack(spacing: LTSpacing.xs) {
                     Text("ÖPPNAR OM")
-                        .font(.system(size: 9, weight: .bold, design: .monospaced))
+                        .font(LTFont.label(9))
                         .foregroundColor(Color(red: 0.5, green: 0.35, blue: 0.6))
                         .tracking(3)
-                    let h = Int(secs) / 3600
-                    let m = (Int(secs) % 3600) / 60
-                    let s = Int(secs) % 60
                     Text(String(format: "%02d:%02d:%02d", h, m, s))
-                        .font(.system(size: 28, weight: .black, design: .monospaced))
+                        .font(LTFont.value(28))
                         .foregroundColor(Color(red: 0.75, green: 0.55, blue: 0.95))
+                        .contentTransition(.numericText())
+                        .animation(LTAnimation.fadeFast, value: s)
                 }
-                .padding(.horizontal, 28)
-                .padding(.vertical, 16)
+                .padding(.horizontal, LTSpacing.xxxl - 4)
+                .padding(.vertical, LTSpacing.lg)
                 .background(
-                    RoundedRectangle(cornerRadius: 16)
+                    RoundedRectangle(cornerRadius: LTRadius.md)
                         .fill(Color(red: 0.07, green: 0.04, blue: 0.13))
-                        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color(red: 0.4, green: 0.2, blue: 0.6).opacity(0.4), lineWidth: 1))
+                        .overlay(RoundedRectangle(cornerRadius: LTRadius.md).stroke(Color(red: 0.4, green: 0.2, blue: 0.6).opacity(0.4), lineWidth: 1))
                 )
                 .padding(.horizontal)
-                .padding(.bottom, 28)
+                .padding(.bottom, LTSpacing.xxl)
+                .accessibilityLabel("Marknaden öppnar om \(h) timmar, \(m) minuter och \(s) sekunder")
             }
 
-            // History in closed state
             historySection
                 .padding(.horizontal)
 
@@ -481,9 +503,7 @@ struct NightMarketView: View {
         let canAfford = engine.balance >= offer.currentPrice
 
         return VStack(spacing: 0) {
-            // Top: seller identity
-            HStack(spacing: 14) {
-                // Seller icon with glow
+            HStack(spacing: LTSpacing.md) {
                 ZStack {
                     Circle()
                         .fill(seller.accentColor.opacity(0.15))
@@ -501,85 +521,87 @@ struct NightMarketView: View {
                     Image(systemName: seller.icon)
                         .font(.system(size: 20))
                         .foregroundColor(seller.accentColor)
-                        .shadow(color: seller.accentColor.opacity(0.6), radius: 4)
+                        .neonGlow(seller.accentColor, intensity: 0.6)
                 }
+                .accessibilityHidden(true)
 
-                VStack(alignment: .leading, spacing: 5) {
+                VStack(alignment: .leading, spacing: LTSpacing.xs + 1) {
                     Text(seller.rawValue.uppercased())
-                        .font(.system(size: 12, weight: .black, design: .monospaced))
+                        .font(LTFont.heading(12))
                         .foregroundColor(.white)
                         .tracking(1)
 
-                    // Reliability badge
-                    HStack(spacing: 4) {
+                    HStack(spacing: LTSpacing.xs) {
                         Circle()
                             .fill(seller.reliabilityBadgeColor)
                             .frame(width: 5, height: 5)
                         Text(seller.reliabilityText)
-                            .font(.system(size: 9, weight: .bold, design: .monospaced))
+                            .font(LTFont.label(9))
                             .foregroundColor(seller.reliabilityBadgeColor)
                             .tracking(1)
                     }
-                    .padding(.horizontal, 8)
+                    .padding(.horizontal, LTSpacing.sm)
                     .padding(.vertical, 3)
                     .background(seller.reliabilityBadgeColor.opacity(0.1))
                     .clipShape(Capsule())
                     .overlay(Capsule().stroke(seller.reliabilityBadgeColor.opacity(0.35), lineWidth: 1))
 
                     Text(seller.description)
-                        .font(.system(size: 9, design: .monospaced))
+                        .font(LTFont.body(9))
                         .foregroundColor(.white.opacity(0.4))
                         .lineLimit(2)
                 }
 
                 Spacer()
 
-                // Price column
                 VStack(alignment: .trailing, spacing: 3) {
                     Text(TimeEngine.shortFormatted(offer.currentPrice))
-                        .font(.system(size: 15, weight: .black, design: .monospaced))
-                        .foregroundColor(canAfford ? seller.accentColor : Color(red: 0.6, green: 0.25, blue: 0.25))
+                        .font(LTFont.value(15))
+                        .foregroundColor(canAfford ? seller.accentColor : LTPalette.danger)
+                        .contentTransition(.numericText())
+                        .animation(LTAnimation.springFast, value: offer.currentPrice)
                     if offer.buyCount > 0 {
                         Text("+\(offer.buyCount * 15)%")
-                            .font(.system(size: 8, weight: .bold, design: .monospaced))
-                            .foregroundColor(Color(red: 0.9, green: 0.5, blue: 0.1))
+                            .font(LTFont.caption(8))
+                            .foregroundColor(LTPalette.warning)
                             .padding(.horizontal, 5)
                             .padding(.vertical, 2)
-                            .background(Color(red: 0.9, green: 0.5, blue: 0.1).opacity(0.12))
+                            .background(LTPalette.warning.opacity(0.12))
                             .clipShape(Capsule())
                     }
                 }
             }
-            .padding(16)
+            .padding(LTSpacing.lg)
 
-            // Middle: mystery item
-            HStack(spacing: 10) {
+            HStack(spacing: LTSpacing.sm) {
                 Image(systemName: "questionmark.square.dashed")
                     .font(.system(size: 16))
                     .foregroundColor(seller.accentColor.opacity(0.5))
                 VStack(alignment: .leading, spacing: 2) {
                     Text("??? MYSTISK VARA ???")
-                        .font(.system(size: 10, weight: .bold, design: .monospaced))
+                        .font(LTFont.label(10))
                         .foregroundColor(seller.accentColor.opacity(0.6))
                         .tracking(1)
                     Text("Innehållet okänt tills transaktionen är genomförd")
-                        .font(.system(size: 9, design: .monospaced))
+                        .font(LTFont.body(9))
                         .foregroundColor(.white.opacity(0.28))
                 }
                 Spacer()
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 10)
+            .padding(.horizontal, LTSpacing.lg)
+            .padding(.vertical, LTSpacing.sm + 2)
             .background(seller.accentColor.opacity(0.04))
 
-            // Bottom: buy button
-            Button { confirmIndex = idx } label: {
-                HStack(spacing: 8) {
+            Button {
+                hapticImpact.impactOccurred()
+                confirmIndex = idx
+            } label: {
+                HStack(spacing: LTSpacing.sm) {
                     if !canAfford {
                         Image(systemName: "lock.fill").font(.system(size: 10))
                     }
                     Text(canAfford ? "HANDLA ANONYMT" : "OTILLRÄCKLIG TID")
-                        .font(.system(size: 12, weight: .black, design: .monospaced))
+                        .font(LTFont.heading(12))
                         .tracking(1)
                 }
                 .foregroundColor(canAfford ? .black : Color(red: 0.5, green: 0.3, blue: 0.3))
@@ -592,6 +614,9 @@ struct NightMarketView: View {
                 )
             }
             .disabled(!canAfford)
+            .buttonStyle(LTPressEffect())
+            .accessibilityLabel(canAfford ? "Handla anonymt från \(seller.rawValue) för \(TimeEngine.shortFormatted(offer.currentPrice))" : "Otillräcklig tid för köp hos \(seller.rawValue)")
+            .accessibilityHint(canAfford ? "Aktiverar bekräftelsedialog" : "Du saknar tillräckligt med tid")
         }
         .background(
             LinearGradient(
@@ -599,9 +624,9 @@ struct NightMarketView: View {
                 startPoint: .topLeading, endPoint: .bottomTrailing
             )
         )
-        .clipShape(RoundedRectangle(cornerRadius: 18))
+        .clipShape(RoundedRectangle(cornerRadius: LTRadius.lg - 2))
         .overlay(
-            RoundedRectangle(cornerRadius: 18)
+            RoundedRectangle(cornerRadius: LTRadius.lg - 2)
                 .stroke(
                     LinearGradient(
                         colors: [seller.accentColor.opacity(0.55), seller.accentColor.opacity(0.15)],
@@ -611,18 +636,19 @@ struct NightMarketView: View {
                 )
         )
         .shadow(color: seller.accentColor.opacity(0.12), radius: 12, x: 0, y: 6)
+        .accessibilityElement(children: .combine)
     }
 
     // MARK: - Historik
 
     private var historySection: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: LTSpacing.sm + 2) {
             HStack {
                 Image(systemName: "clock.arrow.circlepath")
                     .font(.system(size: 10))
                     .foregroundColor(Color(red: 0.45, green: 0.35, blue: 0.55))
                 Text("TRANSAKTIONSLOGG")
-                    .font(.system(size: 9, weight: .bold, design: .monospaced))
+                    .font(LTFont.label(9))
                     .foregroundColor(Color(red: 0.45, green: 0.35, blue: 0.55))
                     .tracking(3)
                 Spacer()
@@ -632,16 +658,15 @@ struct NightMarketView: View {
                 HStack {
                     Spacer()
                     Text("Inga transaktioner registrerade.")
-                        .font(.system(size: 10, design: .monospaced))
+                        .font(LTFont.body(10))
                         .foregroundColor(Color(red: 0.3, green: 0.25, blue: 0.35))
                     Spacer()
                 }
-                .padding(.vertical, 16)
+                .padding(.vertical, LTSpacing.lg)
             } else {
-                VStack(spacing: 6) {
+                VStack(spacing: LTSpacing.xs + 2) {
                     ForEach(market.purchaseHistory.prefix(5)) { p in
-                        HStack(spacing: 10) {
-                            // Outcome icon
+                        HStack(spacing: LTSpacing.sm + 2) {
                             let isGood = p.outcome.hasPrefix("✅") || p.outcome.hasPrefix("💥")
                             Circle()
                                 .fill(isGood ? Color(red:0.1,green:0.7,blue:0.3).opacity(0.2) : Color(red:0.7,green:0.15,blue:0.15).opacity(0.2))
@@ -654,23 +679,31 @@ struct NightMarketView: View {
 
                             VStack(alignment: .leading, spacing: 1) {
                                 Text(p.sellerName)
-                                    .font(.system(size: 9, weight: .bold, design: .monospaced))
+                                    .font(LTFont.label(9))
                                     .foregroundColor(.white.opacity(0.7))
                                     .lineLimit(1)
-                                Text(p.outcome.replacingOccurrences(of: "✅ ", with: "").replacingOccurrences(of: "⚠️ ", with: "").replacingOccurrences(of: "💀 ", with: "").replacingOccurrences(of: "🌫️ ", with: "").replacingOccurrences(of: "💥 ", with: "").prefix(40))
-                                    .font(.system(size: 8, design: .monospaced))
+                                Text(p.outcome
+                                    .replacingOccurrences(of: "✅ ", with: "")
+                                    .replacingOccurrences(of: "⚠️ ", with: "")
+                                    .replacingOccurrences(of: "💀 ", with: "")
+                                    .replacingOccurrences(of: "🌫️ ", with: "")
+                                    .replacingOccurrences(of: "💥 ", with: "")
+                                    .prefix(40))
+                                    .font(LTFont.body(8))
                                     .foregroundColor(.white.opacity(0.3))
                                     .lineLimit(1)
                             }
                             Spacer()
                             Text("−\(TimeEngine.shortFormatted(p.pricePaid))")
-                                .font(.system(size: 9, weight: .bold, design: .monospaced))
+                                .font(LTFont.label(9))
                                 .foregroundColor(Color(red: 0.8, green: 0.35, blue: 0.15))
                         }
-                        .padding(10)
+                        .padding(LTSpacing.sm + 2)
                         .background(Color(red: 0.05, green: 0.03, blue: 0.08))
-                        .clipShape(RoundedRectangle(cornerRadius: 10))
-                        .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.white.opacity(0.05), lineWidth: 1))
+                        .clipShape(RoundedRectangle(cornerRadius: LTRadius.xs))
+                        .overlay(RoundedRectangle(cornerRadius: LTRadius.xs).stroke(Color.white.opacity(0.05), lineWidth: 1))
+                        .accessibilityElement(children: .combine)
+                        .accessibilityLabel("\(p.sellerName): \(p.outcome.prefix(60)). Kostnad: \(TimeEngine.shortFormatted(p.pricePaid))")
                     }
                 }
             }

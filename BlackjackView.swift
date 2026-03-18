@@ -480,22 +480,27 @@ struct BlackjackView: View {
             let pTotal = handValue(playerCards)
             if pTotal > 21 {
                 resultMessage = "Bust! Du förlorade \(TimeEngine.shortFormatted(betAmount))."
+                TransactionLedger.shared.record(label: "Blackjack — bust", amount: -betAmount)
             } else if pTotal == 21 && playerCards.count == 2 {
                 let net = betAmount * 2.5 * (1.0 - taxRate)
                 TimeEngine.shared.addTime(net)
                 GameState.shared.recordEarning(net - betAmount)
                 MissionsManager.incrementProgress("casino_total_wins")
+                TransactionLedger.shared.record(label: "Blackjack — blackjack!", amount: net - betAmount)
                 resultMessage = "BLACKJACK! +\(TimeEngine.shortFormatted(net - betAmount)) (efter \(Int(taxRate * 100))% skatt)"
             } else if dealerTotal > 21 || pTotal > dealerTotal {
                 let net = betAmount * 2.0 * (1.0 - taxRate)
                 TimeEngine.shared.addTime(net)
                 GameState.shared.recordEarning(net - betAmount)
                 MissionsManager.incrementProgress("casino_total_wins")
+                TransactionLedger.shared.record(label: "Blackjack — vinst", amount: net - betAmount)
                 resultMessage = "Du vann! +\(TimeEngine.shortFormatted(net - betAmount)) (efter skatt)"
             } else if pTotal == dealerTotal {
                 TimeEngine.shared.addTime(betAmount)
+                TransactionLedger.shared.record(label: "Blackjack — lika", amount: 0)
                 resultMessage = "Lika! (\(pTotal) vs \(dealerTotal)) — insatsen återbetalad."
             } else {
+                TransactionLedger.shared.record(label: "Blackjack — förlust", amount: -betAmount)
                 resultMessage = "Dealer vann (\(dealerTotal) mot \(pTotal)). Förlust: \(TimeEngine.shortFormatted(betAmount))."
             }
         }

@@ -415,8 +415,10 @@ struct PokerView: View {
             GameState.shared.recordEarning(taxed)
             MissionsManager.incrementProgress("poker_wins")
             MissionsManager.incrementProgress("casino_total_wins")
+            TransactionLedger.shared.record(label: "Poker — vinst (\(playerHandName))", amount: taxed)
             resultMessage = "Du vann!\nHand: \(playerHandName)\nPott: \(TimeEngine.shortFormatted(winnings))\nEfter skatt (\(Int(taxRate * 100))%): \(TimeEngine.shortFormatted(taxed))"
         } else {
+            TransactionLedger.shared.record(label: "Poker — förlust", amount: -pot / 2)
             resultMessage = "\(winnerName) vann med \(winnerHand).\nDu förlorade potten."
         }
         showResult = true

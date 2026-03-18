@@ -126,20 +126,35 @@ class WorkManager: ObservableObject {
         if let jobType = allJobs.first(where: { $0.id == job.jobId }) {
             let riskRoll = Double.random(in: 0...1)
             var earnings = job.baseEarnings
+            let zone = GameState.shared.currentZone
 
             if riskRoll < jobType.riskPercentage {
                 let loseFactor = Double.random(in: 0.2...0.5)
                 earnings *= (1 - loseFactor)
-                let taxed = earnings * (1 - GameState.shared.currentZone.taxRate)
+                let taxed = earnings * (1 - zone.taxRate)
                 let boosted = taxed * BoostManager.shared.boosterMultiplier()
                 TimeEngine.shared.addTime(boosted)
                 GameState.shared.recordEarning(boosted)
+                // Skatten till Gregor
+                let taxAmount = earnings - taxed
+                if taxAmount > 0 {
+                    BoardManager.shared.collectTax(amount: taxAmount)
+                    BoardManager.shared.recordTaxCollection(taxAmount)
+                }
+                TransactionLedger.shared.record(label: "\(jobType.name) (avkortad)", amount: boosted)
                 lastCompletedJobMessage = "Händelse! \(jobType.name) avkortad.\nIntjänat: \(TimeEngine.shortFormatted(boosted)) (efter skatt + risk)"
             } else {
-                let taxed = earnings * (1 - GameState.shared.currentZone.taxRate)
+                let taxed = earnings * (1 - zone.taxRate)
                 let boosted = taxed * BoostManager.shared.boosterMultiplier()
                 TimeEngine.shared.addTime(boosted)
                 GameState.shared.recordEarning(boosted)
+                // Skatten till Gregor
+                let taxAmount = earnings - taxed
+                if taxAmount > 0 {
+                    BoardManager.shared.collectTax(amount: taxAmount)
+                    BoardManager.shared.recordTaxCollection(taxAmount)
+                }
+                TransactionLedger.shared.record(label: jobType.name, amount: boosted)
                 lastCompletedJobMessage = "\(jobType.name) klar!\nIntjänat: \(TimeEngine.shortFormatted(boosted)) (efter skatt)"
             }
 

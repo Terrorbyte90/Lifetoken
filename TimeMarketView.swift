@@ -67,6 +67,7 @@ class MarketManager: ObservableObject {
         applyEffect(item)
         purchasedIds.insert(item.id)
         UserDefaults.standard.set(Array(purchasedIds), forKey: purchasedKey)
+        TransactionLedger.shared.record(label: "Tidsmarknaden — \(item.name)", amount: -item.costSeconds)
         return true
     }
 

@@ -15,47 +15,47 @@ struct NPCPlayer: Identifiable {
     var lastSeen: String
 
     static let all: [NPCPlayer] = [
-        NPCPlayer(id: UUID(), name: "Viktor R.",   zone: "Grundskiftet", avatar: "😐",
-                  bio: "Fabriksarbetare. Alltid lite knapp på tid. Pålitlig nog.",
+        NPCPlayer(id: UUID(), name: "Viktor R.",   zone: "Askan",         avatar: "😐",
+                  bio: "Skrotsamlare. Alltid lite knapp på tid. Pålitlig nog.",
                   balance: 3600 * 6,    loanInterestRate: 0.18, reliability: 0.75, lastSeen: "4h sedan"),
-        NPCPlayer(id: UUID(), name: "Lena S.",     zone: "Krypdalen",    avatar: "😶",
-                  bio: "Skrotsamlare. Tyst och metodisk. Betalar alltid i tid.",
+        NPCPlayer(id: UUID(), name: "Lena S.",     zone: "Spillrorna",    avatar: "😶",
+                  bio: "Budlöpare. Tyst och metodisk. Betalar alltid i tid.",
                   balance: 3600 * 10,   loanInterestRate: 0.16, reliability: 0.80, lastSeen: "2h sedan"),
-        NPCPlayer(id: UUID(), name: "Marco D.",    zone: "Gråbotten",    avatar: "🧑",
-                  bio: "Budlöpare. Springer fort men lever knappast.",
+        NPCPlayer(id: UUID(), name: "Marco D.",    zone: "Betongen",      avatar: "🧑",
+                  bio: "Fabriksarbetare. Springer fort men lever knappast.",
                   balance: 3600 * 18,   loanInterestRate: 0.15, reliability: 0.78, lastSeen: "1h sedan"),
-        NPCPlayer(id: UUID(), name: "Aisha B.",    zone: "Skymring",     avatar: "🧕",
+        NPCPlayer(id: UUID(), name: "Aisha B.",    zone: "Dimman",        avatar: "🧕",
                   bio: "Fabriksarbetare med extra skift. Noggrant bokförd.",
                   balance: 86400 * 2,   loanInterestRate: 0.12, reliability: 0.85, lastSeen: "30m sedan"),
-        NPCPlayer(id: UUID(), name: "Pjotr V.",    zone: "Halvmörker",   avatar: "🧔",
+        NPCPlayer(id: UUID(), name: "Pjotr V.",    zone: "Halvmörkret",   avatar: "🧔",
                   bio: "Säkerhetsvakt. Håller sin tid noga. Låg ränta.",
                   balance: 86400 * 4,   loanInterestRate: 0.10, reliability: 0.88, lastSeen: "45m sedan"),
-        NPCPlayer(id: UUID(), name: "Mara D.",     zone: "Skymningsgränsen", avatar: "🧐",
+        NPCPlayer(id: UUID(), name: "Mara D.",     zone: "Gränslandet",   avatar: "🧐",
                   bio: "Revisor. Noggrant bokförd. Betalar alltid tillbaka.",
                   balance: 86400 * 8,   loanInterestRate: 0.08, reliability: 0.95, lastSeen: "1h sedan"),
-        NPCPlayer(id: UUID(), name: "Sven K.",     zone: "Gråtaket",      avatar: "👨‍💼",
-                  bio: "Monteringsarbetare. Stabil och förutsägbar.",
+        NPCPlayer(id: UUID(), name: "Sven K.",     zone: "Stigarnas Dal", avatar: "👨‍💼",
+                  bio: "Tekniker. Stabil och förutsägbar.",
                   balance: 86400 * 15,  loanInterestRate: 0.09, reliability: 0.90, lastSeen: "20m sedan"),
-        NPCPlayer(id: UUID(), name: "Yuki T.",     zone: "Stegningsfältet", avatar: "👩‍🔬",
+        NPCPlayer(id: UUID(), name: "Yuki T.",     zone: "Uppgången",     avatar: "👩‍🔬",
                   bio: "Laboratorieassistent. Precis och pålitlig.",
                   balance: 86400 * 30,  loanInterestRate: 0.07, reliability: 0.93, lastSeen: "10m sedan"),
-        NPCPlayer(id: UUID(), name: "ARIA-7",      zone: "Eterpunkten",   avatar: "🤖",
+        NPCPlayer(id: UUID(), name: "ARIA-7",      zone: "Tröskeln",      avatar: "🤖",
                   bio: "AI-analytiker. Aldrig sen med betalning. Låg ränta.",
                   balance: 86400 * 60,  loanInterestRate: 0.05, reliability: 0.99, lastSeen: "15m sedan"),
-        NPCPlayer(id: UUID(), name: "Kai Dusk",    zone: "Nylysningen",   avatar: "😎",
+        NPCPlayer(id: UUID(), name: "Kai Dusk",    zone: "Klarljuset",    avatar: "😎",
                   bio: "Tidshandlare. Hög risk, hög belöning. Lite otillförlitlig.",
                   balance: 86400 * 400, loanInterestRate: 0.25, reliability: 0.60, lastSeen: "3h sedan"),
-        NPCPlayer(id: UUID(), name: "Echo",        zone: "Kronvakt",      avatar: "🎭",
+        NPCPlayer(id: UUID(), name: "Echo",        zone: "Vakttornet",    avatar: "🎭",
                   bio: "Mystisk spelare. Ingen vet var hen kommer ifrån. Hög ränta.",
                   balance: 86400 * 300, loanInterestRate: 0.30, reliability: 0.55, lastSeen: "Just nu"),
         NPCPlayer(id: UUID(), name: "Director Y.", zone: "Valvet",        avatar: "🧑‍⚖️",
                   bio: "Tidsdirektör. Enormt kapital. Kräver stor insats.",
                   balance: 86400 * 365 * 2, loanInterestRate: 0.40, reliability: 0.70, lastSeen: "Just nu"),
-        NPCPlayer(id: UUID(), name: "Syndra Wei",  zone: "Zenit",        avatar: "👑",
+        NPCPlayer(id: UUID(), name: "Syndra Wei",  zone: "Kronan",        avatar: "👑",
                   bio: "Tidsmiljonär. Erbjuder lån till högt pris. Alltid pålitlig.",
                   balance: 86400 * 365 * 5, loanInterestRate: 0.50, reliability: 1.0, lastSeen: "5m sedan"),
-        NPCPlayer(id: UUID(), name: "Solarex",     zone: "Solara",       avatar: "☀️",
-                  bio: "Solara-kärna. Oöverskådligt kapital. Aldrig förhandlingsbar.",
+        NPCPlayer(id: UUID(), name: "Solarex",     zone: "Evigheten",     avatar: "☀️",
+                  bio: "Evighetskärna. Oöverskådligt kapital. Aldrig förhandlingsbar.",
                   balance: 86400 * 365 * 100, loanInterestRate: 0.75, reliability: 1.0, lastSeen: "Alltid"),
     ]
 }
@@ -242,6 +242,8 @@ struct SocialView: View {
     @State private var chatInput: String = ""
     @State private var showYatzy: Bool = false
 
+    private let hapticLight = UIImpactFeedbackGenerator(style: .light)
+
     enum SocialTab: String, CaseIterable {
         case spelare  = "Spelare"
         case yatzy    = "Yatzy"
@@ -293,30 +295,34 @@ struct SocialView: View {
         .fullScreenCover(isPresented: $showYatzy) {
             MultiplayerYatzyView()
         }
+        .onChange(of: selectedTab) { _, _ in hapticLight.impactOccurred() }
     }
 
     // MARK: Header
 
     private var headerSection: some View {
-        VStack(spacing: 4) {
+        VStack(spacing: LTSpacing.xs) {
             Text("SOCIAL EKONOMI")
-                .font(.system(size: 22, weight: .bold, design: .monospaced))
+                .font(LTFont.displayTitle(22))
                 .foregroundColor(.white)
                 .padding(.top, 60)
-            HStack(spacing: 6) {
+            HStack(spacing: LTSpacing.xs + 2) {
                 Circle()
-                    .fill(serverSync.isOnline ? Color.green : Color.red)
+                    .fill(serverSync.isOnline ? LTPalette.neonGreen : LTPalette.danger)
                     .frame(width: 7, height: 7)
+                    .neonGlow(serverSync.isOnline ? LTPalette.neonGreen : LTPalette.danger, intensity: 0.4)
                 Text(serverSync.isOnline ? "Server online" : "Offline")
-                    .font(.system(size: 11, design: .monospaced))
+                    .font(LTFont.body(11))
                     .foregroundColor(.white.opacity(0.4))
                 Text("·  Zon: \(gameState.currentZone.name)")
-                    .font(.system(size: 11, design: .monospaced))
+                    .font(LTFont.body(11))
                     .foregroundColor(.white.opacity(0.4))
             }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("\(serverSync.isOnline ? "Server online" : "Offline"). Zon: \(gameState.currentZone.name)")
         }
         .frame(maxWidth: .infinity)
-        .padding(.bottom, 12)
+        .padding(.bottom, LTSpacing.md)
     }
 
     // MARK: Tab Bar
@@ -324,26 +330,32 @@ struct SocialView: View {
     private var tabBar: some View {
         HStack(spacing: 0) {
             ForEach(SocialTab.allCases, id: \.self) { tab in
-                Button(action: { selectedTab = tab }) {
+                Button {
+                    withAnimation(LTAnimation.springFast) { selectedTab = tab }
+                } label: {
                     Text(tab.rawValue)
-                        .font(.system(size: 12, weight: .bold, design: .monospaced))
+                        .font(LTFont.label(12))
                         .foregroundColor(selectedTab == tab ? .green : .white.opacity(0.4))
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 10)
-                        .background(
-                            selectedTab == tab
-                                ? Color.green.opacity(0.1)
-                                : Color.clear
-                        )
+                        .padding(.vertical, LTSpacing.sm + 2)
+                        .background(selectedTab == tab ? Color.green.opacity(0.1) : Color.clear)
                         .overlay(alignment: .bottom) {
                             if selectedTab == tab {
-                                Rectangle().fill(Color.green).frame(height: 2)
+                                Rectangle()
+                                    .fill(LTPalette.neonGreen)
+                                    .frame(height: 2)
+                                    .neonGlow(LTPalette.neonGreen, intensity: 0.5)
+                                    .transition(.opacity)
                             }
                         }
                 }
+                .buttonStyle(LTPressEffect(scale: 0.97))
+                .accessibilityLabel(tab.rawValue)
+                .accessibilityAddTraits(selectedTab == tab ? .isSelected : [])
             }
         }
         .background(Color.black.opacity(0.3))
+        .animation(LTAnimation.springFast, value: selectedTab)
     }
 
     // MARK: - Player Section
@@ -468,23 +480,29 @@ struct SocialView: View {
                 .padding(.horizontal)
 
                 // Play button
-                Button { showYatzy = true } label: {
-                    HStack(spacing: 10) {
+                Button {
+                    hapticLight.impactOccurred()
+                    showYatzy = true
+                } label: {
+                    HStack(spacing: LTSpacing.sm) {
                         Image(systemName: "dice.fill")
                             .font(.system(size: 20))
+                            .accessibilityHidden(true)
                         Text("SPELA YATZY DUELL")
-                            .font(.system(size: 18, weight: .bold, design: .monospaced))
+                            .font(LTFont.heading(18))
                     }
                     .foregroundColor(.black)
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 18)
+                    .padding(.vertical, LTSpacing.lg + 2)
                     .background(
                         LinearGradient(colors: [Color.orange, Color.yellow], startPoint: .leading, endPoint: .trailing)
                     )
-                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                    .clipShape(RoundedRectangle(cornerRadius: LTRadius.md))
                     .shadow(color: .orange.opacity(0.4), radius: 12)
                 }
-                .padding(.horizontal)
+                .buttonStyle(LTPressEffect())
+                .padding(.horizontal, LTSpacing.horizontal)
+                .accessibilityLabel("Spela Yatzy Duell")
 
                 Spacer(minLength: 80)
             }
@@ -541,10 +559,13 @@ struct SocialView: View {
                 Button(action: sendChat) {
                     Image(systemName: "paperplane.fill")
                         .font(.system(size: 16))
-                        .foregroundColor(chatInput.isEmpty ? .gray : .green)
-                        .padding(10)
+                        .foregroundColor(chatInput.isEmpty ? .gray : LTPalette.neonGreen)
+                        .padding(LTSpacing.sm + 2)
                 }
                 .disabled(chatInput.isEmpty)
+                .buttonStyle(LTPressEffect())
+                .accessibilityLabel("Skicka meddelande")
+                .accessibilityHint(chatInput.isEmpty ? "Skriv ett meddelande först" : "")
             }
             .padding(.horizontal)
             .padding(.vertical, 10)
@@ -629,48 +650,61 @@ struct OnlineUserCard: View {
     let user: ServerUser
     let onTransfer: () -> Void
 
+    private let haptic = UIImpactFeedbackGenerator(style: .medium)
+
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: LTSpacing.md) {
             Text(user.avatar.isEmpty ? "👤" : user.avatar)
                 .font(.system(size: 26))
+                .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(user.username)
-                    .font(.system(size: 14, weight: .bold, design: .monospaced))
+                    .font(LTFont.heading(14))
                     .foregroundColor(.white)
-                HStack(spacing: 6) {
-                    Circle().fill(Color.green).frame(width: 6, height: 6)
+                HStack(spacing: LTSpacing.xs + 2) {
+                    Circle()
+                        .fill(LTPalette.neonGreen)
+                        .frame(width: 6, height: 6)
+                        .neonGlow(LTPalette.neonGreen, intensity: 0.4)
                     Text("Online · \(user.zone)")
-                        .font(.system(size: 10, design: .monospaced))
+                        .font(LTFont.body(10))
                         .foregroundColor(.green.opacity(0.8))
                 }
                 if let balance = user.timeBalance {
                     Text("~\(TimeEngine.shortFormatted(balance))")
-                        .font(.system(size: 10, design: .monospaced))
+                        .font(LTFont.body(10))
                         .foregroundColor(.white.opacity(0.4))
+                        .contentTransition(.numericText())
                 }
             }
 
             Spacer()
 
-            Button(action: onTransfer) {
-                HStack(spacing: 4) {
+            Button {
+                haptic.impactOccurred()
+                onTransfer()
+            } label: {
+                HStack(spacing: LTSpacing.xs) {
                     Image(systemName: "arrow.right.circle")
                         .font(.system(size: 12))
+                        .accessibilityHidden(true)
                     Text("DELA TID")
-                        .font(.system(size: 10, weight: .bold, design: .monospaced))
+                        .font(LTFont.label(10))
                 }
                 .foregroundColor(.black)
-                .padding(.horizontal, 10)
+                .padding(.horizontal, LTSpacing.sm + 2)
                 .padding(.vertical, 7)
-                .background(Color.green)
-                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .background(LTPalette.neonGreen)
+                .clipShape(RoundedRectangle(cornerRadius: LTRadius.xs))
             }
+            .buttonStyle(LTPressEffect())
+            .accessibilityLabel("Dela tid med \(user.username)")
         }
-        .padding(12)
-        .background(Color.green.opacity(0.05))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.green.opacity(0.2), lineWidth: 1))
+        .padding(LTSpacing.md)
+        .ltAccentCard(color: .green, radius: LTRadius.sm)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(user.username), online i \(user.zone)\(user.timeBalance != nil ? ", saldo ~\(TimeEngine.shortFormatted(user.timeBalance!))" : "")")
     }
 }
 
@@ -717,50 +751,59 @@ struct NPCCard: View {
     let npc: NPCPlayer
     let onLend: () -> Void
 
-    var body: some View {
-        HStack(spacing: 12) {
-            Text(npc.avatar).font(.system(size: 28))
+    private let haptic = UIImpactFeedbackGenerator(style: .medium)
 
-            VStack(alignment: .leading, spacing: 4) {
+    var body: some View {
+        HStack(spacing: LTSpacing.md) {
+            Text(npc.avatar)
+                .font(.system(size: 28))
+                .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: LTSpacing.xs) {
                 HStack {
                     Text(npc.name)
-                        .font(.system(size: 14, weight: .bold, design: .monospaced))
+                        .font(LTFont.heading(14))
                         .foregroundColor(.white)
                     Spacer()
                     Text(npc.zone)
-                        .font(.system(size: 10, design: .monospaced))
+                        .font(LTFont.body(10))
                         .foregroundColor(.cyan.opacity(0.8))
                 }
                 Text(npc.bio)
-                    .font(.system(size: 11, design: .monospaced))
+                    .font(LTFont.body(11))
                     .foregroundColor(.white.opacity(0.5))
                     .lineLimit(2)
-                HStack(spacing: 16) {
-                    Label(String(format: "Ränta: %.0f%%/mån", npc.loanInterestRate * 100),
-                          systemImage: "percent")
-                        .font(.system(size: 10, design: .monospaced))
+                HStack(spacing: LTSpacing.lg) {
+                    Label(String(format: "%.0f%%/mån", npc.loanInterestRate * 100), systemImage: "percent")
+                        .font(LTFont.body(10))
                         .foregroundColor(.yellow)
-                    Label(String(format: "Pålitlighet: %.0f%%", npc.reliability * 100),
-                          systemImage: "checkmark.shield")
-                        .font(.system(size: 10, design: .monospaced))
+                    Label(String(format: "%.0f%% pålitlig", npc.reliability * 100), systemImage: "checkmark.shield")
+                        .font(LTFont.body(10))
                         .foregroundColor(npc.reliability > 0.8 ? .green : .orange)
                 }
                 Text("Senast sedd: \(npc.lastSeen)")
-                    .font(.system(size: 9, design: .monospaced))
+                    .font(LTFont.caption(9))
                     .foregroundColor(.white.opacity(0.25))
             }
 
-            Button("LÅN", action: onLend)
-                .font(.system(size: 11, weight: .bold, design: .monospaced))
-                .foregroundColor(.black)
-                .padding(.horizontal, 10).padding(.vertical, 8)
-                .background(Color.green)
-                .clipShape(RoundedRectangle(cornerRadius: 8))
+            Button("LÅN") {
+                haptic.impactOccurred()
+                onLend()
+            }
+            .font(LTFont.label(11))
+            .foregroundColor(.black)
+            .padding(.horizontal, LTSpacing.sm + 2)
+            .padding(.vertical, LTSpacing.sm)
+            .background(Color.green)
+            .clipShape(RoundedRectangle(cornerRadius: LTRadius.xs))
+            .buttonStyle(LTPressEffect())
+            .accessibilityLabel("Ge lån till \(npc.name)")
+            .accessibilityHint("Ränta \(Int(npc.loanInterestRate * 100))% per månad")
         }
-        .padding(12)
-        .background(Color.white.opacity(0.05))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.white.opacity(0.08), lineWidth: 1))
+        .padding(LTSpacing.md)
+        .ltCard(radius: LTRadius.sm)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(npc.name) i \(npc.zone). \(npc.bio). Ränta \(Int(npc.loanInterestRate * 100))% per månad, pålitlighet \(Int(npc.reliability * 100))%")
     }
 }
 
@@ -770,34 +813,45 @@ struct LoanCard: View {
     let loan: LoanRecord
     let onCollect: () -> Void
 
+    private let haptic = UIImpactFeedbackGenerator(style: .medium)
+
     var body: some View {
         HStack {
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: LTSpacing.xs) {
                 Text(loan.npcName)
-                    .font(.system(size: 13, weight: .bold, design: .monospaced))
+                    .font(LTFont.heading(13))
                     .foregroundColor(.white)
                 Text("Utlånat: \(TimeEngine.shortFormatted(loan.principal))")
-                    .font(.system(size: 11, design: .monospaced))
+                    .font(LTFont.body(11))
                     .foregroundColor(.white.opacity(0.6))
                 Text("Förfaller om \(max(0, loan.dueDays - Int(loan.daysElapsed)))d  |  Total: \(TimeEngine.shortFormatted(loan.totalDue))")
-                    .font(.system(size: 11, design: .monospaced))
+                    .font(LTFont.body(11))
                     .foregroundColor(.yellow)
+                    .contentTransition(.numericText())
             }
             Spacer()
             if loan.isPastDue {
-                Button("KRAV", action: onCollect)
-                    .font(.system(size: 12, weight: .bold, design: .monospaced))
-                    .foregroundColor(.black)
-                    .padding(.horizontal, 10).padding(.vertical, 8)
-                    .background(Color.orange)
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                Button("KRAV") {
+                    haptic.impactOccurred()
+                    onCollect()
+                }
+                .font(LTFont.heading(12))
+                .foregroundColor(.black)
+                .padding(.horizontal, LTSpacing.sm + 2)
+                .padding(.vertical, LTSpacing.sm)
+                .background(Color.orange)
+                .clipShape(RoundedRectangle(cornerRadius: LTRadius.xs))
+                .buttonStyle(LTPressEffect())
+                .accessibilityLabel("Kräv återbetalning från \(loan.npcName)")
             }
         }
-        .padding(12)
+        .padding(LTSpacing.md)
         .background(loan.isPastDue ? Color.orange.opacity(0.1) : Color.white.opacity(0.05))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-        .overlay(RoundedRectangle(cornerRadius: 12)
+        .clipShape(RoundedRectangle(cornerRadius: LTRadius.sm))
+        .overlay(RoundedRectangle(cornerRadius: LTRadius.sm)
             .stroke(loan.isPastDue ? Color.orange.opacity(0.4) : Color.clear, lineWidth: 1))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(loan.npcName): utlånat \(TimeEngine.shortFormatted(loan.principal)), totalt \(TimeEngine.shortFormatted(loan.totalDue)). \(loan.isPastDue ? "Förfallet." : "Förfaller om \(max(0, loan.dueDays - Int(loan.daysElapsed))) dagar.")")
     }
 }
 
@@ -849,6 +903,10 @@ struct LendSheetView: View {
     @ObservedObject private var engine = TimeEngine.shared
     let onConfirm: () -> Void
 
+    private let hapticLight  = UIImpactFeedbackGenerator(style: .light)
+    private let hapticMedium = UIImpactFeedbackGenerator(style: .medium)
+    private let hapticNotif  = UINotificationFeedbackGenerator()
+
     var projectedReturn: TimeInterval {
         lendAmount * (1 + (npc.loanInterestRate / 30) * Double(lendDays))
     }
@@ -856,81 +914,126 @@ struct LendSheetView: View {
     var body: some View {
         ZStack {
             Color(red: 0.04, green: 0.04, blue: 0.05).ignoresSafeArea()
-            VStack(spacing: 20) {
+            VStack(spacing: LTSpacing.xl) {
                 HStack {
-                    Button(action: { dismiss() }) {
+                    Button {
+                        hapticLight.impactOccurred()
+                        dismiss()
+                    } label: {
                         Image(systemName: "xmark")
                             .foregroundColor(.white.opacity(0.6))
-                            .padding(8)
+                            .padding(LTSpacing.sm)
                             .background(Color.white.opacity(0.1))
                             .clipShape(Circle())
                     }
+                    .buttonStyle(LTPressEffect())
+                    .accessibilityLabel("Stäng")
                     Spacer()
                     Text("LÅN TILL \(npc.name.uppercased())")
-                        .font(.system(size: 16, weight: .bold, design: .monospaced))
+                        .font(LTFont.heading(16))
                         .foregroundColor(.white)
                     Spacer()
                     Color.clear.frame(width: 36)
                 }
-                .padding()
+                .padding(LTSpacing.lg)
 
-                Text(npc.avatar).font(.system(size: 56))
+                Text(npc.avatar)
+                    .font(.system(size: 56))
+                    .accessibilityHidden(true)
 
-                VStack(spacing: 6) {
+                VStack(spacing: LTSpacing.xs + 2) {
                     Text("Månadsränta: \(Int(npc.loanInterestRate * 100))%")
-                        .font(.system(size: 14, design: .monospaced))
+                        .font(LTFont.body(14))
                         .foregroundColor(.yellow)
                     Text(String(format: "Pålitlighet: %.0f%%", npc.reliability * 100))
-                        .font(.system(size: 13, design: .monospaced))
+                        .font(LTFont.body(13))
                         .foregroundColor(npc.reliability > 0.8 ? .green : .orange)
                     if npc.reliability < 0.7 {
                         Text("Hög risk för utebliven återbetalning!")
-                            .font(.system(size: 11, design: .monospaced))
+                            .font(LTFont.body(11))
                             .foregroundColor(.red)
                     }
                 }
 
-                VStack(spacing: 10) {
-                    Text("Belopp: \(TimeEngine.shortFormatted(lendAmount))")
-                        .font(.system(size: 15, design: .monospaced))
-                        .foregroundColor(.white)
+                VStack(spacing: LTSpacing.sm) {
+                    HStack {
+                        Text("Belopp")
+                            .font(LTFont.body(11))
+                            .foregroundColor(.white.opacity(0.5))
+                        Spacer()
+                        Text(TimeEngine.shortFormatted(lendAmount))
+                            .font(LTFont.value(15))
+                            .foregroundColor(.white)
+                            .contentTransition(.numericText())
+                            .animation(LTAnimation.springFast, value: lendAmount)
+                    }
                     Slider(value: $lendAmount,
                            in: 3600...max(7200, min(engine.balance * 0.9, 86400 * 365)),
                            step: 3600)
                         .tint(.green)
+                        .accessibilityLabel("Lånebelopp")
+                        .accessibilityValue(TimeEngine.shortFormatted(lendAmount))
 
-                    HStack {
+                    HStack(spacing: LTSpacing.xs + 2) {
                         ForEach([3, 7, 14, 30, 60], id: \.self) { d in
-                            Button("\(d)d") { lendDays = d }
-                                .font(.system(size: 11, weight: .bold, design: .monospaced))
-                                .foregroundColor(lendDays == d ? .black : .white)
-                                .padding(.horizontal, 8).padding(.vertical, 5)
-                                .background(lendDays == d ? Color.green : Color.white.opacity(0.1))
-                                .clipShape(RoundedRectangle(cornerRadius: 6))
+                            Button("\(d)d") {
+                                hapticLight.impactOccurred()
+                                withAnimation(LTAnimation.springFast) { lendDays = d }
+                            }
+                            .font(LTFont.label(11))
+                            .foregroundColor(lendDays == d ? .black : .white)
+                            .padding(.horizontal, LTSpacing.sm)
+                            .padding(.vertical, LTSpacing.xs + 1)
+                            .background(lendDays == d ? Color.green : Color.white.opacity(0.1))
+                            .clipShape(RoundedRectangle(cornerRadius: LTRadius.xs))
+                            .buttonStyle(LTPressEffect())
+                            .accessibilityLabel("\(d) dagar")
+                            .accessibilityAddTraits(lendDays == d ? .isSelected : [])
                         }
                     }
 
                     VStack(spacing: 3) {
-                        Text("Förväntad återbetalning: \(TimeEngine.shortFormatted(projectedReturn))")
-                            .font(.system(size: 13, weight: .bold, design: .monospaced))
-                            .foregroundColor(.green)
-                        Text("(+\(TimeEngine.shortFormatted(projectedReturn - lendAmount)) i ränta)")
-                            .font(.system(size: 11, design: .monospaced))
-                            .foregroundColor(.green.opacity(0.6))
+                        HStack {
+                            Text("Förväntad återbetalning")
+                                .font(LTFont.body(11))
+                                .foregroundColor(.white.opacity(0.5))
+                            Spacer()
+                            Text(TimeEngine.shortFormatted(projectedReturn))
+                                .font(LTFont.heading(13))
+                                .foregroundColor(.green)
+                                .contentTransition(.numericText())
+                                .animation(LTAnimation.springFast, value: projectedReturn)
+                        }
+                        HStack {
+                            Text("Ränteintäkt")
+                                .font(LTFont.body(11))
+                                .foregroundColor(.white.opacity(0.5))
+                            Spacer()
+                            Text("+\(TimeEngine.shortFormatted(projectedReturn - lendAmount))")
+                                .font(LTFont.body(11))
+                                .foregroundColor(.green.opacity(0.6))
+                                .contentTransition(.numericText())
+                                .animation(LTAnimation.springFast, value: projectedReturn)
+                        }
                     }
                 }
-                .padding(.horizontal)
+                .padding(.horizontal, LTSpacing.horizontal)
 
-                Button(action: onConfirm) {
+                Button {
+                    hapticNotif.notificationOccurred(.success)
+                    onConfirm()
+                } label: {
                     Text("BEKRÄFTA LÅN")
-                        .font(.system(size: 16, weight: .bold, design: .monospaced))
+                        .font(LTFont.heading(16))
                         .foregroundColor(.black)
                         .frame(maxWidth: .infinity)
-                        .padding()
+                        .padding(.vertical, LTSpacing.lg)
                         .background(Color.green)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .clipShape(RoundedRectangle(cornerRadius: LTRadius.sm))
                 }
-                .padding(.horizontal)
+                .buttonStyle(LTPressEffect())
+                .padding(.horizontal, LTSpacing.horizontal)
+                .accessibilityLabel("Bekräfta lån på \(TimeEngine.shortFormatted(lendAmount)) till \(npc.name)")
 
                 Spacer()
             }
@@ -947,76 +1050,111 @@ struct TransferSheetView: View {
     @ObservedObject private var engine = TimeEngine.shared
     let onConfirm: () -> Void
 
+    private let hapticLight  = UIImpactFeedbackGenerator(style: .light)
+    private let hapticMedium = UIImpactFeedbackGenerator(style: .medium)
+    private let hapticNotif  = UINotificationFeedbackGenerator()
+
     var body: some View {
         ZStack {
             Color(red: 0.04, green: 0.04, blue: 0.05).ignoresSafeArea()
-            VStack(spacing: 22) {
+            VStack(spacing: LTSpacing.xxl) {
                 HStack {
-                    Button(action: { dismiss() }) {
+                    Button {
+                        hapticLight.impactOccurred()
+                        dismiss()
+                    } label: {
                         Image(systemName: "xmark")
                             .foregroundColor(.white.opacity(0.6))
-                            .padding(8)
+                            .padding(LTSpacing.sm)
                             .background(Color.white.opacity(0.1))
                             .clipShape(Circle())
                     }
+                    .buttonStyle(LTPressEffect())
+                    .accessibilityLabel("Stäng")
                     Spacer()
                     Text("DELA TID")
-                        .font(.system(size: 16, weight: .bold, design: .monospaced))
+                        .font(LTFont.heading(16))
                         .foregroundColor(.white)
                     Spacer()
                     Color.clear.frame(width: 36)
                 }
-                .padding()
+                .padding(LTSpacing.lg)
 
-                VStack(spacing: 6) {
-                    Text(user.avatar.isEmpty ? "👤" : user.avatar).font(.system(size: 50))
+                VStack(spacing: LTSpacing.xs + 2) {
+                    Text(user.avatar.isEmpty ? "👤" : user.avatar)
+                        .font(.system(size: 50))
+                        .accessibilityHidden(true)
                     Text(user.username)
-                        .font(.system(size: 18, weight: .bold, design: .monospaced))
+                        .font(LTFont.heading(18))
                         .foregroundColor(.white)
                     Text("Zon: \(user.zone)")
-                        .font(.system(size: 12, design: .monospaced))
+                        .font(LTFont.body(12))
                         .foregroundColor(.green.opacity(0.8))
                 }
 
-                VStack(spacing: 12) {
-                    Text("Belopp: \(TimeEngine.shortFormatted(amount))")
-                        .font(.system(size: 15, design: .monospaced))
-                        .foregroundColor(.white)
+                VStack(spacing: LTSpacing.md) {
+                    HStack {
+                        Text("Belopp")
+                            .font(LTFont.body(11))
+                            .foregroundColor(.white.opacity(0.5))
+                        Spacer()
+                        Text(TimeEngine.shortFormatted(amount))
+                            .font(LTFont.value(15))
+                            .foregroundColor(.white)
+                            .contentTransition(.numericText())
+                            .animation(LTAnimation.springFast, value: amount)
+                    }
                     Slider(value: $amount,
                            in: 60...max(120, min(engine.balance * 0.5, 86400 * 7)),
                            step: 60)
                         .tint(.green)
+                        .accessibilityLabel("Överföringsbelopp")
+                        .accessibilityValue(TimeEngine.shortFormatted(amount))
 
-                    HStack(spacing: 8) {
+                    HStack(spacing: LTSpacing.xs + 2) {
                         ForEach([600.0, 1800.0, 3600.0, 21600.0, 86400.0], id: \.self) { v in
-                            Button(TimeEngine.shortFormatted(v)) { amount = min(v, engine.balance * 0.5) }
-                                .font(.system(size: 9, weight: .bold, design: .monospaced))
-                                .foregroundColor(.white.opacity(0.7))
-                                .padding(.horizontal, 6).padding(.vertical, 4)
-                                .background(Color.white.opacity(0.08))
-                                .clipShape(Capsule())
+                            Button(TimeEngine.shortFormatted(v)) {
+                                hapticLight.impactOccurred()
+                                withAnimation(LTAnimation.springFast) {
+                                    amount = min(v, engine.balance * 0.5)
+                                }
+                            }
+                            .font(LTFont.caption(9))
+                            .foregroundColor(.white.opacity(0.7))
+                            .padding(.horizontal, LTSpacing.xs + 2)
+                            .padding(.vertical, LTSpacing.xs)
+                            .background(Color.white.opacity(0.08))
+                            .clipShape(Capsule())
+                            .buttonStyle(LTPressEffect())
+                            .accessibilityLabel(TimeEngine.shortFormatted(v))
                         }
                     }
                 }
-                .padding(.horizontal)
+                .padding(.horizontal, LTSpacing.horizontal)
 
                 Text("Obs: Zonens skatt (\(Int(GameState.shared.currentZone.taxRate * 100))%) appliceras.")
-                    .font(.system(size: 11, design: .monospaced))
+                    .font(LTFont.body(11))
                     .foregroundColor(.yellow.opacity(0.6))
                     .multilineTextAlignment(.center)
-                    .padding(.horizontal)
+                    .padding(.horizontal, LTSpacing.horizontal)
 
-                Button(action: onConfirm) {
+                Button {
+                    hapticNotif.notificationOccurred(.success)
+                    onConfirm()
+                } label: {
                     Text("SKICKA \(TimeEngine.shortFormatted(amount))")
-                        .font(.system(size: 15, weight: .bold, design: .monospaced))
+                        .font(LTFont.heading(15))
                         .foregroundColor(.black)
                         .frame(maxWidth: .infinity)
-                        .padding()
+                        .padding(.vertical, LTSpacing.lg)
                         .background(amount <= engine.balance ? Color.green : Color.gray)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .clipShape(RoundedRectangle(cornerRadius: LTRadius.sm))
                 }
                 .disabled(amount > engine.balance)
-                .padding(.horizontal)
+                .buttonStyle(LTPressEffect())
+                .padding(.horizontal, LTSpacing.horizontal)
+                .accessibilityLabel("Skicka \(TimeEngine.shortFormatted(amount)) till \(user.username)")
+                .accessibilityHint(amount > engine.balance ? "Otillräcklig balans" : "")
 
                 Spacer()
             }

@@ -63,13 +63,13 @@ class MissionsManager: ObservableObject {
                 category: .wealth,  icon: "crown.fill",          rewardSeconds: 172800,
                 targetValue: 604800, progressKey: "totalEarned", isCompleted: false, isClaimed: false),
         // Zone progression
-        Mission(id: "reach_midgrey",  title: "Nå Midgrey",       description: "Lås upp Midgrey-zonen.",
+        Mission(id: "reach_granslandet", title: "Nå Gränslandet",  description: "Migrera till Gränslandet.",
                 category: .zone,    icon: "arrow.up.circle",     rewardSeconds: 14400,
                 targetValue: 1,     progressKey: "zone_midgrey_reached", isCompleted: false, isClaimed: false),
-        Mission(id: "reach_aether",   title: "Nå Aetherpoint",   description: "Lås upp Aetherpoint-zonen.",
+        Mission(id: "reach_uppgangen",   title: "Nå Uppgången",   description: "Migrera till Uppgången.",
                 category: .zone,    icon: "building.2.fill",     rewardSeconds: 86400,
                 targetValue: 1,     progressKey: "zone_aetherpoint_reached", isCompleted: false, isClaimed: false),
-        Mission(id: "reach_novalux",  title: "Nå Novalux",       description: "Lås upp Novalux-zonen.",
+        Mission(id: "reach_troskeln",    title: "Nå Tröskeln",    description: "Migrera till Tröskeln och lås upp kasinot.",
                 category: .zone,    icon: "star.fill",           rewardSeconds: 604800,
                 targetValue: 1,     progressKey: "zone_novalux_reached", isCompleted: false, isClaimed: false),
         // Casino
@@ -86,6 +86,16 @@ class MissionsManager: ObservableObject {
         Mission(id: "complete_10jobs", title: "10 jobb klara",   description: "Slutför 10 jobb totalt.",
                 category: .work,    icon: "hammer.fill",         rewardSeconds: 86400,
                 targetValue: 10,    progressKey: "jobs_completed", isCompleted: false, isClaimed: false),
+        // Social
+        Mission(id: "pvp_first_raid",  title: "Första rånet",    description: "Genomför ditt första PvP-råd.",
+                category: .social,  icon: "bolt.fill",           rewardSeconds: 7200,
+                targetValue: 1,     progressKey: "pvp_raids_done", isCompleted: false, isClaimed: false),
+        Mission(id: "pvp_win_3",       title: "3 råd vunna",     description: "Vinn 3 PvP-råd totalt.",
+                category: .social,  icon: "shield.fill",         rewardSeconds: 43200,
+                targetValue: 3,     progressKey: "pvp_raids_won", isCompleted: false, isClaimed: false),
+        Mission(id: "nightmarket_buy", title: "Natthandel",      description: "Köp en vara på Nattmarknaden.",
+                category: .social,  icon: "moon.stars.fill",     rewardSeconds: 3600,
+                targetValue: 1,     progressKey: "nightmarket_purchases", isCompleted: false, isClaimed: false),
     ]
 
     private init() {

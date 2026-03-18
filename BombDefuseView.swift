@@ -518,7 +518,7 @@ struct BombDefuseView: View {
 
         if isCorrect {
             let mins  = isEarly ? reward.early : reward.normal
-            awardMiniJobEarnings(minutes: mins)
+            awardMiniJobEarnings(minutes: mins, jobName: "Sprängämnesexperten")
             let zone  = GameState.shared.currentZone
             let net   = TimeInterval(mins * 60) * zone.workMultiplier * (1 - zone.taxRate) * BoostManager.shared.boosterMultiplier()
             NewsManager.shared.addMiniJobCompletedEvent(jobName: "Sprängämnesexperten", earned: net, won: true)
@@ -526,7 +526,7 @@ struct BombDefuseView: View {
                 phase = .result(won: true, early: isEarly, earned: net)
             }
         } else {
-            penalizeMiniJob(minutes: reward.penalty)
+            penalizeMiniJob(minutes: reward.penalty, jobName: "Sprängämnesexperten")
             NewsManager.shared.addMiniJobCompletedEvent(jobName: "Sprängämnesexperten", earned: 0, won: false)
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
                 phase = .result(won: false, early: false, earned: 0)
@@ -535,7 +535,7 @@ struct BombDefuseView: View {
     }
 
     private func handleTimeout() {
-        penalizeMiniJob(minutes: reward.penalty)
+        penalizeMiniJob(minutes: reward.penalty, jobName: "Sprängämnesexperten")
         phase = .result(won: false, early: false, earned: 0)
     }
 

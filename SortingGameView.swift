@@ -447,14 +447,14 @@ struct SortingGameView: View {
         let minutes = calcEarnings()
         var net: TimeInterval = 0
         if minutes > 0 {
-            awardMiniJobEarnings(minutes: minutes)
+            awardMiniJobEarnings(minutes: minutes, jobName: "Sorteringsverket")
             let zone = GameState.shared.currentZone
             net = TimeInterval(minutes * 60) * zone.workMultiplier * (1 - zone.taxRate) * BoostManager.shared.boosterMultiplier()
             NewsManager.shared.addMiniJobCompletedEvent(jobName: "Sorteringsverket", earned: net, won: true)
         } else {
             // 30% penalty of the perfect reward at current difficulty
             let penaltyMin = max(1, Int(Double(reward.perfect) * 0.30))
-            penalizeMiniJob(minutes: penaltyMin)
+            penalizeMiniJob(minutes: penaltyMin, jobName: "Sorteringsverket")
             net = -TimeInterval(penaltyMin * 60)
             NewsManager.shared.addMiniJobCompletedEvent(jobName: "Sorteringsverket", earned: 0, won: false)
         }

@@ -350,6 +350,7 @@ struct CrashView: View {
         TimeEngine.shared.addTime(net)
         GameState.shared.recordEarning(net - betAmount)
         MissionsManager.incrementProgress("casino_total_wins")
+        TransactionLedger.shared.record(label: "Crash — cash out \(String(format: "%.2fx", cashedOutMultiplier))", amount: net - betAmount)
     }
 
     func triggerCrash() {
@@ -364,6 +365,7 @@ struct CrashView: View {
                 let net = gross * (1 - taxRate)
                 resultMessage = "Cash out @ \(String(format: "%.2fx", cashedOutMultiplier))\n+\(TimeEngine.shortFormatted(net - betAmount)) vinst (efter skatt)\nKraschpunkt: \(String(format: "%.2fx", crashPoint))"
             } else {
+                TransactionLedger.shared.record(label: "Crash — förlust", amount: -betAmount)
                 resultMessage = "KRASCH @ \(String(format: "%.2fx", crashPoint))\nFörlorade \(TimeEngine.shortFormatted(betAmount))."
             }
             showResult = true
