@@ -209,8 +209,19 @@ class IncomeManager: ObservableObject {
         let afterTax = gross * (1.0 - zone.taxRate)
         let net      = InflationManager.shared.deflatedEarnings(afterTax)
 
+        // Ge skatten till Gregor (Styrelsen)
+        let taxCollected = gross - afterTax
+        if taxCollected > 0 {
+            BoardManager.shared.collectTax(amount: taxCollected)
+            BoardManager.shared.recordTaxCollection(taxCollected)
+        }
+        TransactionLedger.shared.record(label: "Hälsoinkomst mottagen", amount: net)
+
         TimeEngine.shared.addTime(net)
         GameState.shared.recordEarning(net)
+
+        // Passiv zonbonus — tilldelas alltid oavsett hälsodata
+        awardPassiveZoneBonus(zone: zone)
 
         // Notifiera nyhetsflödet
         NewsManager.shared.addHealthIncomeEvent(amount: net, breakdown: todayBreakdown)
@@ -218,11 +229,32 @@ class IncomeManager: ObservableObject {
         let inflPct   = String(format: "%.1f", (InflationManager.shared.currentMultiplier - 1) * 100)
         let lines     = todayBreakdown.summaryLines
         let breakdown = lines.joined(separator: "\n")
-        summaryMessage = "🌅 Ny dag — hälsoinkomst:\n\(breakdown)\n\n✅ Netto: +\(TimeEngine.shortFormatted(net))\n(Skatt \(Int(zone.taxRate*100))%, Inflation -\(inflPct)% avdragna)"
+        let passiveBonus = zone.passiveBonusSecondsPerDay
+        let passiveLine = passiveBonus > 0 ? "\n🏙 Zonbonus: +\(TimeEngine.shortFormatted(TimeInterval(passiveBonus)))" : ""
+        summaryMessage = "🌅 Ny dag — hälsoinkomst:\n\(breakdown)\(passiveLine)\n\n✅ Netto: +\(TimeEngine.shortFormatted(net))\n(Skatt \(Int(zone.taxRate*100))%, Inflation -\(inflPct)% avdragna)"
         showDailySummary = true
 
         lastAwardedDate = today
         UserDefaults.standard.set(today, forKey: "hk_last_awarded_date")
+    }
+
+    // MARK: - Passiv zonbonus
+
+    func awardPassiveZoneBonus(zone: ZoneProfile) {
+        let bonus = TimeInterval(zone.passiveBonusSecondsPerDay)
+        guard bonus > 0 else { return }
+
+        // Passiv bonus är skattefri — den är en förmån för att befinna sig i zonen
+        let deflated = InflationManager.shared.deflatedEarnings(bonus)
+        TimeEngine.shared.addTime(deflated)
+        GameState.shared.recordEarning(deflated)
+        TransactionLedger.shared.record(label: "Passiv zonbonus (\(zone.name))", amount: deflated)
+        NewsManager.shared.addItem(
+            headline: "PASSIV ZONBONUS UTBETALD",
+            body: "\(GameState.shared.username) fick \(TimeEngine.shortFormatted(deflated)) i passiv dagbonus för zonen \(zone.name).",
+            category: .healthIncome,
+            priority: .low
+        )
     }
 
     // MARK: - Spelarprofiltext per steg

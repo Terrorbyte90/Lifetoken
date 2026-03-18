@@ -1,6 +1,6 @@
 import SwiftUI
 
-// MARK: - Yatzy — Spellogiik
+// MARK: - Yatzy — Spellogik
 
 struct YatzyDie: Identifiable {
     let id: Int
@@ -83,20 +83,10 @@ enum YatzyCategory: String, CaseIterable, Identifiable {
 }
 
 // MARK: - Supersmart AI v2 (Nearly Unbeatable)
-//
-// Strategy:
-// 1. Pre-computed exact probabilities for all dice states
-// 2. Full rollout EV with 1000 Monte Carlo sims per hold option
-// 3. Category selection uses marginal value (category EV vs next-best scratch)
-// 4. Upper bonus tracking: values upper categories proportionally to bonus gap
-// 5. End-game adaptation: switches to safe scoring when leading
-//
+
 class YatzyAI {
     static let shared = YatzyAI()
-
     private init() {}
-
-    // MARK: - Hold Decision (core AI move)
 
     func optimalHolds(
         dice: [Int],
@@ -123,8 +113,6 @@ class YatzyAI {
         return bestMask
     }
 
-    // MARK: - Monte Carlo rollout
-
     private func rolloutEV(
         dice: [Int], holds: [Bool], rollsLeft: Int,
         available: Set<YatzyCategory>,
@@ -136,7 +124,6 @@ class YatzyAI {
             var sim = dice
             for i in 0..<5 { if !holds[i] { sim[i] = Int.random(in: 1...6) } }
             if rollsLeft > 1 {
-                // One deeper look — pick the best 1-step EV hold
                 let subHolds = greedyHolds(dice: sim, available: available, myUpperScore: myUpperScore)
                 for i in 0..<5 { if !subHolds[i] { sim[i] = Int.random(in: 1...6) } }
             }
@@ -146,13 +133,11 @@ class YatzyAI {
         return total / Double(n)
     }
 
-    // Greedy 1-step hold: keep dice that maximise immediate best score
     private func greedyHolds(dice: [Int], available: Set<YatzyCategory>, myUpperScore: Int) -> [Bool] {
         var bestEV   = -Double.infinity
         var bestMask = Array(repeating: true, count: 5)
         for mask in 0..<32 {
             let holds = (0..<5).map { (mask >> $0) & 1 == 1 }
-            // Quick EV: simulate 60 outcomes
             var ev = 0.0
             for _ in 0..<60 {
                 var sim = dice
@@ -165,8 +150,6 @@ class YatzyAI {
         return bestMask
     }
 
-    // MARK: - Category value with upper bonus tracking
-
     func bestCategoryValue(
         dice: [Int], available: Set<YatzyCategory>,
         myUpperScore: Int, myTotalScore: Int, opponentScore: Int
@@ -176,11 +159,7 @@ class YatzyAI {
 
         var best = -Double.infinity
         for cat in available {
-            let v = categoryAdjustedValue(
-                cat: cat, dice: dice,
-                myUpperScore: myUpperScore,
-                trailing: trailing
-            )
+            let v = categoryAdjustedValue(cat: cat, dice: dice, myUpperScore: myUpperScore, trailing: trailing)
             if v > best { best = v }
         }
         return max(0, best)
@@ -194,38 +173,28 @@ class YatzyAI {
         var val = raw
 
         if cat.isUpper, let fv = cat.upperValue {
-            let got = Double(dice.filter { $0 == fv }.reduce(0, +))
+            let got    = Double(dice.filter { $0 == fv }.reduce(0, +))
             let needed = max(0, 63 - myUpperScore)
             if needed > 0 {
-                // Bonus contribution is worth extra proportional to how close we are
                 let bonusFraction = min(1.0, got / Double(needed))
-                val += bonusFraction * 22.0  // 50p bonus / ~2.3 remaining upper cats on average
+                val += bonusFraction * 22.0
             }
         }
 
         switch cat {
-        case .yatzy:
-            val = raw > 0 ? (trailing ? raw * 2.8 : raw * 2.0) : -8
-        case .stagenStor:
-            val = raw > 0 ? raw * 1.4 : -5
-        case .stagenLiten:
-            val = raw > 0 ? raw * 1.2 : -4
-        case .kak:
-            val = raw > 0 ? raw * 1.1 : -3
-        case .chans:
-            val = raw * 0.95
+        case .yatzy:       val = raw > 0 ? (trailing ? raw * 2.8 : raw * 2.0) : -8
+        case .stagenStor:  val = raw > 0 ? raw * 1.4 : -5
+        case .stagenLiten: val = raw > 0 ? raw * 1.2 : -4
+        case .kak:         val = raw > 0 ? raw * 1.1 : -3
+        case .chans:       val = raw * 0.95
         case .litenChans:
-            // Only good if genuinely low dice
             let lowSum = Double(dice.filter { $0 <= 3 }.reduce(0, +))
             val = lowSum >= 9 ? lowSum : lowSum * 0.5
         default:
             break
         }
-
         return val
     }
-
-    // MARK: - Category Selection (end of turn)
 
     func chooseBestCategory(
         dice: [Int],
@@ -241,42 +210,33 @@ class YatzyAI {
         var best: (YatzyCategory, Double) = (available.first!, -1e9)
 
         for cat in available {
-            var val = categoryAdjustedValue(
-                cat: cat, dice: dice,
-                myUpperScore: myUpperScore,
-                trailing: trailing
-            )
-
-            // When forced to scratch (0), pick the category with lowest future opportunity cost
+            var val = categoryAdjustedValue(cat: cat, dice: dice, myUpperScore: myUpperScore, trailing: trailing)
             if cat.score(dice: dice) == 0 {
                 val = -futureEV(for: cat, roundsLeft: roundsLeft)
             }
-
             if val > best.1 { best = (cat, val) }
         }
         return best.0
     }
 
-    // Estimated future EV loss if we scratch this category now
     private func futureEV(for cat: YatzyCategory, roundsLeft: Int) -> Double {
-        // Higher = more painful to scratch (lose more future EV)
         switch cat {
-        case .yatzy:        return 3.0    // rare anyway, least costly
-        case .ettor:        return 2.1
-        case .tvåor:        return 4.2
-        case .treor:        return 6.3
-        case .litenChans:   return 4.0
-        case .storChans:    return 7.0
-        case .fyror:        return 8.4
-        case .par:          return 9.0
-        case .femmor:       return 10.5
-        case .stagenLiten:  return 8.0
-        case .tretal:       return 11.0
-        case .stagenStor:   return 11.0
-        case .kak:          return 14.0
-        case .tvåPar:       return 13.0
-        case .sexor:        return 12.6
-        case .chans:        return 17.5   // most costly — never scratch chans if possible
+        case .yatzy:       return 3.0
+        case .ettor:       return 2.1
+        case .tvåor:       return 4.2
+        case .treor:       return 6.3
+        case .litenChans:  return 4.0
+        case .storChans:   return 7.0
+        case .fyror:       return 8.4
+        case .par:         return 9.0
+        case .femmor:      return 10.5
+        case .stagenLiten: return 8.0
+        case .tretal:      return 11.0
+        case .stagenStor:  return 11.0
+        case .kak:         return 14.0
+        case .tvåPar:      return 13.0
+        case .sexor:       return 12.6
+        case .chans:       return 17.5
         }
     }
 }
@@ -302,6 +262,12 @@ struct YatzyView: View {
     @State private var showResult: Bool = false
     @State private var resultMessage: String = ""
     @State private var currentRound: Int = 0
+    @State private var diceShakePhase: CGFloat = 0
+
+    private let hapticLight  = UIImpactFeedbackGenerator(style: .light)
+    private let hapticMedium = UIImpactFeedbackGenerator(style: .medium)
+    private let hapticNotif  = UINotificationFeedbackGenerator()
+    private let hapticRigid  = UIImpactFeedbackGenerator(style: .rigid)
 
     enum YatzyPhase { case betting, playerRoll, selectCategory, aiTurn, gameOver }
 
@@ -345,93 +311,133 @@ struct YatzyView: View {
 
     private var headerBar: some View {
         HStack {
-            Button { dismiss() } label: {
+            Button {
+                hapticLight.impactOccurred()
+                dismiss()
+            } label: {
                 Image(systemName: "xmark")
                     .foregroundColor(.white.opacity(0.7))
-                    .padding(8)
+                    .padding(LTSpacing.sm)
                     .background(Color.white.opacity(0.1))
                     .clipShape(Circle())
             }
+            .buttonStyle(LTPressEffect())
+            .accessibilityLabel("Stäng Yatzy")
+
             Spacer()
             Text("YATZY")
-                .font(.system(size: 18, weight: .bold, design: .monospaced))
+                .font(LTFont.heading(18))
                 .foregroundColor(.white)
             Spacer()
             Text(TimeEngine.shortFormatted(engine.balance))
-                .font(.system(size: 12, design: .monospaced))
+                .font(LTFont.label(12))
                 .foregroundColor(.yellow)
+                .contentTransition(.numericText())
+                .animation(LTAnimation.springFast, value: engine.balance)
+                .accessibilityLabel("Saldo: \(TimeEngine.shortFormatted(engine.balance))")
         }
-        .padding()
-        .padding(.top, 20)
+        .padding(LTSpacing.lg)
+        .padding(.top, LTSpacing.xl)
     }
 
     // MARK: - Insatsvy
 
     private var bettingView: some View {
-        VStack(spacing: 24) {
-            Spacer()
+        ScrollView(showsIndicators: false) {
+            VStack(spacing: LTSpacing.xxl) {
+                Spacer(minLength: LTSpacing.xxl)
 
-            Text("INSATS")
-                .font(.system(size: 22, weight: .bold, design: .monospaced))
-                .foregroundColor(.white)
-            Text(TimeEngine.shortFormatted(betAmount))
-                .font(.system(size: 36, weight: .bold, design: .monospaced))
-                .foregroundColor(.yellow)
-
-            VStack(spacing: 6) {
-                Text("1 poäng = 60s livstid")
-                    .font(.system(size: 11, design: .monospaced))
-                    .foregroundColor(.white.opacity(0.45))
-                Text("Yatzy (50p) = \(TimeEngine.shortFormatted(50 * pointsToSeconds))")
-                    .font(.system(size: 11, design: .monospaced))
-                    .foregroundColor(.green.opacity(0.7))
-                Text("Bonusövre (63p) = +3 000s extra")
-                    .font(.system(size: 11, design: .monospaced))
-                    .foregroundColor(.cyan.opacity(0.7))
-                Text("AI vinner ~82% mot genomsnittlig spelare.")
-                    .font(.system(size: 10, design: .monospaced))
-                    .foregroundColor(Color(red: 0.6, green: 0.3, blue: 0.3))
-            }
-
-            HStack(spacing: 10) {
-                ForEach([900.0, 1800.0, 3600.0, 7200.0], id: \.self) { v in
-                    Button { betAmount = min(v, engine.balance) } label: {
-                        Text(TimeEngine.shortFormatted(v))
-                            .font(.system(size: 10, design: .monospaced))
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 6)
-                            .background(Color.white.opacity(0.1))
-                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                // Dice decoration
+                HStack(spacing: LTSpacing.sm) {
+                    ForEach(0..<5, id: \.self) { i in
+                        Text(["⚀","⚁","⚂","⚃","⚄","⚅"][i])
+                            .font(.system(size: 28))
+                            .opacity(0.6)
                     }
                 }
+                .accessibilityHidden(true)
+
+                VStack(spacing: LTSpacing.xs) {
+                    Text("INSATS")
+                        .font(LTFont.label(22))
+                        .foregroundColor(.white)
+                    Text(TimeEngine.shortFormatted(betAmount))
+                        .font(LTFont.value(36))
+                        .foregroundColor(.yellow)
+                        .contentTransition(.numericText())
+                        .animation(LTAnimation.springFast, value: betAmount)
+                        .accessibilityLabel("Insats: \(TimeEngine.shortFormatted(betAmount))")
+                }
+
+                VStack(spacing: LTSpacing.xs + 2) {
+                    Text("1 poäng = 60s livstid")
+                        .font(LTFont.body(11))
+                        .foregroundColor(.white.opacity(0.45))
+                    Text("Yatzy (50p) = \(TimeEngine.shortFormatted(50 * pointsToSeconds))")
+                        .font(LTFont.body(11))
+                        .foregroundColor(.green.opacity(0.7))
+                    Text("Bonusövre (63p) = +3 000s extra")
+                        .font(LTFont.body(11))
+                        .foregroundColor(.cyan.opacity(0.7))
+                    Text("AI vinner ~82% mot genomsnittlig spelare.")
+                        .font(LTFont.body(10))
+                        .foregroundColor(LTPalette.danger.opacity(0.7))
+                }
+
+                // Quick-pick bets
+                HStack(spacing: LTSpacing.sm) {
+                    ForEach([900.0, 1800.0, 3600.0, 7200.0], id: \.self) { v in
+                        Button {
+                            hapticLight.impactOccurred()
+                            withAnimation(LTAnimation.springFast) { betAmount = min(v, engine.balance) }
+                        } label: {
+                            Text(TimeEngine.shortFormatted(v))
+                                .font(LTFont.body(10))
+                                .foregroundColor(.white)
+                                .padding(.horizontal, LTSpacing.sm)
+                                .padding(.vertical, LTSpacing.xs + 2)
+                                .background(Color.white.opacity(0.1))
+                                .clipShape(RoundedRectangle(cornerRadius: LTRadius.xs))
+                        }
+                        .buttonStyle(LTPressEffect())
+                        .accessibilityLabel("Insats \(TimeEngine.shortFormatted(v))")
+                    }
+                }
+
+                let sliderMax = max(600.0, min(engine.balance, 86400 * 7))
+                Slider(
+                    value: Binding(
+                        get: { min(max(300, betAmount), sliderMax) },
+                        set: { betAmount = $0 }
+                    ),
+                    in: 300...sliderMax,
+                    step: 300
+                )
+                .tint(.green)
+                .padding(.horizontal, LTSpacing.horizontal)
+                .accessibilityLabel("Insatsslider")
+                .accessibilityValue(TimeEngine.shortFormatted(betAmount))
+
+                Button {
+                    hapticMedium.impactOccurred()
+                    startGame()
+                } label: {
+                    Text("STARTA SPELET")
+                        .font(LTFont.heading(16))
+                        .foregroundColor(.black)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, LTSpacing.lg)
+                        .background(betAmount <= engine.balance ? Color.green : Color.gray)
+                        .clipShape(RoundedRectangle(cornerRadius: LTRadius.sm))
+                }
+                .disabled(betAmount > engine.balance)
+                .buttonStyle(LTPressEffect())
+                .padding(.horizontal, LTSpacing.horizontal)
+                .accessibilityLabel("Starta spelet med insats \(TimeEngine.shortFormatted(betAmount))")
+                .accessibilityHint(betAmount > engine.balance ? "Otillräcklig balans" : "")
+
+                Spacer(minLength: LTSpacing.scrollBottom)
             }
-
-            let sliderMax = max(600.0, min(engine.balance, 86400 * 7))
-            Slider(
-                value: Binding(
-                    get: { min(max(300, betAmount), sliderMax) },
-                    set: { betAmount = $0 }
-                ),
-                in: 300...sliderMax,
-                step: 300
-            )
-            .tint(.green)
-            .padding(.horizontal)
-
-            Button { startGame() } label: {
-                Text("STARTA SPELET")
-                    .font(.system(size: 16, weight: .bold, design: .monospaced))
-                    .foregroundColor(.black)
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(betAmount <= engine.balance ? Color.green : Color.gray)
-                    .clipShape(RoundedRectangle(cornerRadius: 14))
-            }
-            .disabled(betAmount > engine.balance)
-            .padding(.horizontal)
-
-            Spacer()
         }
     }
 
@@ -439,127 +445,168 @@ struct YatzyView: View {
 
     private var gameplayView: some View {
         ScrollView(showsIndicators: false) {
-            VStack(spacing: 14) {
+            VStack(spacing: LTSpacing.md) {
                 // Poäng header
                 HStack {
                     scorePill(label: "DU", score: playerFinalScore, upper: playerUpperScore, color: .green)
                     Spacer()
                     VStack(spacing: 2) {
                         Text("Runda \(currentRound)/\(totalRounds)")
-                            .font(.system(size: 10, design: .monospaced))
+                            .font(LTFont.body(10))
                             .foregroundColor(.white.opacity(0.4))
+                            .contentTransition(.numericText())
+                            .animation(LTAnimation.springFast, value: currentRound)
                         Text("Insats: \(TimeEngine.shortFormatted(betAmount))")
-                            .font(.system(size: 9, design: .monospaced))
+                            .font(LTFont.caption(9))
                             .foregroundColor(.yellow.opacity(0.6))
                     }
                     Spacer()
                     scorePill(label: "AI", score: aiTotalScore, upper: aiUpperScore, color: .red)
                 }
-                .padding(.horizontal)
+                .padding(.horizontal, LTSpacing.horizontal)
 
                 // Bonusindikator
                 if playerUpperScore < 63 {
                     let needed = 63 - playerUpperScore
                     HStack {
-                        Image(systemName: "star.fill").font(.system(size: 9)).foregroundColor(.cyan)
+                        Image(systemName: "star.fill")
+                            .font(.system(size: 9))
+                            .foregroundColor(.cyan)
+                            .accessibilityHidden(true)
                         Text("Bonusövre: \(needed)p kvar → +50p bonus")
-                            .font(.system(size: 10, design: .monospaced))
+                            .font(LTFont.body(10))
                             .foregroundColor(.cyan.opacity(0.7))
+                            .contentTransition(.numericText())
+                            .animation(LTAnimation.springFast, value: needed)
                         Spacer()
                     }
-                    .padding(.horizontal)
+                    .padding(.horizontal, LTSpacing.horizontal)
                 }
 
                 if isPlayerTurn {
                     Text("DIN TUR — \(rollsLeft) KAST KVAR")
-                        .font(.system(size: 11, weight: .bold, design: .monospaced))
+                        .font(LTFont.label(11))
                         .foregroundColor(.green)
+                        .contentTransition(.numericText())
+                        .animation(LTAnimation.springFast, value: rollsLeft)
                     playerDiceRow
                     rollButton
                 } else {
                     Text("AI TÄNKER...")
-                        .font(.system(size: 11, weight: .bold, design: .monospaced))
+                        .font(LTFont.label(11))
                         .foregroundColor(.red)
                     aiDiceRow
                 }
 
                 if !statusMessage.isEmpty {
                     Text(statusMessage)
-                        .font(.system(size: 10, design: .monospaced))
+                        .font(LTFont.body(10))
                         .foregroundColor(.white.opacity(0.55))
                         .multilineTextAlignment(.center)
-                        .padding(.horizontal)
+                        .padding(.horizontal, LTSpacing.horizontal)
+                        .transition(.opacity)
+                        .animation(LTAnimation.fadeFast, value: statusMessage)
                 }
 
-                scorecardView.padding(.horizontal)
-                Spacer(minLength: 80)
+                scorecardView.padding(.horizontal, LTSpacing.horizontal)
+                Spacer(minLength: LTSpacing.scrollBottom)
             }
-            .padding(.top, 8)
+            .padding(.top, LTSpacing.sm)
         }
     }
 
     private var playerDiceRow: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: LTSpacing.sm) {
             ForEach($dice) { $die in
                 Button {
-                    if rollsLeft < 3 { die.held.toggle() }
+                    if rollsLeft < 3 {
+                        hapticLight.impactOccurred()
+                        withAnimation(LTAnimation.springFast) { die.held.toggle() }
+                    }
                 } label: {
                     Text(dieFace(die.value))
                         .font(.system(size: 34))
                         .frame(width: 54, height: 54)
                         .background(die.held ? Color.yellow.opacity(0.25) : Color.white.opacity(0.08))
-                        .clipShape(RoundedRectangle(cornerRadius: 10))
-                        .overlay(RoundedRectangle(cornerRadius: 10).stroke(die.held ? Color.yellow : Color.white.opacity(0.12), lineWidth: 2))
+                        .clipShape(RoundedRectangle(cornerRadius: LTRadius.xs))
+                        .overlay(RoundedRectangle(cornerRadius: LTRadius.xs)
+                            .stroke(die.held ? Color.yellow : Color.white.opacity(0.12), lineWidth: 2))
+                        .scaleEffect(die.held ? 1.05 : 1.0)
                 }
+                .buttonStyle(LTPressEffect(scale: 0.92))
+                .animation(LTAnimation.springFast, value: die.held)
+                .accessibilityLabel("Tärning \(die.value). \(die.held ? "Hållen" : "Ej hållen")")
+                .accessibilityHint(rollsLeft < 3 ? (die.held ? "Tryck för att släppa" : "Tryck för att hålla") : "Kasta minst en gång först")
             }
         }
     }
 
     private var aiDiceRow: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: LTSpacing.sm) {
             ForEach(0..<5, id: \.self) { i in
                 Text(dieFace(aiDice[i]))
                     .font(.system(size: 34))
                     .frame(width: 54, height: 54)
                     .background(aiHolds[i] ? Color.red.opacity(0.2) : Color.red.opacity(0.06))
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
-                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(aiHolds[i] ? Color.red.opacity(0.6) : Color.red.opacity(0.15), lineWidth: aiHolds[i] ? 2 : 1))
+                    .clipShape(RoundedRectangle(cornerRadius: LTRadius.xs))
+                    .overlay(RoundedRectangle(cornerRadius: LTRadius.xs)
+                        .stroke(aiHolds[i] ? Color.red.opacity(0.6) : Color.red.opacity(0.15),
+                                lineWidth: aiHolds[i] ? 2 : 1))
+                    .accessibilityLabel("AI tärning \(aiDice[i]). \(aiHolds[i] ? "Hållen" : "")")
             }
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("AI:s tärningar: \(aiDice.map { "\($0)" }.joined(separator: ", "))")
     }
 
     private var rollButton: some View {
         Button {
-            if rollsLeft > 0 { rollDice() }
+            if rollsLeft > 0 {
+                hapticRigid.impactOccurred()
+                rollDice()
+            }
         } label: {
-            Text(rollsLeft > 0 ? "KASTA (\(rollsLeft) kvar)" : "VÄLJ KATEGORI")
-                .font(.system(size: 13, weight: .bold, design: .monospaced))
-                .foregroundColor(.black)
-                .frame(maxWidth: .infinity)
-                .padding()
-                .background(rollsLeft > 0 ? Color.green : Color.gray)
-                .clipShape(RoundedRectangle(cornerRadius: 12))
+            HStack(spacing: LTSpacing.sm) {
+                Image(systemName: "dice.fill")
+                    .font(.system(size: 16))
+                    .accessibilityHidden(true)
+                Text(rollsLeft > 0 ? "KASTA (\(rollsLeft) kvar)" : "VÄLJ KATEGORI")
+                    .font(LTFont.heading(13))
+            }
+            .foregroundColor(.black)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, LTSpacing.md)
+            .background(rollsLeft > 0 ? Color.green : Color.gray)
+            .clipShape(RoundedRectangle(cornerRadius: LTRadius.sm))
         }
         .disabled(rollsLeft == 0 || isRolling)
-        .padding(.horizontal)
+        .buttonStyle(LTPressEffect())
+        .padding(.horizontal, LTSpacing.horizontal)
+        .accessibilityLabel(rollsLeft > 0 ? "Kasta tärningar, \(rollsLeft) kast kvar" : "Välj en kategori")
     }
 
     private func scorePill(label: String, score: Int, upper: Int, color: Color) -> some View {
         VStack(spacing: 2) {
             Text(label)
-                .font(.system(size: 9, design: .monospaced))
+                .font(LTFont.caption(9))
                 .foregroundColor(color.opacity(0.7))
             Text("\(score)p")
-                .font(.system(size: 15, weight: .bold, design: .monospaced))
+                .font(LTFont.value(15))
                 .foregroundColor(color)
+                .contentTransition(.numericText())
+                .animation(LTAnimation.springFast, value: score)
             Text("Övre: \(upper)/63")
-                .font(.system(size: 8, design: .monospaced))
+                .font(LTFont.caption(8))
                 .foregroundColor(upper >= 63 ? .cyan : color.opacity(0.5))
+                .contentTransition(.numericText())
+                .animation(LTAnimation.springFast, value: upper)
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 5)
+        .padding(.horizontal, LTSpacing.md)
+        .padding(.vertical, LTSpacing.xs + 1)
         .background(color.opacity(0.1))
         .clipShape(Capsule())
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(label): \(score) poäng, övre sektion: \(upper) av 63")
     }
 
     // MARK: - Poängkort
@@ -568,20 +615,20 @@ struct YatzyView: View {
         VStack(spacing: 0) {
             HStack {
                 Text("KATEGORI")
-                    .font(.system(size: 8, weight: .bold, design: .monospaced))
+                    .font(LTFont.caption(8))
                     .foregroundColor(.white.opacity(0.3))
                     .frame(maxWidth: .infinity, alignment: .leading)
                 Text("DU")
-                    .font(.system(size: 8, weight: .bold, design: .monospaced))
+                    .font(LTFont.caption(8))
                     .foregroundColor(.green.opacity(0.5))
                     .frame(width: 38)
                 Text("AI")
-                    .font(.system(size: 8, weight: .bold, design: .monospaced))
+                    .font(LTFont.caption(8))
                     .foregroundColor(.red.opacity(0.5))
                     .frame(width: 38)
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
+            .padding(.horizontal, LTSpacing.sm + 2)
+            .padding(.vertical, LTSpacing.xs + 2)
 
             ForEach(YatzyCategory.allCases) { cat in
                 let playerScore = playerScores[cat]
@@ -590,57 +637,81 @@ struct YatzyView: View {
                 let isAvailable = availableCategories.contains(cat) && isPlayerTurn && rollsLeft < 3
 
                 Button {
-                    if isAvailable { selectCategory(cat) }
+                    if isAvailable {
+                        hapticMedium.impactOccurred()
+                        selectCategory(cat)
+                    }
                 } label: {
                     HStack {
                         Text(cat.rawValue)
-                            .font(.system(size: 10, design: .monospaced))
+                            .font(LTFont.body(10))
                             .foregroundColor(isAvailable ? .white : .white.opacity(0.35))
                             .frame(maxWidth: .infinity, alignment: .leading)
                         if let ps = playerScore {
-                            Text("\(ps)").font(.system(size: 11, weight: .bold, design: .monospaced)).foregroundColor(.green).frame(width: 38)
+                            Text("\(ps)")
+                                .font(LTFont.heading(11))
+                                .foregroundColor(.green)
+                                .frame(width: 38)
+                                .contentTransition(.numericText())
                         } else if isAvailable {
-                            Text("\(potential)").font(.system(size: 10, design: .monospaced)).foregroundColor(.green.opacity(0.45)).frame(width: 38)
+                            Text("\(potential)")
+                                .font(LTFont.body(10))
+                                .foregroundColor(.green.opacity(0.45))
+                                .frame(width: 38)
                         } else {
-                            Text("—").font(.system(size: 10, design: .monospaced)).foregroundColor(.white.opacity(0.15)).frame(width: 38)
+                            Text("—")
+                                .font(LTFont.body(10))
+                                .foregroundColor(.white.opacity(0.15))
+                                .frame(width: 38)
                         }
                         if let as_ = aiScore {
-                            Text("\(as_)").font(.system(size: 11, weight: .bold, design: .monospaced)).foregroundColor(.red).frame(width: 38)
+                            Text("\(as_)")
+                                .font(LTFont.heading(11))
+                                .foregroundColor(.red)
+                                .frame(width: 38)
+                                .contentTransition(.numericText())
                         } else {
-                            Text("—").font(.system(size: 10, design: .monospaced)).foregroundColor(.white.opacity(0.15)).frame(width: 38)
+                            Text("—")
+                                .font(LTFont.body(10))
+                                .foregroundColor(.white.opacity(0.15))
+                                .frame(width: 38)
                         }
                     }
-                    .padding(.vertical, 4)
-                    .padding(.horizontal, 10)
+                    .padding(.vertical, LTSpacing.xs)
+                    .padding(.horizontal, LTSpacing.sm + 2)
                     .background(isAvailable && potential > 0 ? Color.green.opacity(0.07) : Color.clear)
                     .clipShape(RoundedRectangle(cornerRadius: 5))
                 }
                 .disabled(!isAvailable)
+                .buttonStyle(LTPressEffect(scale: 0.97))
+                .accessibilityLabel("\(cat.rawValue): du: \(playerScore.map { "\($0)" } ?? (isAvailable ? "\(potential) möjligt" : "ej vald")), AI: \(aiScore.map { "\($0)" } ?? "ej vald")")
+                .accessibilityHint(isAvailable ? "Välj denna kategori" : "")
 
                 Divider().background(Color.white.opacity(0.04))
             }
 
-            // Övre bonus
             Divider().background(Color.white.opacity(0.15))
             HStack {
                 Text("BONUSÖVRE (+50p)")
-                    .font(.system(size: 9, weight: .bold, design: .monospaced))
+                    .font(LTFont.caption(9))
                     .foregroundColor(.cyan.opacity(0.7))
                     .frame(maxWidth: .infinity, alignment: .leading)
                 Text(playerUpperScore >= 63 ? "✓" : "\(63-playerUpperScore) kvar")
-                    .font(.system(size: 9, design: .monospaced))
+                    .font(LTFont.caption(9))
                     .foregroundColor(playerUpperScore >= 63 ? .cyan : .white.opacity(0.3))
                     .frame(width: 38)
+                    .contentTransition(.numericText())
+                    .animation(LTAnimation.springFast, value: playerUpperScore)
                 Text(aiUpperScore >= 63 ? "✓" : "—")
-                    .font(.system(size: 9, design: .monospaced))
+                    .font(LTFont.caption(9))
                     .foregroundColor(aiUpperScore >= 63 ? .cyan : .white.opacity(0.2))
                     .frame(width: 38)
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
+            .padding(.horizontal, LTSpacing.sm + 2)
+            .padding(.vertical, LTSpacing.xs + 2)
         }
         .background(.ultraThinMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 14))
+        .clipShape(RoundedRectangle(cornerRadius: LTRadius.sm))
     }
 
     // MARK: - Spellogik
@@ -676,13 +747,15 @@ struct YatzyView: View {
         guard isPlayerTurn, availableCategories.contains(cat) else { return }
         let score = cat.score(dice: dice.map { $0.value })
         playerScores[cat] = score
-        statusMessage = "\(cat.rawValue): \(score)p"
+        withAnimation(LTAnimation.fadeFast) {
+            statusMessage = "\(cat.rawValue): \(score)p"
+        }
         currentRound += 1
         if currentRound >= totalRounds { endGame(); return }
         startAITurn()
     }
 
-    // MARK: - AI-tur (supersmart)
+    // MARK: - AI-tur
 
     private func startAITurn() {
         isPlayerTurn = false
@@ -697,14 +770,12 @@ struct YatzyView: View {
 
     private func executeAIRolls(rollsRemaining: Int) {
         guard rollsRemaining > 0 else {
-            // AI väljer kategori
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                 aiChooseCategory()
             }
             return
         }
 
-        // AI bestämmer optimala holds med EV-tabell
         let holds = YatzyAI.shared.optimalHolds(
             dice: aiDice,
             rollsLeft: rollsRemaining,
@@ -715,7 +786,6 @@ struct YatzyView: View {
         )
         aiHolds = holds
 
-        // Rulla ej-hållna
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
             for i in 0..<5 {
                 if !holds[i] { aiDice[i] = Int.random(in: 1...6) }
@@ -736,7 +806,9 @@ struct YatzyView: View {
         )
         let score = chosen.score(dice: aiDice)
         aiScores[chosen] = score
-        statusMessage = "AI väljer \(chosen.rawValue): \(score)p"
+        withAnimation(LTAnimation.fadeFast) {
+            statusMessage = "AI väljer \(chosen.rawValue): \(score)p"
+        }
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) {
             isPlayerTurn = true
@@ -744,29 +816,35 @@ struct YatzyView: View {
             dice = (0..<5).map { YatzyDie(id: $0, value: Int.random(in: 1...6)) }
             aiHolds = Array(repeating: false, count: 5)
             gamePhase = .playerRoll
-            statusMessage = "Din tur"
+            withAnimation(LTAnimation.fadeFast) { statusMessage = "Din tur" }
         }
     }
 
     func endGame() {
         gamePhase = .gameOver
         let zone = gameState.currentZone
-        let playerFinal = playerFinalScore
+        let playerFinal  = playerFinalScore
         let aiFinalScore = aiTotalScore + (aiUpperScore >= 63 ? 50 : 0)
-        let baseSeconds = Double(playerFinal) * pointsToSeconds
-        let taxed = baseSeconds * (1 - zone.taxRate)
+        let baseSeconds  = Double(playerFinal) * pointsToSeconds
+        let taxed        = baseSeconds * (1 - zone.taxRate)
 
         if playerFinal > aiFinalScore {
+            hapticNotif.notificationOccurred(.success)
             let bonus = betAmount * 1.5 * (1 - zone.taxRate)
             TimeEngine.shared.addTime(taxed + bonus)
             GameState.shared.recordEarning(taxed + bonus)
-            resultMessage = "DU VANN! 🏆\n\(playerFinal) vs \(aiFinalScore) poäng\n+\(TimeEngine.shortFormatted(taxed + bonus))"
+            TransactionLedger.shared.record(label: "Yatzy — vinst", amount: taxed + bonus - betAmount)
+            resultMessage = "DU VANN!\n\(playerFinal) vs \(aiFinalScore) poäng\n+\(TimeEngine.shortFormatted(taxed + bonus))"
         } else if playerFinal == aiFinalScore {
+            hapticNotif.notificationOccurred(.warning)
             TimeEngine.shared.addTime(betAmount + taxed)
+            TransactionLedger.shared.record(label: "Yatzy — oavgjort", amount: taxed)
             resultMessage = "OAVGJORT\n\(playerFinal) poäng var\n+\(TimeEngine.shortFormatted(taxed)) + insatsen tillbaka"
         } else {
+            hapticNotif.notificationOccurred(.error)
             TimeEngine.shared.addTime(taxed)
             GameState.shared.recordEarning(taxed)
+            TransactionLedger.shared.record(label: "Yatzy — förlust (AI vann)", amount: taxed - betAmount)
             resultMessage = "AI VANN\n\(aiFinalScore) vs \(playerFinal) poäng\n+\(TimeEngine.shortFormatted(taxed)) (dina poäng efter skatt)"
         }
         showResult = true

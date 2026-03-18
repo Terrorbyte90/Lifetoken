@@ -424,13 +424,15 @@ struct TimingGameView: View {
         let zone   = GameState.shared.currentZone
         var net: TimeInterval
         if earned > 0 {
-            awardMiniJobEarnings(minutes: earned)
+            awardMiniJobEarnings(minutes: earned, jobName: "Tidskalibratorn")
             net = TimeInterval(earned * 60) * zone.workMultiplier * (1 - zone.taxRate) * BoostManager.shared.boosterMultiplier()
+            NewsManager.shared.addMiniJobCompletedEvent(jobName: "Tidskalibratorn", earned: net, won: true)
         } else {
             // 30% penalty of best reward for bad calibration
             let penaltyMin = max(1, Int(Double(reward.best) * 0.30))
-            penalizeMiniJob(minutes: penaltyMin)
+            penalizeMiniJob(minutes: penaltyMin, jobName: "Tidskalibratorn")
             net = -TimeInterval(penaltyMin * 60)  // negative = penalty for display
+            NewsManager.shared.addMiniJobCompletedEvent(jobName: "Tidskalibratorn", earned: 0, won: false)
         }
         phase = .result(earned: net)
     }

@@ -39,9 +39,8 @@ class PvPRaidManager: ObservableObject {
 
     @Published var activeRaid: RaidRecord? = nil
     @Published var history: [RaidRecord] = []
-    @Published var cooldowns: [String: Date] = [:]  // username → kan raidads igen
+    @Published var cooldowns: [String: Date] = [:]
 
-    // Reaktionstest-state
     @Published var raidPhase: RaidPhase = .idle
     @Published var reactionTarget: Bool = false
     @Published var playerReactionMs: Int? = nil
@@ -50,7 +49,7 @@ class PvPRaidManager: ObservableObject {
     private var targetAppearTime: Date? = nil
     private var raidTimer: Timer? = nil
 
-    private let cooldownDuration: TimeInterval = 4 * 3600  // 4h
+    private let cooldownDuration: TimeInterval = 4 * 3600
     private let storageKey = "pvpHistory"
 
     enum RaidPhase {
@@ -62,14 +61,11 @@ class PvPRaidManager: ObservableObject {
         loadCooldowns()
     }
 
-    // MARK: - Starta raid
-
     func initiateRaid(target: ServerUser, stake: TimeInterval, completion: @escaping (Bool, String) -> Void) {
         let playerName = GameState.shared.username
         guard !playerName.isEmpty else { completion(false, "Inget spelarnamn."); return }
         guard TimeEngine.shared.balance >= stake else { completion(false, "Otillräcklig balans."); return }
 
-        // Kontrollera cooldown
         if let lastRaid = cooldowns[target.username], Date() < lastRaid.addingTimeInterval(cooldownDuration) {
             let remaining = lastRaid.addingTimeInterval(cooldownDuration).timeIntervalSinceNow
             let h = Int(remaining) / 3600
@@ -78,7 +74,6 @@ class PvPRaidManager: ObservableObject {
             return
         }
 
-        // Lås insatsen
         TimeEngine.shared.deductTime(stake)
 
         let record = RaidRecord(
@@ -91,16 +86,12 @@ class PvPRaidManager: ObservableObject {
         )
         activeRaid = record
 
-        // Starta reaktionstestet
         raidPhase = .waiting
         startReactionTest()
         completion(true, "Rånet påbörjat!")
     }
 
-    // MARK: - Reaktionstest
-
     private func startReactionTest() {
-        // Slumpmässig fördröjning 1–4 sekunder innan målet visas
         let delay = Double.random(in: 1.0...4.0)
         raidTimer?.invalidate()
         raidTimer = Timer.scheduledTimer(withTimeInterval: delay, repeats: false) { [weak self] _ in
@@ -109,7 +100,6 @@ class PvPRaidManager: ObservableObject {
                 self?.reactionTarget = true
                 self?.targetAppearTime = Date()
 
-                // Om spelaren inte trycker inom 3 sekunder → automatisk förlust
                 self?.raidTimer = Timer.scheduledTimer(withTimeInterval: 3.0, repeats: false) { _ in
                     DispatchQueue.main.async {
                         if self?.playerReactionMs == nil {
@@ -129,7 +119,6 @@ class PvPRaidManager: ObservableObject {
         playerReactionMs = ms
         reactionTarget = false
 
-        // Simulera motståndarens reaktion (AI med lite slump)
         let opponentMs = Int.random(in: 180...600)
         opponentReactionMs = opponentMs
 
@@ -137,28 +126,25 @@ class PvPRaidManager: ObservableObject {
         resolveRaid(playerWon: iWon)
     }
 
-    // MARK: - Avgör utfall
-
     private func resolveRaid(playerWon: Bool) {
         guard var record = activeRaid else { return }
         raidPhase = .done
 
         if playerWon {
-            // Spelaren vinner — får tillbaka insatsen + stjäl lika mycket från motståndaren
             let stolen = record.stake
             TimeEngine.shared.addTime(record.stake + stolen)
             record.status = .won
+            MissionsManager.incrementProgress("pvp_raids_won")
         } else {
-            // Spelaren förlorar — insatsen är redan dragen
             record.status = .lost
         }
 
-        // Sätt cooldown på offret
+        MissionsManager.incrementProgress("pvp_raids_done")
+
         cooldowns[record.defenderName] = Date()
         saveCooldowns()
 
         history.insert(record, at: 0)
-        // Notify the defender that they were raided
         NotificationManager.shared.sendRaidNotification(from: record.attackerName, amount: TimeEngine.shortFormatted(record.stake), won: playerWon)
         activeRaid = nil
         saveHistory()
@@ -172,8 +158,6 @@ class PvPRaidManager: ObservableObject {
         activeRaid = nil
         raidTimer?.invalidate()
     }
-
-    // MARK: - Persistence
 
     private func loadHistory() {
         guard let data = UserDefaults.standard.data(forKey: storageKey),
@@ -203,9 +187,9 @@ class PvPRaidManager: ObservableObject {
 // MARK: - PvP Raid View
 
 struct PvPRaidView: View {
-    @ObservedObject private var manager = PvPRaidManager.shared
-    @ObservedObject private var server  = ServerSync.shared
-    @ObservedObject private var engine  = TimeEngine.shared
+    @ObservedObject private var manager   = PvPRaidManager.shared
+    @ObservedObject private var server    = ServerSync.shared
+    @ObservedObject private var engine    = TimeEngine.shared
     @ObservedObject private var gameState = GameState.shared
     @Environment(\.dismiss) var dismiss
 
@@ -214,13 +198,27 @@ struct PvPRaidView: View {
     @State private var errorMessage: String = ""
     @State private var showError: Bool = false
     @State private var phase: ViewPhase = .selection
+    @State private var targetScale: CGFloat = 0.6
+    @State private var resultAppeared: Bool = false
+
+    private let hapticImpact = UIImpactFeedbackGenerator(style: .heavy)
+    private let hapticNotif  = UINotificationFeedbackGenerator()
+    private let hapticLight  = UIImpactFeedbackGenerator(style: .light)
 
     enum ViewPhase { case selection, reaction, result }
 
     var body: some View {
         NavigationStack {
             ZStack {
-                Color.black.ignoresSafeArea()
+                // Background
+                LinearGradient(
+                    colors: [
+                        Color(red: 0.07, green: 0.02, blue: 0.02),
+                        Color(red: 0.03, green: 0.01, blue: 0.01),
+                        Color.black
+                    ],
+                    startPoint: .top, endPoint: .bottom
+                ).ignoresSafeArea()
 
                 switch phase {
                 case .selection: selectionView
@@ -232,7 +230,10 @@ struct PvPRaidView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Stäng") { dismiss() }.foregroundColor(.white).font(.system(size: 13, design: .monospaced))
+                    Button("Stäng") { dismiss() }
+                        .foregroundColor(.white.opacity(0.7))
+                        .font(LTFont.body(13))
+                        .accessibilityLabel("Stäng rånet")
                 }
             }
         }
@@ -245,13 +246,11 @@ struct PvPRaidView: View {
     // MARK: - Val av mål
 
     private var selectionView: some View {
-        ScrollView {
-            VStack(spacing: 20) {
-                // Varningsbanner
+        ScrollView(showsIndicators: false) {
+            VStack(spacing: LTSpacing.xl) {
                 warningBanner
 
-                // Välj offer
-                VStack(alignment: .leading, spacing: 10) {
+                VStack(alignment: .leading, spacing: LTSpacing.sm) {
                     sectionHeader("VÄLJ OFFER")
                     if server.zoneMembers.isEmpty {
                         emptyState("Inga spelare i din zon.")
@@ -262,47 +261,54 @@ struct PvPRaidView: View {
                     }
                 }
 
-                // Insats
-                VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: LTSpacing.sm) {
                     sectionHeader("INSATS: \(TimeEngine.shortFormatted(stakeMinutes * 60))")
                     Slider(value: $stakeMinutes, in: 15...120, step: 15)
-                        .tint(Color(red: 0.9, green: 0.3, blue: 0.1))
+                        .tint(LTPalette.danger)
+                        .accessibilityLabel("Insats i minuter")
+                        .accessibilityValue(TimeEngine.shortFormatted(stakeMinutes * 60))
                     HStack {
-                        Text("15 min").font(.system(size: 9, design: .monospaced)).foregroundColor(.gray)
+                        Text("15 min").font(LTFont.body(9)).foregroundColor(.gray)
                         Spacer()
-                        Text("2h").font(.system(size: 9, design: .monospaced)).foregroundColor(.gray)
+                        Text("2h").font(LTFont.body(9)).foregroundColor(.gray)
                     }
                 }
 
-                // Historik
                 historySection
 
-                // Raid-knapp
                 Button {
                     guard let target = selectedTarget else { return }
+                    hapticImpact.impactOccurred()
                     manager.initiateRaid(target: target, stake: stakeMinutes * 60) { success, msg in
                         if success {
-                            phase = .reaction
+                            withAnimation(LTAnimation.springFast) { phase = .reaction }
                         } else {
                             errorMessage = msg
                             showError = true
+                            hapticNotif.notificationOccurred(.error)
                         }
                     }
                 } label: {
                     Text("STARTA RÅNET")
-                        .font(.system(size: 14, weight: .bold, design: .monospaced))
+                        .font(LTFont.heading(14))
                         .foregroundColor(.black)
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 16)
-                        .background(selectedTarget != nil
-                                    ? Color(red: 0.9, green: 0.3, blue: 0.1)
-                                    : Color(red: 0.3, green: 0.3, blue: 0.35))
+                        .padding(.vertical, LTSpacing.lg)
+                        .background(
+                            selectedTarget != nil
+                                ? LTPalette.danger
+                                : Color(red: 0.3, green: 0.3, blue: 0.35)
+                        )
+                        .clipShape(RoundedRectangle(cornerRadius: LTRadius.sm))
                 }
                 .disabled(selectedTarget == nil)
+                .buttonStyle(LTPressEffect())
+                .accessibilityLabel("Starta rånet")
+                .accessibilityHint(selectedTarget == nil ? "Välj ett offer först" : "Startar reaktionstestet mot \(selectedTarget?.username ?? "")")
 
-                Spacer(minLength: 40)
+                Spacer(minLength: LTSpacing.xxxl + LTSpacing.lg)
             }
-            .padding(16)
+            .padding(LTSpacing.lg)
         }
     }
 
@@ -313,33 +319,49 @@ struct PvPRaidView: View {
             Spacer()
 
             if manager.raidPhase == .waiting {
-                VStack(spacing: 16) {
+                VStack(spacing: LTSpacing.lg) {
                     Text("VÄNTA...")
-                        .font(.system(size: 32, weight: .bold, design: .monospaced))
-                        .foregroundColor(Color(red: 0.9, green: 0.7, blue: 0.1))
+                        .font(LTFont.value(32))
+                        .foregroundColor(LTPalette.gold)
+                        .accessibilityLabel("Vänta på målet")
                     Text("Tryck NÄR du ser målet.")
-                        .font(.system(size: 14, design: .monospaced))
-                        .foregroundColor(Color(red: 0.55, green: 0.55, blue: 0.6))
+                        .font(LTFont.body(14))
+                        .foregroundColor(.white.opacity(0.5))
                 }
+                .transition(.opacity)
             } else if manager.raidPhase == .target {
-                VStack(spacing: 20) {
+                VStack(spacing: LTSpacing.xl) {
                     Circle()
-                        .fill(Color(red: 0.9, green: 0.2, blue: 0.1))
+                        .fill(LTPalette.danger)
                         .frame(width: 140, height: 140)
                         .overlay(
                             Text("TRYCK!")
-                                .font(.system(size: 22, weight: .bold, design: .monospaced))
+                                .font(LTFont.heading(22))
                                 .foregroundColor(.white)
                         )
-                        .shadow(color: Color(red: 0.9, green: 0.2, blue: 0.1).opacity(0.6), radius: 20)
-                        .onTapGesture {
-                            manager.playerTapped(success: true)
-                            phase = .result
+                        .shadow(color: LTPalette.danger.opacity(0.7), radius: 24)
+                        .neonGlow(LTPalette.danger, intensity: 1.2)
+                        .scaleEffect(targetScale)
+                        .onAppear {
+                            hapticImpact.impactOccurred()
+                            withAnimation(.spring(response: 0.35, dampingFraction: 0.55)) {
+                                targetScale = 1.0
+                            }
                         }
+                        .onTapGesture {
+                            hapticNotif.notificationOccurred(.success)
+                            manager.playerTapped(success: true)
+                            withAnimation(LTAnimation.springFast) { phase = .result }
+                        }
+                        .accessibilityLabel("Tryck nu!")
+                        .accessibilityAddTraits(.isButton)
+
                     Text("TAP NOW!")
-                        .font(.system(size: 14, design: .monospaced))
-                        .foregroundColor(Color(red: 0.9, green: 0.3, blue: 0.1))
+                        .font(LTFont.label(14))
+                        .foregroundColor(LTPalette.danger)
+                        .neonGlow(LTPalette.danger, intensity: 0.5)
                 }
+                .transition(.scale(scale: 0.5).combined(with: .opacity))
             }
 
             Spacer()
@@ -347,12 +369,15 @@ struct PvPRaidView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .onTapGesture {
             if manager.raidPhase == .target {
+                hapticNotif.notificationOccurred(.success)
                 manager.playerTapped(success: true)
-                phase = .result
+                withAnimation(LTAnimation.springFast) { phase = .result }
             }
         }
         .onChange(of: manager.raidPhase) { _, newPhase in
-            if newPhase == .done { phase = .result }
+            if newPhase == .done {
+                withAnimation(LTAnimation.springSmooth) { phase = .result }
+            }
         }
     }
 
@@ -363,81 +388,102 @@ struct PvPRaidView: View {
         let playerMs = manager.playerReactionMs ?? 0
         let oppMs    = manager.opponentReactionMs ?? 0
 
-        return VStack(spacing: 24) {
+        return VStack(spacing: LTSpacing.xxl) {
             Spacer()
 
-            Text(won ? "RÅNET LYCKADES" : "RÅNET MISSLYCKADES")
-                .font(.system(size: 26, weight: .bold, design: .monospaced))
-                .foregroundColor(won ? Color(red: 0.1, green: 0.9, blue: 0.5) : Color(red: 0.9, green: 0.2, blue: 0.1))
-                .multilineTextAlignment(.center)
+            ZStack {
+                Circle()
+                    .fill((won ? LTPalette.neonGreen : LTPalette.danger).opacity(0.12))
+                    .frame(width: 90, height: 90)
+                    .blur(radius: 20)
+                Image(systemName: won ? "checkmark.seal.fill" : "xmark.seal.fill")
+                    .font(.system(size: 44))
+                    .foregroundColor(won ? LTPalette.neonGreen : LTPalette.danger)
+                    .neonGlow(won ? LTPalette.neonGreen : LTPalette.danger, intensity: 0.8)
+            }
+            .scaleEffect(resultAppeared ? 1.0 : 0.4)
+            .animation(.spring(response: 0.5, dampingFraction: 0.6), value: resultAppeared)
+            .onAppear {
+                hapticNotif.notificationOccurred(won ? .success : .error)
+                withAnimation { resultAppeared = true }
+            }
 
-            VStack(spacing: 8) {
+            Text(won ? "RÅNET LYCKADES" : "RÅNET MISSLYCKADES")
+                .font(LTFont.value(24))
+                .foregroundColor(won ? LTPalette.neonGreen : LTPalette.danger)
+                .multilineTextAlignment(.center)
+                .accessibilityLabel(won ? "Rånet lyckades" : "Rånet misslyckades")
+
+            VStack(spacing: LTSpacing.sm) {
                 reactionRow(label: "Du", ms: playerMs, best: playerMs < oppMs)
                 reactionRow(label: "Motståndare", ms: oppMs, best: oppMs <= playerMs)
             }
-            .padding()
-            .background(Color(red: 0.06, green: 0.06, blue: 0.09))
-            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .padding(LTSpacing.lg)
+            .ltCard(radius: LTRadius.sm)
 
             if won {
                 Text("Du stal \(TimeEngine.shortFormatted(manager.history.first?.stake ?? 0)) från offret.")
-                    .font(.system(size: 13, design: .monospaced))
-                    .foregroundColor(Color(red: 0.5, green: 0.9, blue: 0.5))
+                    .font(LTFont.body(13))
+                    .foregroundColor(LTPalette.neonGreenDim)
             } else {
                 Text("Din insats förlorades.")
-                    .font(.system(size: 13, design: .monospaced))
-                    .foregroundColor(Color(red: 0.9, green: 0.4, blue: 0.4))
+                    .font(LTFont.body(13))
+                    .foregroundColor(LTPalette.danger.opacity(0.8))
             }
 
             Button {
+                hapticLight.impactOccurred()
                 manager.resetRaid()
-                phase = .selection
+                withAnimation(LTAnimation.springSmooth) { phase = .selection }
             } label: {
                 Text("TILLBAKA")
-                    .font(.system(size: 14, weight: .bold, design: .monospaced))
+                    .font(LTFont.heading(14))
                     .foregroundColor(.black)
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
+                    .padding(.vertical, LTSpacing.md)
                     .background(.white)
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                    .clipShape(RoundedRectangle(cornerRadius: LTRadius.sm))
             }
+            .buttonStyle(LTPressEffect())
+            .accessibilityLabel("Tillbaka till spelarval")
 
             Spacer()
         }
-        .padding(24)
+        .padding(LTSpacing.xxl)
     }
 
     private func reactionRow(label: String, ms: Int, best: Bool) -> some View {
         HStack {
             Text(label)
-                .font(.system(size: 12, weight: .bold, design: .monospaced))
+                .font(LTFont.heading(12))
                 .foregroundColor(.white)
             Spacer()
             Text("\(ms) ms")
-                .font(.system(size: 14, weight: .bold, design: .monospaced))
-                .foregroundColor(best ? Color(red: 0.1, green: 0.9, blue: 0.5) : Color(red: 0.9, green: 0.3, blue: 0.1))
+                .font(LTFont.value(14))
+                .foregroundColor(best ? LTPalette.neonGreen : LTPalette.danger)
+                .contentTransition(.numericText())
         }
     }
 
     // MARK: - Sub-views
 
     private var warningBanner: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "bolt.fill").foregroundColor(Color(red: 0.9, green: 0.3, blue: 0.1))
+        HStack(spacing: LTSpacing.sm) {
+            Image(systemName: "bolt.fill")
+                .foregroundColor(LTPalette.danger)
+                .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
                 Text("Din tid eller ditt liv.")
-                    .font(.system(size: 12, weight: .bold, design: .monospaced))
+                    .font(LTFont.heading(12))
                     .foregroundColor(.white)
                 Text("Reagera snabbare än motståndaren. Vinner du → stjäl deras insats. Förlorar du → de tar din.")
-                    .font(.system(size: 10, design: .monospaced))
+                    .font(LTFont.body(10))
                     .foregroundColor(Color(red: 0.6, green: 0.6, blue: 0.65))
                     .lineSpacing(2)
             }
         }
-        .padding(12)
-        .background(Color(red: 0.1, green: 0.04, blue: 0.04))
-        .clipShape(RoundedRectangle(cornerRadius: 10))
-        .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color(red: 0.5, green: 0.15, blue: 0.1), lineWidth: 1))
+        .padding(LTSpacing.md)
+        .ltAccentCard(color: LTPalette.danger, radius: LTRadius.sm)
     }
 
     private func targetRow(_ member: ServerUser) -> some View {
@@ -449,22 +495,29 @@ struct PvPRaidView: View {
             return false
         }()
 
-        return Button { if !onCooldown { selectedTarget = member } } label: {
+        return Button {
+            if !onCooldown {
+                hapticLight.impactOccurred()
+                withAnimation(LTAnimation.springFast) { selectedTarget = member }
+            }
+        } label: {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(member.username)
-                        .font(.system(size: 13, weight: .bold, design: .monospaced))
+                        .font(LTFont.heading(13))
                         .foregroundColor(onCooldown ? Color(red: 0.4, green: 0.4, blue: 0.45) : .white)
                     if onCooldown {
                         Text("Immunitet aktiv")
-                            .font(.system(size: 9, design: .monospaced))
+                            .font(LTFont.body(9))
                             .foregroundColor(Color(red: 0.5, green: 0.5, blue: 0.55))
                     }
                 }
                 Spacer()
                 if selected {
                     Image(systemName: "target")
-                        .foregroundColor(Color(red: 0.9, green: 0.3, blue: 0.1))
+                        .foregroundColor(LTPalette.danger)
+                        .neonGlow(LTPalette.danger, intensity: 0.5)
+                        .transition(.scale.combined(with: .opacity))
                 }
                 if onCooldown {
                     Image(systemName: "shield.fill")
@@ -472,33 +525,42 @@ struct PvPRaidView: View {
                         .font(.system(size: 14))
                 }
             }
-            .padding(12)
+            .padding(LTSpacing.md)
             .background(selected ? Color(red: 0.12, green: 0.04, blue: 0.04) : Color(red: 0.06, green: 0.06, blue: 0.09))
-            .clipShape(RoundedRectangle(cornerRadius: 10))
-            .overlay(RoundedRectangle(cornerRadius: 10).stroke(selected ? Color(red: 0.6, green: 0.15, blue: 0.1) : Color(red: 0.2, green: 0.2, blue: 0.28), lineWidth: 1))
+            .clipShape(RoundedRectangle(cornerRadius: LTRadius.sm))
+            .overlay(RoundedRectangle(cornerRadius: LTRadius.sm)
+                .stroke(selected ? LTPalette.danger.opacity(0.6) : Color(red: 0.2, green: 0.2, blue: 0.28), lineWidth: 1))
+            .animation(LTAnimation.springFast, value: selected)
         }
         .disabled(onCooldown)
+        .buttonStyle(LTPressEffect())
+        .accessibilityLabel(member.username)
+        .accessibilityHint(onCooldown ? "Immunitet aktiv — kan inte raidadas just nu" : (selected ? "Vald som offer" : "Tryck för att välja som offer"))
     }
 
     private var historySection: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: LTSpacing.sm) {
             sectionHeader("HISTORIK")
             if manager.history.isEmpty {
-                Text("Inga råd ännu.").font(.system(size: 11, design: .monospaced)).foregroundColor(Color(red: 0.35, green: 0.35, blue: 0.4))
+                Text("Inga råd ännu.")
+                    .font(LTFont.body(11))
+                    .foregroundColor(Color(red: 0.35, green: 0.35, blue: 0.4))
             } else {
                 ForEach(manager.history.prefix(5)) { r in
                     HStack {
                         Text(r.attackerName == gameState.username ? "vs \(r.defenderName)" : "\(r.attackerName) vs dig")
-                            .font(.system(size: 11, weight: .bold, design: .monospaced))
+                            .font(LTFont.heading(11))
                             .foregroundColor(.white)
                         Spacer()
                         Text(r.status == .won ? "VANN" : "FÖRLORADE")
-                            .font(.system(size: 10, weight: .bold, design: .monospaced))
-                            .foregroundColor(r.status == .won ? Color(red: 0.1, green: 0.9, blue: 0.5) : Color(red: 0.9, green: 0.3, blue: 0.1))
+                            .font(LTFont.label(10))
+                            .foregroundColor(r.status == .won ? LTPalette.neonGreen : LTPalette.danger)
                     }
-                    .padding(10)
+                    .padding(LTSpacing.sm + 2)
                     .background(Color(red: 0.06, green: 0.06, blue: 0.09))
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .clipShape(RoundedRectangle(cornerRadius: LTRadius.xs))
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("\(r.attackerName == gameState.username ? "Mot \(r.defenderName)" : "\(r.attackerName) mot dig"): \(r.status == .won ? "Vann" : "Förlorade")")
                 }
             }
         }
@@ -506,14 +568,14 @@ struct PvPRaidView: View {
 
     private func sectionHeader(_ text: String) -> some View {
         Text(text)
-            .font(.system(size: 9, weight: .bold, design: .monospaced))
+            .font(LTFont.label(9))
             .foregroundColor(Color(red: 0.5, green: 0.5, blue: 0.55))
             .tracking(2)
     }
 
     private func emptyState(_ text: String) -> some View {
         Text(text)
-            .font(.system(size: 11, design: .monospaced))
+            .font(LTFont.body(11))
             .foregroundColor(Color(red: 0.4, green: 0.4, blue: 0.45))
     }
 }

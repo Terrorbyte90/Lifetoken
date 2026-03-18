@@ -14,18 +14,21 @@ struct MiniJobDiff: Identifiable {
 
 // MARK: - Pay Table Helper
 
-func awardMiniJobEarnings(minutes: Int) {
+func awardMiniJobEarnings(minutes: Int, jobName: String = "Aktivt jobb") {
     guard minutes > 0 else { return }
     let zone  = GameState.shared.currentZone
     let raw   = TimeInterval(minutes * 60) * zone.workMultiplier
     let net   = raw * (1 - zone.taxRate) * BoostManager.shared.boosterMultiplier()
     TimeEngine.shared.addTime(net)
     GameState.shared.recordEarning(net)
+    TransactionLedger.shared.record(label: jobName, amount: net)
 }
 
-func penalizeMiniJob(minutes: Int) {
+func penalizeMiniJob(minutes: Int, jobName: String = "Aktivt jobb") {
     guard minutes > 0 else { return }
-    _ = TimeEngine.shared.deductTime(TimeInterval(minutes * 60))
+    let penalty = TimeInterval(minutes * 60)
+    _ = TimeEngine.shared.deductTime(penalty)
+    TransactionLedger.shared.record(label: "\(jobName) — böter", amount: -penalty)
 }
 
 // MARK: - Hub View

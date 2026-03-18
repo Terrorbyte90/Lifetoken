@@ -588,14 +588,14 @@ struct PipeGameView: View {
     private func calcEarnings(won: Bool) -> TimeInterval {
         let zone = GameState.shared.currentZone
         if won {
-            awardMiniJobEarnings(minutes: reward)
+            awardMiniJobEarnings(minutes: reward, jobName: "Rörmockaren")
             let net = TimeInterval(reward * 60) * zone.workMultiplier * (1 - zone.taxRate) * BoostManager.shared.boosterMultiplier()
             NewsManager.shared.addMiniJobCompletedEvent(jobName: "Rörmockaren", earned: net, won: true)
             return net
         } else {
             // Penalty = 1/3 of reward
             let penaltyMin = max(1, reward / 3)
-            penalizeMiniJob(minutes: penaltyMin)
+            penalizeMiniJob(minutes: penaltyMin, jobName: "Rörmockaren")
             NewsManager.shared.addMiniJobCompletedEvent(jobName: "Rörmockaren", earned: 0, won: false)
             return -TimeInterval(penaltyMin * 60)
         }

@@ -568,9 +568,12 @@ struct CodeBreakerView: View {
         }
         var net: TimeInterval = 0
         if minutes > 0 {
-            awardMiniJobEarnings(minutes: minutes)
+            awardMiniJobEarnings(minutes: minutes, jobName: "Kodknäckaren")
             let zone = GameState.shared.currentZone
             net = TimeInterval(minutes * 60) * zone.workMultiplier * (1 - zone.taxRate) * BoostManager.shared.boosterMultiplier()
+            NewsManager.shared.addMiniJobCompletedEvent(jobName: "Kodknäckaren", earned: net, won: won)
+        } else {
+            NewsManager.shared.addMiniJobCompletedEvent(jobName: "Kodknäckaren", earned: 0, won: false)
         }
         phase = .result(won: won, attempts: att, earned: net)
     }

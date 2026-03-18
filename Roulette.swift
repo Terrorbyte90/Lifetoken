@@ -326,6 +326,7 @@ struct SlotMachineView: View {
             TimeEngine.shared.addTime(net)
             GameState.shared.recordEarning(net)
             lastWin = net
+            TransactionLedger.shared.record(label: "Slots — vinst", amount: net - betAmount)
 
             let isJackpot = a == b && b == c && a == 0  // triple lightning
             if isJackpot {
@@ -338,6 +339,7 @@ struct SlotMachineView: View {
         } else {
             lastWin       = 0
             resultMessage = "\(symbols[a])  \(symbols[b])  \(symbols[c])\nIngen vinst. Förlorade \(TimeEngine.shortFormatted(betAmount))."
+            TransactionLedger.shared.record(label: "Slots — förlust", amount: -betAmount)
         }
 
         showResult = true
