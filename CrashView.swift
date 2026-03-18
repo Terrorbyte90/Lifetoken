@@ -349,6 +349,7 @@ struct CrashView: View {
         let net = gross * (1 - taxRate)
         TimeEngine.shared.addTime(net)
         GameState.shared.recordEarning(net - betAmount)
+        MissionsManager.incrementProgress("casino_total_wins")
     }
 
     func triggerCrash() {

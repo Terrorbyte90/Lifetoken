@@ -19,8 +19,8 @@ struct Mission: Identifiable, Codable {
     let category: MissionCategory
     let icon: String
     let rewardSeconds: TimeInterval
-    let targetValue: Double        // what to achieve
-    let progressKey: String        // UserDefaults key tracking progress
+    let targetValue: Double
+    let progressKey: String
     var isCompleted: Bool
     var isClaimed: Bool
 
@@ -41,7 +41,6 @@ class MissionsManager: ObservableObject {
     private let claimedKey = "claimed_missions"
     private var uptimeTimer: Timer?
 
-    // Static mission definitions
     private let allMissions: [Mission] = [
         // Survival
         Mission(id: "survive_1d",   title: "Överlev en dag",     description: "Ha mer än 0 sekunder efter 24h.",
@@ -137,59 +136,164 @@ class MissionsManager: ObservableObject {
 struct MissionsView: View {
     @ObservedObject private var missionsManager = MissionsManager.shared
     @State private var selectedCategory: MissionCategory? = nil
+    @State private var headerVisible: Bool = false
 
     var filteredMissions: [Mission] {
-        if let cat = selectedCategory {
-            return missionsManager.missions.filter { $0.category == cat }
+        let sorted = missionsManager.missions.sorted { a, b in
+            // Redo-to-claim first, then in-progress, then claimed
+            if a.isReady != b.isReady { return a.isReady }
+            if a.isClaimed != b.isClaimed { return !a.isClaimed }
+            return a.progressFraction > b.progressFraction
         }
-        return missionsManager.missions
+        if let cat = selectedCategory {
+            return sorted.filter { $0.category == cat }
+        }
+        return sorted
     }
+
+    private var claimedCount: Int { missionsManager.missions.filter { $0.isClaimed }.count }
+    private var totalCount: Int { missionsManager.missions.count }
 
     var body: some View {
         ZStack {
-            Color.black.ignoresSafeArea()
+            // Background
+            LinearGradient(
+                colors: [LTPalette.bg, Color.black],
+                startPoint: .top, endPoint: .bottom
+            )
+            .ignoresSafeArea()
+
             VStack(spacing: 0) {
-                Text("UPPDRAG")
-                    .font(.system(size: 22, weight: .bold, design: .monospaced))
-                    .foregroundColor(.white)
-                    .padding(.top, 40)
-                    .padding(.bottom, 16)
-
-                // Category filter
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        FilterChip(label: "Alla", isSelected: selectedCategory == nil) {
-                            selectedCategory = nil
-                        }
-                        ForEach([MissionCategory.survival, .wealth, .zone, .casino, .work, .social], id: \.self) { cat in
-                            FilterChip(label: cat.rawValue, isSelected: selectedCategory == cat) {
-                                selectedCategory = selectedCategory == cat ? nil : cat
-                            }
-                        }
-                    }
-                    .padding(.horizontal)
-                }
-                .padding(.bottom, 12)
-
-                ScrollView {
-                    VStack(spacing: 10) {
-                        ForEach(filteredMissions) { mission in
-                            MissionCard(mission: mission) {
-                                missionsManager.claimMission(mission)
-                            }
-                        }
-                    }
-                    .padding(.horizontal)
-                    .padding(.bottom, 100)
-                }
+                missionsHeader
+                categoryFilter
+                missionsList
             }
         }
         .alert("Uppdrag Klart!", isPresented: $missionsManager.showRewardAlert) {
-            Button("OK") {}
+            Button("Utmärkt") {}
         } message: { Text(missionsManager.rewardMessage) }
-        .onAppear { missionsManager.loadMissions() }
+        .onAppear {
+            missionsManager.loadMissions()
+            withAnimation(LTAnimation.springSmooth.delay(0.1)) { headerVisible = true }
+        }
+        .preferredColorScheme(.dark)
+    }
+
+    // MARK: - Header med progress-sammanfattning
+
+    private var missionsHeader: some View {
+        VStack(spacing: LTSpacing.sm) {
+            Text("UPPDRAG")
+                .font(LTFont.displayTitle(22))
+                .foregroundColor(.white)
+                .tracking(4)
+                .padding(.top, LTSpacing.xxxl + LTSpacing.sm)
+
+            // Overall progress bar
+            VStack(spacing: LTSpacing.xs) {
+                HStack {
+                    Text("\(claimedCount) / \(totalCount) avklarade")
+                        .font(LTFont.caption(9))
+                        .foregroundColor(.white.opacity(0.35))
+                        .tracking(2)
+                    Spacer()
+                    Text("\(Int(Double(claimedCount) / Double(max(totalCount, 1)) * 100))%")
+                        .font(LTFont.caption(9))
+                        .foregroundColor(LTPalette.neonGreenDim.opacity(0.7))
+                }
+
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+                        Capsule()
+                            .fill(Color.white.opacity(0.07))
+                            .frame(height: 3)
+                        Capsule()
+                            .fill(
+                                LinearGradient(
+                                    colors: [LTPalette.neonGreen, LTPalette.neonGreenDim],
+                                    startPoint: .leading, endPoint: .trailing
+                                )
+                            )
+                            .frame(
+                                width: geo.size.width * CGFloat(claimedCount) / CGFloat(max(totalCount, 1)),
+                                height: 3
+                            )
+                            .shadow(color: LTPalette.neonGreen.opacity(0.5), radius: 4)
+                            .animation(LTAnimation.springSmooth, value: claimedCount)
+                    }
+                }
+                .frame(height: 3)
+            }
+            .padding(.horizontal, LTSpacing.horizontal)
+            .opacity(headerVisible ? 1 : 0)
+            .offset(y: headerVisible ? 0 : 8)
+        }
+        .padding(.bottom, LTSpacing.md)
+    }
+
+    // MARK: - Kategorifilter
+
+    private var categoryFilter: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: LTSpacing.sm) {
+                FilterChip(label: "Alla", isSelected: selectedCategory == nil) {
+                    withAnimation(LTAnimation.springFast) { selectedCategory = nil }
+                }
+                ForEach([MissionCategory.survival, .wealth, .zone, .casino, .work, .social], id: \.self) { cat in
+                    FilterChip(label: cat.rawValue, isSelected: selectedCategory == cat) {
+                        withAnimation(LTAnimation.springFast) {
+                            selectedCategory = selectedCategory == cat ? nil : cat
+                        }
+                    }
+                }
+            }
+            .padding(.horizontal, LTSpacing.horizontal)
+        }
+        .padding(.bottom, LTSpacing.md)
+    }
+
+    // MARK: - Uppdragslista
+
+    private var missionsList: some View {
+        ScrollView(showsIndicators: false) {
+            LazyVStack(spacing: LTSpacing.sm) {
+                ForEach(filteredMissions) { mission in
+                    MissionCard(mission: mission) {
+                        missionsManager.claimMission(mission)
+                    }
+                    .transition(
+                        .asymmetric(
+                            insertion: .move(edge: .trailing).combined(with: .opacity),
+                            removal: .opacity
+                        )
+                    )
+                }
+
+                if filteredMissions.isEmpty {
+                    emptyState
+                }
+            }
+            .padding(.horizontal, LTSpacing.horizontal)
+            .padding(.bottom, LTSpacing.scrollBottom)
+        }
+        .animation(LTAnimation.springFast, value: selectedCategory)
+    }
+
+    private var emptyState: some View {
+        VStack(spacing: LTSpacing.lg) {
+            Image(systemName: "checkmark.seal.fill")
+                .font(.system(size: 40))
+                .foregroundColor(.white.opacity(0.12))
+            Text("Inga uppdrag i den här kategorin")
+                .font(LTFont.body(13))
+                .foregroundColor(.white.opacity(0.25))
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.top, 60)
     }
 }
+
+// MARK: - FilterChip (omdesignad)
 
 struct FilterChip: View {
     let label: String
@@ -197,69 +301,175 @@ struct FilterChip: View {
     let action: () -> Void
 
     var body: some View {
-        Button(action: action) {
+        Button(action: {
+            let impact = UIImpactFeedbackGenerator(style: .light)
+            impact.impactOccurred()
+            action()
+        }) {
             Text(label)
-                .font(.system(size: 11, weight: .bold, design: .monospaced))
-                .foregroundColor(isSelected ? .black : .white)
-                .padding(.horizontal, 12).padding(.vertical, 6)
-                .background(isSelected ? Color.green : Color.white.opacity(0.1))
-                .cornerRadius(20)
+                .font(LTFont.label(11))
+                .foregroundColor(isSelected ? .black : .white.opacity(0.65))
+                .padding(.horizontal, LTSpacing.md)
+                .padding(.vertical, LTSpacing.sm - 2)
+                .background(isSelected ? LTPalette.neonGreen : Color.white.opacity(0.08))
+                .clipShape(Capsule())
+                .overlay(
+                    Capsule()
+                        .stroke(
+                            isSelected ? LTPalette.neonGreen.opacity(0.5) : Color.white.opacity(0.10),
+                            lineWidth: 1
+                        )
+                )
+                .shadow(color: isSelected ? LTPalette.neonGreen.opacity(0.35) : .clear, radius: 6)
         }
+        .buttonStyle(LTPressEffect(scale: 0.94))
+        .animation(LTAnimation.springFast, value: isSelected)
+        .accessibilityLabel(label)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }
+
+// MARK: - MissionCard (premium omdesign)
 
 struct MissionCard: View {
     let mission: Mission
     let onClaim: () -> Void
 
-    var body: some View {
-        HStack(spacing: 14) {
-            Image(systemName: mission.icon)
-                .font(.system(size: 20))
-                .foregroundColor(mission.isClaimed ? .gray : (mission.isReady ? .yellow : .green))
-                .frame(width: 32)
-
-            VStack(alignment: .leading, spacing: 4) {
-                HStack {
-                    Text(mission.title)
-                        .font(.system(size: 13, weight: .bold, design: .monospaced))
-                        .foregroundColor(mission.isClaimed ? .gray : .white)
-                    Spacer()
-                    Text("+\(TimeEngine.shortFormatted(mission.rewardSeconds))")
-                        .font(.system(size: 11, weight: .bold, design: .monospaced))
-                        .foregroundColor(.yellow)
-                }
-                Text(mission.description)
-                    .font(.system(size: 11, design: .monospaced))
-                    .foregroundColor(.white.opacity(0.45))
-
-                HStack(spacing: 8) {
-                    ProgressView(value: mission.progressFraction)
-                        .progressViewStyle(LinearProgressViewStyle(tint: mission.isReady ? .yellow : .green))
-                        .frame(maxWidth: .infinity)
-                    Text("\(Int(mission.progressFraction * 100))%")
-                        .font(.system(size: 10, design: .monospaced))
-                        .foregroundColor(.white.opacity(0.4))
-                }
-            }
-
-            if mission.isReady {
-                Button("HÄMTA", action: onClaim)
-                    .font(.system(size: 11, weight: .bold, design: .monospaced))
-                    .foregroundColor(.black)
-                    .padding(.horizontal, 10).padding(.vertical, 8)
-                    .background(Color.yellow)
-                    .cornerRadius(8)
-            } else if mission.isClaimed {
-                Image(systemName: "checkmark.circle.fill")
-                    .foregroundColor(.gray)
-            }
+    private var accentColor: Color {
+        if mission.isClaimed     { return .white.opacity(0.25) }
+        if mission.isReady       { return LTPalette.gold }
+        switch mission.category {
+        case .survival: return .red
+        case .wealth:   return LTPalette.neonGreenDim
+        case .zone:     return .cyan
+        case .casino:   return .purple
+        case .work:     return .orange
+        case .social:   return .blue
         }
-        .padding(12)
-        .background(mission.isClaimed ? Color.white.opacity(0.02) : Color.white.opacity(0.06))
-        .cornerRadius(12)
-        .overlay(RoundedRectangle(cornerRadius: 12)
-            .stroke(mission.isReady ? Color.yellow.opacity(0.4) : Color.clear, lineWidth: 1))
+    }
+
+    @State private var claimScale: CGFloat = 1.0
+
+    var body: some View {
+        HStack(spacing: LTSpacing.md) {
+            // Icon container
+            ZStack {
+                RoundedRectangle(cornerRadius: LTRadius.xs)
+                    .fill(accentColor.opacity(mission.isClaimed ? 0.06 : 0.14))
+                    .frame(width: 44, height: 44)
+                Image(systemName: mission.icon)
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(mission.isClaimed ? accentColor.opacity(0.4) : accentColor)
+                    .shadow(color: accentColor.opacity(mission.isClaimed ? 0 : 0.6), radius: 5)
+            }
+
+            // Content
+            VStack(alignment: .leading, spacing: LTSpacing.xs) {
+                HStack(spacing: LTSpacing.xs) {
+                    Text(mission.title)
+                        .font(LTFont.heading(13))
+                        .foregroundColor(mission.isClaimed ? .white.opacity(0.35) : .white)
+                        .strikethrough(mission.isClaimed, color: .white.opacity(0.2))
+                    Spacer(minLength: 0)
+                    Text("+\(TimeEngine.shortFormatted(mission.rewardSeconds))")
+                        .font(LTFont.label(10))
+                        .foregroundColor(mission.isClaimed ? .white.opacity(0.2) : accentColor)
+                }
+
+                Text(mission.description)
+                    .font(LTFont.body(10))
+                    .foregroundColor(.white.opacity(mission.isClaimed ? 0.20 : 0.42))
+                    .lineLimit(1)
+
+                // Progress bar (vertikal layout med label)
+                HStack(spacing: LTSpacing.sm) {
+                    GeometryReader { geo in
+                        ZStack(alignment: .leading) {
+                            RoundedRectangle(cornerRadius: 2)
+                                .fill(Color.white.opacity(0.07))
+                                .frame(height: 4)
+                            RoundedRectangle(cornerRadius: 2)
+                                .fill(
+                                    LinearGradient(
+                                        colors: [accentColor, accentColor.opacity(0.6)],
+                                        startPoint: .leading, endPoint: .trailing
+                                    )
+                                )
+                                .frame(width: geo.size.width * mission.progressFraction, height: 4)
+                                .shadow(color: accentColor.opacity(0.5), radius: 3)
+                                .animation(LTAnimation.springSmooth, value: mission.progressFraction)
+                        }
+                    }
+                    .frame(height: 4)
+
+                    Text("\(Int(mission.progressFraction * 100))%")
+                        .font(LTFont.caption(9))
+                        .foregroundColor(.white.opacity(0.30))
+                        .frame(width: 28, alignment: .trailing)
+                }
+            }
+
+            // Claim / done indicator
+            Group {
+                if mission.isReady && !mission.isClaimed {
+                    Button(action: {
+                        let notif = UINotificationFeedbackGenerator()
+                        notif.notificationOccurred(.success)
+                        withAnimation(LTAnimation.springFast) { claimScale = 0.92 }
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
+                            withAnimation(LTAnimation.springFast) { claimScale = 1.0 }
+                            onClaim()
+                        }
+                    }) {
+                        Text("HÄMTA")
+                            .font(LTFont.caption(10))
+                            .foregroundColor(.black)
+                            .padding(.horizontal, LTSpacing.sm + 2)
+                            .padding(.vertical, LTSpacing.sm)
+                            .background(accentColor)
+                            .clipShape(RoundedRectangle(cornerRadius: LTRadius.xs))
+                            .shadow(color: accentColor.opacity(0.4), radius: 6)
+                            .scaleEffect(claimScale)
+                    }
+                    .accessibilityLabel("Hämta belöning: \(mission.title)")
+                } else if mission.isClaimed {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 18))
+                        .foregroundColor(.white.opacity(0.18))
+                        .accessibilityLabel("Avklarad")
+                }
+            }
+            .frame(width: 58, alignment: .trailing)
+        }
+        .padding(LTSpacing.md)
+        .background(
+            ZStack {
+                Color.white.opacity(mission.isClaimed ? 0.02 : 0.055)
+                if mission.isReady && !mission.isClaimed {
+                    LinearGradient(
+                        colors: [accentColor.opacity(0.10), .clear],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                }
+            }
+        )
+        .clipShape(RoundedRectangle(cornerRadius: LTRadius.sm))
+        .overlay(
+            RoundedRectangle(cornerRadius: LTRadius.sm)
+                .stroke(
+                    mission.isReady && !mission.isClaimed
+                        ? accentColor.opacity(0.45)
+                        : Color.white.opacity(0.06),
+                    lineWidth: 1
+                )
+        )
+        .shadow(
+            color: (mission.isReady && !mission.isClaimed) ? accentColor.opacity(0.15) : .clear,
+            radius: 10, x: 0, y: 3
+        )
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(mission.title), \(mission.description), \(Int(mission.progressFraction * 100)) procent klar")
     }
 }
 

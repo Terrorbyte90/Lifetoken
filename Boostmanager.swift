@@ -14,7 +14,7 @@ class BoostManager {
     }
 
     func boosterMultiplier() -> Double {
-        let boosts = getActiveBoosts()
+        let boosts = activeNonExpiredBoosts()
         if boosts.contains(where: { $0.contains("50%") }) {
             return 1.5
         } else if boosts.contains(where: { $0.contains("30%") }) {
@@ -29,8 +29,28 @@ class BoostManager {
         return 1.0
     }
 
+    /// Returns only boosts that have not yet expired.
+    /// Boosts without an exp: tag are treated as permanent (legacy).
+    private func activeNonExpiredBoosts() -> [String] {
+        let now = Date().timeIntervalSince1970
+        return getActiveBoosts().filter { boost in
+            if let range = boost.range(of: "exp:") {
+                let expStr = String(boost[range.upperBound...]).prefix(while: { $0.isNumber })
+                if let expiry = Double(expStr) {
+                    return now < expiry
+                }
+            }
+            return true  // no exp: tag — keep (legacy or permanent item)
+        }
+    }
+
+    func pruneExpiredBoosts() {
+        let pruned = activeNonExpiredBoosts()
+        UserDefaults.standard.set(pruned, forKey: boostsKey)
+    }
+
     func activeBoosterLabel() -> String? {
-        let boosts = getActiveBoosts()
+        let boosts = activeNonExpiredBoosts()
         if boosts.contains(where: { $0.contains("50%") }) { return "Booster 50%" }
         if boosts.contains(where: { $0.contains("30%") }) { return "Booster 30%" }
         if boosts.contains(where: { $0.contains("20%") }) { return "Booster 20%" }

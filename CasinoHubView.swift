@@ -6,6 +6,7 @@ struct CasinoHubView: View {
     @ObservedObject private var engine = TimeEngine.shared
     @ObservedObject private var gameState = GameState.shared
     @ObservedObject private var server = ServerSync.shared
+    @AppStorage("selectedTab") private var selectedTab: Int = 0
 
     @State private var selectedGame: CasinoGame? = nil
     @State private var lockedMessageIndex: Int = Int.random(in: 0..<6)
@@ -156,28 +157,32 @@ struct CasinoHubView: View {
                     }
 
                     Button {
+                        let impact = UIImpactFeedbackGenerator(style: .heavy)
+                        impact.impactOccurred()
                         attemptBribe()
                     } label: {
-                        HStack(spacing: 8) {
+                        HStack(spacing: LTSpacing.sm) {
                             Image(systemName: "banknote")
                             Text("MUT VAKTEN")
-                                .font(.system(size: 14, weight: .bold, design: .monospaced))
+                                .font(LTFont.heading(14))
                         }
                         .foregroundColor(.black)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 16)
                         .background(
-                            LinearGradient(colors: [Color.yellow, Color(red: 0.9, green: 0.7, blue: 0.0)],
+                            LinearGradient(colors: [LTPalette.gold, Color(red: 0.9, green: 0.7, blue: 0.0)],
                                            startPoint: .topLeading, endPoint: .bottomTrailing)
                         )
-                        .clipShape(RoundedRectangle(cornerRadius: 14))
-                        .shadow(color: .yellow.opacity(0.3), radius: 10, y: 4)
+                        .clipShape(RoundedRectangle(cornerRadius: LTRadius.sm))
+                        .shadow(color: LTPalette.gold.opacity(0.35), radius: 12, y: 4)
                         .opacity(bribePhase == .deducting ? 0.5 : 1.0)
                     }
+                    .buttonStyle(LTPressEffect())
                     .disabled(bribePhase == .deducting || engine.balance < bribeAmt + 60)
+                    .accessibilityLabel("Mut vakten för \(TimeEngine.shortFormatted(bribeAmt))")
                     .padding(.horizontal, 32)
 
-                    Button("Lämna platsen") { }
+                    Button("Lämna platsen") { selectedTab = 0 }
                         .font(.system(size: 12, design: .monospaced))
                         .foregroundColor(.white.opacity(0.3))
                 }
@@ -275,7 +280,11 @@ struct CasinoHubView: View {
 
     @ViewBuilder
     private func gameCard(_ game: CasinoGame, icon: String, title: String, subtitle: String, tag: String, gradient: [Color], accent: Color) -> some View {
-        Button { selectedGame = game } label: {
+        Button {
+            let impact = UIImpactFeedbackGenerator(style: .medium)
+            impact.impactOccurred()
+            selectedGame = game
+        } label: {
             VStack(alignment: .leading, spacing: 10) {
                 HStack(alignment: .top) {
                     ZStack {
@@ -325,7 +334,9 @@ struct CasinoHubView: View {
             )
             .shadow(color: accent.opacity(0.12), radius: 10, y: 5)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(LTPressEffect(scale: 0.95))
+        .accessibilityLabel(title)
+        .accessibilityHint(subtitle)
     }
 }
 

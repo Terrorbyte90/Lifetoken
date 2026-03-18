@@ -49,47 +49,47 @@ class WorkManager: ObservableObject {
     let allJobs: [JobType] = [
         // Grundskiftet / Krypdalen
         JobType(id: "scavenger",   name: "Skrotsamlare",       description: "Samla skrot i zonen. Bottenlön men alltid arbete.",
-                icon: "trash",           durationSeconds: 7200,   baseEarningsSeconds: 7560,  requiredZone: "Grundskiftet", riskPercentage: 0.05),
-        // Gråbotten
+                icon: "trash",           durationSeconds: 7200,   baseEarningsSeconds: 7560,  requiredZone: "Askan",        riskPercentage: 0.05),
+        // Spillrorna
         JobType(id: "courier",     name: "Budlöpare",          description: "Leverera brev i grå gator. Enkelt, mestadels säkert.",
-                icon: "envelope",        durationSeconds: 7200,   baseEarningsSeconds: 7920,  requiredZone: "Gråbotten",    riskPercentage: 0.10),
-        // Skymring
+                icon: "envelope",        durationSeconds: 7200,   baseEarningsSeconds: 7920,  requiredZone: "Spillrorna",   riskPercentage: 0.10),
+        // Betongen
         JobType(id: "factory",     name: "Fabriksarbete",      description: "Monotont löpandsbandarbete. Låg lön, hög säkerhet.",
-                icon: "gear",            durationSeconds: 14400,  baseEarningsSeconds: 16200, requiredZone: "Skymring",     riskPercentage: 0.05),
-        // Halvmörker
+                icon: "gear",            durationSeconds: 14400,  baseEarningsSeconds: 16200, requiredZone: "Betongen",     riskPercentage: 0.05),
+        // Dimman
         JobType(id: "delivery",    name: "Budkörning",         description: "Leverera paket runt zonen. Snabbt men osäkert.",
-                icon: "box.truck",       durationSeconds: 7200,   baseEarningsSeconds: 7800,  requiredZone: "Halvmörker",   riskPercentage: 0.15),
-        // Duskline
+                icon: "box.truck",       durationSeconds: 7200,   baseEarningsSeconds: 7800,  requiredZone: "Dimman",       riskPercentage: 0.15),
+        // Halvmörkret
         JobType(id: "security",    name: "Säkerhetsvakt",      description: "Skydda byggnader. 8h skift, okej lön.",
-                icon: "shield",          durationSeconds: 28800,  baseEarningsSeconds: 34560, requiredZone: "Duskline",     riskPercentage: 0.10),
-        // Midgrey
+                icon: "shield",          durationSeconds: 28800,  baseEarningsSeconds: 34560, requiredZone: "Halvmörkret",  riskPercentage: 0.10),
+        // Gränslandet
         JobType(id: "assembly",    name: "Monteringsarbete",   description: "Teknisk monteringslinje. Bättre lön.",
-                icon: "wrench.and.screwdriver", durationSeconds: 14400, baseEarningsSeconds: 18000, requiredZone: "Midgrey", riskPercentage: 0.08),
-        // Risefield
+                icon: "wrench.and.screwdriver", durationSeconds: 14400, baseEarningsSeconds: 18000, requiredZone: "Gränslandet", riskPercentage: 0.08),
+        // Stigarnas Dal
         JobType(id: "technician",  name: "Tekniker",           description: "Reparera maskiner. Kräver kompetens.",
-                icon: "cpu",             durationSeconds: 14400,  baseEarningsSeconds: 20160, requiredZone: "Risefield",   riskPercentage: 0.12),
+                icon: "cpu",             durationSeconds: 14400,  baseEarningsSeconds: 20160, requiredZone: "Stigarnas Dal", riskPercentage: 0.12),
         JobType(id: "labassist",   name: "Laboratorieassistent", description: "Forska i zonfaciliteter.",
-                icon: "flask",           durationSeconds: 21600,  baseEarningsSeconds: 32400, requiredZone: "Risefield",   riskPercentage: 0.05),
-        // Aetherpoint
+                icon: "flask",           durationSeconds: 21600,  baseEarningsSeconds: 32400, requiredZone: "Stigarnas Dal", riskPercentage: 0.05),
+        // Uppgången
         JobType(id: "trader",      name: "Tidshandlare",       description: "Köp/sälj tid på marknaden. Hög risk, hög belöning.",
-                icon: "chart.line.uptrend.xyaxis", durationSeconds: 3600, baseEarningsSeconds: 7200, requiredZone: "Aetherpoint", riskPercentage: 0.30),
+                icon: "chart.line.uptrend.xyaxis", durationSeconds: 3600, baseEarningsSeconds: 7200, requiredZone: "Uppgången", riskPercentage: 0.30),
         JobType(id: "consultant",  name: "Konsult",            description: "Rådgiv till rikare zoner. Exklusivt arbete.",
-                icon: "person.badge.plus", durationSeconds: 14400, baseEarningsSeconds: 43200, requiredZone: "Aetherpoint", riskPercentage: 0.08),
-        // Novalux
+                icon: "person.badge.plus", durationSeconds: 14400, baseEarningsSeconds: 43200, requiredZone: "Uppgången", riskPercentage: 0.08),
+        // Tröskeln
         JobType(id: "architect",   name: "Tidsarkitekt",       description: "Designa tidssystem för eliten. Betalar extremt bra.",
-                icon: "building.columns", durationSeconds: 28800, baseEarningsSeconds: 115200, requiredZone: "Novalux",   riskPercentage: 0.15),
-        // Kronvakt
-        JobType(id: "strategist",  name: "Tidsstrateg",        description: "Planera zonoperationer för Kronvakt-eliten.",
-                icon: "chart.bar.xaxis", durationSeconds: 21600, baseEarningsSeconds: 144000, requiredZone: "Kronvakt",   riskPercentage: 0.12),
-        // Vaultum
-        JobType(id: "banker",      name: "Tidsbanker",         description: "Hantera stora tidskonton. Vaultum-exklusivt.",
-                icon: "banknote",        durationSeconds: 28800, baseEarningsSeconds: 172800, requiredZone: "Vaultum",    riskPercentage: 0.10),
-        // Zenit
+                icon: "building.columns", durationSeconds: 28800, baseEarningsSeconds: 115200, requiredZone: "Tröskeln",  riskPercentage: 0.15),
+        // Klarljuset
+        JobType(id: "strategist",  name: "Tidsstrateg",        description: "Planera zonoperationer för Klarljuset-eliten.",
+                icon: "chart.bar.xaxis", durationSeconds: 21600, baseEarningsSeconds: 144000, requiredZone: "Klarljuset", riskPercentage: 0.12),
+        // Vakttornet
+        JobType(id: "banker",      name: "Tidsbanker",         description: "Hantera stora tidskonton. Vakttornet-exklusivt.",
+                icon: "banknote",        durationSeconds: 28800, baseEarningsSeconds: 172800, requiredZone: "Vakttornet", riskPercentage: 0.10),
+        // Valvet
         JobType(id: "oracle",      name: "Tidsarkiv-Orakel",   description: "Tolka tidsmönster. Kräver extrem precision.",
-                icon: "eye.trianglebadge.exclamationmark", durationSeconds: 14400, baseEarningsSeconds: 230400, requiredZone: "Zenit", riskPercentage: 0.20),
-        // Solara
-        JobType(id: "sovereign",   name: "Tidssuverän",        description: "Styra flöden av tid för Solaras kärna.",
-                icon: "sun.max",         durationSeconds: 28800, baseEarningsSeconds: 432000, requiredZone: "Solara",     riskPercentage: 0.25),
+                icon: "eye.trianglebadge.exclamationmark", durationSeconds: 14400, baseEarningsSeconds: 230400, requiredZone: "Valvet", riskPercentage: 0.20),
+        // Evigheten
+        JobType(id: "sovereign",   name: "Tidssuverän",        description: "Styra flöden av tid för Evighetens kärna.",
+                icon: "sun.max",         durationSeconds: 28800, baseEarningsSeconds: 432000, requiredZone: "Evigheten",  riskPercentage: 0.25),
     ]
 
     private init() {
@@ -349,10 +349,10 @@ struct WorkView: View {
             }
             .frame(maxWidth: .infinity, alignment: .trailing)
         }
-        .padding(16)
+        .padding(LTSpacing.lg)
         .background(.ultraThinMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 16))
-        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.green.opacity(0.2), lineWidth: 1))
+        .clipShape(RoundedRectangle(cornerRadius: LTRadius.md))
+        .overlay(RoundedRectangle(cornerRadius: LTRadius.md).stroke(Color.green.opacity(0.2), lineWidth: 1))
         .padding(.horizontal)
     }
 
@@ -465,8 +465,8 @@ struct WorkView: View {
         }
         .padding()
         .background(Color.white.opacity(0.04))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.white.opacity(0.08), lineWidth: 1))
+        .clipShape(RoundedRectangle(cornerRadius: LTRadius.sm))
+        .overlay(RoundedRectangle(cornerRadius: LTRadius.sm).stroke(Color.white.opacity(0.08), lineWidth: 1))
         .padding(.horizontal)
     }
 
@@ -597,7 +597,12 @@ struct JobCard: View {
     }
 
     var body: some View {
-        Button(action: { if !isDisabled { onTap() } }) {
+        Button(action: {
+            guard !isDisabled else { return }
+            let impact = UIImpactFeedbackGenerator(style: .light)
+            impact.impactOccurred()
+            onTap()
+        }) {
             VStack(spacing: 0) {
                 // Top colored stripe
                 accentColor.opacity(isDisabled ? 0.15 : 0.6)
@@ -651,10 +656,13 @@ struct JobCard: View {
             }
         }
         .disabled(isDisabled)
+        .buttonStyle(PlainButtonStyle())
         .background(Color(red: 0.06, green: 0.07, blue: 0.09))
-        .clipShape(RoundedRectangle(cornerRadius: 14))
-        .overlay(RoundedRectangle(cornerRadius: 14).stroke(accentColor.opacity(isDisabled ? 0.05 : 0.2), lineWidth: 1))
+        .clipShape(RoundedRectangle(cornerRadius: LTRadius.sm))
+        .overlay(RoundedRectangle(cornerRadius: LTRadius.sm).stroke(accentColor.opacity(isDisabled ? 0.05 : 0.2), lineWidth: 1))
         .opacity(isDisabled ? 0.5 : 1.0)
+        .accessibilityLabel("\(job.name), \(job.description)")
+        .accessibilityHint(isDisabled ? "Inaktiverat — ett jobb pågår redan" : "Dubbeltryck för att starta jobbet")
     }
 
     func formatDur(_ s: TimeInterval) -> String {
@@ -738,10 +746,14 @@ struct ActiveJobCard: View {
                         Text("\(Int(progress * 100))% klar")
                             .font(.system(size: 12, weight: .bold, design: .monospaced))
                             .foregroundColor(.white.opacity(0.7))
+                            .contentTransition(.numericText())
+                            .animation(LTAnimation.fadeFast, value: Int(progress * 100))
                         Spacer()
                         Text("Klar om \(TimeEngine.shortFormatted(job.timeRemaining))")
                             .font(.system(size: 12, weight: .black, design: .monospaced))
-                            .foregroundColor(.green)
+                            .foregroundColor(LTPalette.neonGreen)
+                            .contentTransition(.numericText(countsDown: true))
+                            .animation(LTAnimation.fadeFast, value: job.timeRemaining)
                     }
 
                     // Custom progress bar
@@ -785,9 +797,9 @@ struct ActiveJobCard: View {
                 startPoint: .topLeading, endPoint: .bottomTrailing
             )
         )
-        .clipShape(RoundedRectangle(cornerRadius: 16))
-        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.green.opacity(0.25), lineWidth: 1))
-        .shadow(color: Color.green.opacity(0.1), radius: 12, y: 4)
+        .clipShape(RoundedRectangle(cornerRadius: LTRadius.md))
+        .overlay(RoundedRectangle(cornerRadius: LTRadius.md).stroke(LTPalette.neonGreen.opacity(0.22), lineWidth: 1))
+        .shadow(color: LTPalette.neonGreen.opacity(0.12), radius: 14, y: 4)
         .padding(.horizontal)
         .onAppear {
             progress = job.progress
@@ -859,28 +871,44 @@ struct JobConfirmSheet: View {
             .clipShape(RoundedRectangle(cornerRadius: 12))
             .padding(.horizontal, 24)
 
-            HStack(spacing: 12) {
-                Button(action: onCancel) {
+            HStack(spacing: LTSpacing.md) {
+                Button(action: {
+                    let impact = UIImpactFeedbackGenerator(style: .light)
+                    impact.impactOccurred()
+                    onCancel()
+                }) {
                     Text("Avbryt")
-                        .font(.system(size: 13, weight: .bold, design: .monospaced))
+                        .font(LTFont.heading(13))
                         .foregroundColor(.white.opacity(0.5))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)
                         .background(Color.white.opacity(0.06))
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .clipShape(RoundedRectangle(cornerRadius: LTRadius.sm))
                 }
-                Button(action: onConfirm) {
+                .buttonStyle(LTPressEffect())
+                Button(action: {
+                    let notif = UINotificationFeedbackGenerator()
+                    notif.notificationOccurred(.success)
+                    onConfirm()
+                }) {
                     Text("STARTA JOBB")
-                        .font(.system(size: 13, weight: .black, design: .monospaced))
+                        .font(LTFont.heading(13))
                         .foregroundColor(.black)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)
-                        .background(Color.green)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .background(
+                            LinearGradient(
+                                colors: [LTPalette.neonGreen, LTPalette.neonGreenDim],
+                                startPoint: .topLeading, endPoint: .bottomTrailing
+                            )
+                        )
+                        .clipShape(RoundedRectangle(cornerRadius: LTRadius.sm))
+                        .shadow(color: LTPalette.neonGreen.opacity(0.3), radius: 8, y: 3)
                 }
+                .buttonStyle(LTPressEffect())
             }
-            .padding(.horizontal, 24)
-            .padding(.bottom, 16)
+            .padding(.horizontal, LTSpacing.xxl)
+            .padding(.bottom, LTSpacing.lg)
         }
         .background(Color(red: 0.05, green: 0.07, blue: 0.06))
         .preferredColorScheme(.dark)

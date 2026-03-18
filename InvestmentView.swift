@@ -30,14 +30,14 @@ class InvestmentManager: ObservableObject {
     // Interest rates per zone
     static func dailyRate(for zone: ZoneProfile) -> Double {
         switch zone.name {
-        case "Duskline":    return 0.003   // 0.3%/day
-        case "Midgrey":     return 0.005   // 0.5%/day
-        case "Risefield":   return 0.008   // 0.8%/day
-        case "Aetherpoint": return 0.012   // 1.2%/day
-        case "Novalux":     return 0.018   // 1.8%/day
-        case "Vaultum":     return 0.025   // 2.5%/day
-        case "Solara":      return 0.035   // 3.5%/day
-        default:            return 0.003
+        case "Halvmörkret":   return 0.003   // 0.3%/day
+        case "Gränslandet":   return 0.005   // 0.5%/day
+        case "Stigarnas Dal": return 0.008   // 0.8%/day
+        case "Uppgången":     return 0.012   // 1.2%/day
+        case "Tröskeln":      return 0.018   // 1.8%/day
+        case "Vakttornet":    return 0.025   // 2.5%/day
+        case "Evigheten":     return 0.035   // 3.5%/day
+        default:              return 0.003
         }
     }
 

@@ -288,9 +288,9 @@ private func aiSelectDiceToKeep(dice: [Int], available: Set<MultiYatzyCategory>,
     // --- Full house: keep it if Kas is available ---
     let triples   = counts.filter { $0.value >= 3 }.keys.sorted(by: >)
     let pairs     = counts.filter { $0.value >= 2 }.keys.sorted(by: >)
-    let hasPair2  = pairs.count >= 2 || (pairs.count == 1 && (counts[pairs[0]] ?? 0) >= 3)
+    let _ = pairs.count >= 2 || (pairs.count == 1 && (counts[pairs[0]] ?? 0) >= 3)
 
-    if let triple = triples.first, pairs.count >= 2, available.contains(.kas) {
+    if let _ = triples.first, pairs.count >= 2, available.contains(.kas) {
         // Already have full house — keep all 5
         return [Bool](repeating: true, count: 5)
     }

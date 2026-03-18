@@ -84,6 +84,7 @@ class IncomeManager: ObservableObject {
     func scheduleMidnightCheck() {
         midnightTimer?.invalidate()
         let delay = secondsUntilStockholmMidnight()
+        NotificationManager.shared.scheduleDailyPayoutReminder(secondsUntilMidnight: delay)
         midnightTimer = Timer.scheduledTimer(withTimeInterval: delay, repeats: false) { [weak self] _ in
             self?.checkAndAwardDailyHealthIncome()
             self?.scheduleMidnightCheck()

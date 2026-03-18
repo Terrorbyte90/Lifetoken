@@ -147,7 +147,7 @@ class StepBetManager: ObservableObject {
         let playerName = GameState.shared.username
 
         for i in activeBets.indices {
-            var bet = activeBets[i]
+            let bet = activeBets[i]
 
             // Uppdatera mina steg
             if bet.challengerName == playerName {

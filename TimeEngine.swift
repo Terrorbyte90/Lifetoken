@@ -34,6 +34,7 @@ class TimeEngine: ObservableObject {
         startTicking()
         startNTPVerification()
         registerBackgroundDrain()
+        NotificationManager.shared.scheduleTimeLowWarning(secondsRemaining: balance)
     }
 
     // MARK: - One-time balance restore (runs exactly once on first launch of this build)
@@ -122,6 +123,8 @@ class TimeEngine: ObservableObject {
         tickTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
             guard let self = self else { return }
             DispatchQueue.main.async {
+                // Tidsstopp pauses the drain
+                guard !BoostManager.shared.tidsstoppIsActive else { return }
                 let drain = self.currentDrainRate
                 self.balance = max(0, self.balance - drain)
                 self.isTimedOut = self.balance <= 0
@@ -216,6 +219,7 @@ class TimeEngine: ObservableObject {
         DispatchQueue.main.async {
             self.balance += seconds
             self.saveToKeychain(balance: self.balance, timestamp: Date())
+            NotificationManager.shared.scheduleTimeLowWarning(secondsRemaining: self.balance)
         }
     }
 

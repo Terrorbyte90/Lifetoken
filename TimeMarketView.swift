@@ -78,10 +78,8 @@ class MarketManager: ObservableObject {
             let expiry = Date().addingTimeInterval(300)
             UserDefaults.standard.set(expiry.timeIntervalSince1970, forKey: "tidsstopp_expiry")
         default:
-            let key = "activeBoosts"
-            var active = UserDefaults.standard.stringArray(forKey: key) ?? []
-            active.append(item.name)
-            UserDefaults.standard.set(active, forKey: key)
+            // All boost items last 24h; use activateBoost to record expiry timestamp
+            BoostManager.shared.activateBoost(named: item.name, duration: 86400)
         }
     }
 

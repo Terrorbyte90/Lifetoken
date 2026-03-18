@@ -413,6 +413,8 @@ struct PokerView: View {
             playerStack += taxed
             TimeEngine.shared.addTime(taxed)
             GameState.shared.recordEarning(taxed)
+            MissionsManager.incrementProgress("poker_wins")
+            MissionsManager.incrementProgress("casino_total_wins")
             resultMessage = "Du vann!\nHand: \(playerHandName)\nPott: \(TimeEngine.shortFormatted(winnings))\nEfter skatt (\(Int(taxRate * 100))%): \(TimeEngine.shortFormatted(taxed))"
         } else {
             resultMessage = "\(winnerName) vann med \(winnerHand).\nDu förlorade potten."

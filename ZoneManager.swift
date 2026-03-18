@@ -33,6 +33,7 @@ public class ZoneManager: ObservableObject {
             DispatchQueue.main.async {
                 self.currentZone = naturalZone
                 UserDefaults.standard.set(naturalZone.name, forKey: self.lastZoneKey)
+                self.triggerZoneMissionProgress(for: naturalZone)
             }
             return
         }
@@ -85,9 +86,19 @@ public class ZoneManager: ObservableObject {
             DispatchQueue.main.async {
                 self.currentZone = zone
                 UserDefaults.standard.set(zone.name, forKey: self.lastZoneKey)
+                self.triggerZoneMissionProgress(for: zone)
             }
             return (true, "Välkommen till \(zone.name)! Kostnad: \(TimeEngine.shortFormatted(zone.entryCostSeconds))")
         }
         return (false, "Migrationen misslyckades. Försök igen.")
+    }
+
+    private func triggerZoneMissionProgress(for zone: ZoneProfile) {
+        switch zone.index {
+        case 5: MissionsManager.incrementProgress("zone_midgrey_reached")
+        case 7: MissionsManager.incrementProgress("zone_aetherpoint_reached")
+        case 8: MissionsManager.incrementProgress("zone_novalux_reached")
+        default: break
+        }
     }
 }

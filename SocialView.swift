@@ -89,7 +89,7 @@ struct ZoneMessage: Identifiable {
 
 // MARK: - Social Manager
 
-class SocialManager: ObservableObject {
+class SocialManager: ObservableObject, @unchecked Sendable {
     static let shared = SocialManager()
 
     @Published var activeLoans: [LoanRecord] = []
