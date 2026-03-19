@@ -65,6 +65,13 @@ class GameState: ObservableObject {
         TimeEngine.shared.addTime(bonus)
         streakBonusMessage = "Streak dag \(loginStreakDays): +\(TimeEngine.shortFormatted(bonus))"
         showStreakBonus = true
+
+        if loginStreakDays >= 7 {
+            let zoneName = currentZone.name
+            Task { @MainActor in
+                EventEngine.shared.trigger(.streak7, zoneID: zoneName)
+            }
+        }
     }
 
     func recordEarning(_ seconds: TimeInterval) {

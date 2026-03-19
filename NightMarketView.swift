@@ -273,6 +273,38 @@ struct NightMarketView: View {
                         VStack(spacing: LTSpacing.lg + 2) {
                             openStatusBar
                             ForEach(market.offers.indices, id: \.self) { sellerCard($0) }
+
+                            if hasStreakBonus {
+                                VStack(alignment: .leading, spacing: LTSpacing.sm) {
+                                    Text("STREAKBELÖNING")
+                                        .font(.system(size: 10, weight: .black, design: .monospaced))
+                                        .foregroundStyle(LTPalette.gold)
+                                        .tracking(3)
+
+                                    Button {
+                                        purchaseTimekapsel()
+                                    } label: {
+                                        HStack {
+                                            VStack(alignment: .leading) {
+                                                Text("Tidskapsel")
+                                                    .font(.system(size: 14, weight: .bold))
+                                                Text("Slumpmässig boost — 1 800s")
+                                                    .font(.system(size: 11))
+                                                    .foregroundStyle(.secondary)
+                                            }
+                                            Spacer()
+                                            Text("1 800s")
+                                                .font(.system(size: 13, design: .monospaced))
+                                                .foregroundStyle(LTPalette.gold)
+                                        }
+                                        .padding(LTSpacing.md)
+                                        .background(LTPalette.gold.opacity(0.08))
+                                        .clipShape(RoundedRectangle(cornerRadius: LTRadius.sm))
+                                        .overlay(RoundedRectangle(cornerRadius: LTRadius.sm).stroke(LTPalette.gold.opacity(0.3)))
+                                    }
+                                }
+                            }
+
                             historySection
                             Spacer(minLength: LTSpacing.scrollBottom)
                         }
@@ -707,6 +739,25 @@ struct NightMarketView: View {
                     }
                 }
             }
+        }
+    }
+
+    // MARK: - Streak bonus
+
+    private var hasStreakBonus: Bool {
+        UserDefaults.standard.bool(forKey: "eventFired_streak7")
+    }
+
+    private func purchaseTimekapsel() {
+        guard TimeEngine.shared.balance >= 1800 else { return }
+        _ = TimeEngine.shared.deductTime(1800)
+        // 50/50 random boost
+        if Bool.random() {
+            // 30 min drain reduction — store flag for TimeEngine to check
+            UserDefaults.standard.set(Date.now.addingTimeInterval(1800), forKey: "drainReductionUntil")
+        } else {
+            // 10% job multiplier for 24h
+            UserDefaults.standard.set(Date.now.addingTimeInterval(86400), forKey: "jobMultiplierUntil")
         }
     }
 
