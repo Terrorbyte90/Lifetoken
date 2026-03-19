@@ -12,6 +12,7 @@ struct ZoneVisual: View {
     @State private var migrationResult     = ""
     @State private var showMigrationResult = false
     @State private var headerPulse: Bool   = false
+    @State private var showLoreSheet: Bool = false
 
     private let hapticMedium = UIImpactFeedbackGenerator(style: .medium)
     private let hapticLight  = UIImpactFeedbackGenerator(style: .light)
@@ -39,6 +40,14 @@ struct ZoneVisual: View {
         }
         .sheet(isPresented: $showMigrationSheet) {
             if let target = migrationTarget { migrationSheet(zone: target) }
+        }
+        .sheet(isPresented: $showLoreSheet) {
+            NavigationStack {
+                ZoneLoreView(zoneID: currentZone.name
+                    .lowercased()
+                    .replacingOccurrences(of: " ", with: "")
+                    .folding(options: .diacriticInsensitive, locale: .current))
+            }
         }
         .alert("Migration", isPresented: $showMigrationResult) {
             Button("OK") {}
@@ -190,6 +199,27 @@ struct ZoneVisual: View {
                         }
                     }
                 }
+
+                Button {
+                    hapticLight.impactOccurred()
+                    showLoreSheet = true
+                } label: {
+                    HStack(spacing: LTSpacing.sm) {
+                        Image(systemName: "book.closed.fill")
+                            .font(.system(size: 11))
+                        Text("LORE & HISTORIA")
+                            .font(LTFont.label(11))
+                            .tracking(1)
+                    }
+                    .foregroundColor(zone.color.opacity(0.85))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, LTSpacing.sm + 2)
+                    .background(zone.color.opacity(0.08))
+                    .clipShape(RoundedRectangle(cornerRadius: LTRadius.sm + 2))
+                    .overlay(RoundedRectangle(cornerRadius: LTRadius.sm + 2).stroke(zone.color.opacity(0.25), lineWidth: 1))
+                }
+                .buttonStyle(LTPressEffect())
+                .accessibilityLabel("Läs lore för \(zone.name)")
             }
             .padding(LTSpacing.lg + 2)
             .background(
