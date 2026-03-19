@@ -103,6 +103,7 @@ struct LotteryView: View {
     @State private var drawResult: DrawResult? = nil
     @State private var ballsAnimating: Bool = false
     @State private var pulseJackpot: Bool = false
+    @State private var showConfetti: Bool = false
 
     private let hapticLight  = UIImpactFeedbackGenerator(style: .light)
     private let hapticMedium = UIImpactFeedbackGenerator(style: .medium)
@@ -136,6 +137,11 @@ struct LotteryView: View {
 
             if drawPhase == .revealed, let result = drawResult {
                 drawResultOverlay(result)
+            }
+
+            if showConfetti {
+                CasinoParticleView()
+                    .environmentObject(ThemeEngine.shared)
             }
         }
     }
@@ -556,6 +562,10 @@ struct LotteryView: View {
             withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
                 drawResult = result
                 drawPhase = .revealed
+            }
+            if won {
+                showConfetti = true
+                DispatchQueue.main.asyncAfter(deadline: .now() + 3) { showConfetti = false }
             }
         }
     }
