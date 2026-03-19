@@ -115,7 +115,7 @@ struct YatzyAILogic {
 
         // --- Keep 4-of-a-kind: chase Yatzy (probability 1/6 per reroll) ---
         if maxCount == 4 {
-            let quadVal = counts.first(where: { $0.value == 4 })!.key
+            guard let quadVal = counts.first(where: { $0.value == 4 })?.key else { return [Bool](repeating: false, count: 5) }
             return dice.map { $0 == quadVal }
         }
 

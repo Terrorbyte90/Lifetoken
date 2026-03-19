@@ -385,7 +385,7 @@ struct PokerView: View {
 
         for ai in aiPlayers.filter({ !$0.folded }) {
             let result = HandEvaluator.evaluate(cards: ai.holeCards + communityCards)
-            if bestAI == nil || result > bestAI!.result {
+            if bestAI.map({ result > $0.result }) ?? true {
                 bestAI = (ai, result)
             }
         }
