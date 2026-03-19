@@ -68,7 +68,44 @@ struct FactionView: View {
                     .background(LTPalette.neonGreen)
                     .clipShape(RoundedRectangle(cornerRadius: LTRadius.sm))
             }
+
+            weeklyMissionSection
         }
+    }
+
+    private var weeklyMissionSection: some View {
+        let mission = manager.currentWeekMission()
+        let progress = Double(mission.currentProgress) / Double(mission.targetValue)
+        return VStack(alignment: .leading, spacing: LTSpacing.sm) {
+            Text("VECKOUPPDRAG")
+                .font(.system(size: 11, weight: .black, design: .monospaced))
+                .foregroundStyle(LTPalette.gold)
+                .tracking(3)
+
+            Text(mission.title)
+                .font(.system(size: 16, weight: .bold))
+                .foregroundStyle(.white)
+
+            ProgressView(value: min(progress, 1.0))
+                .tint(mission.isCompleted ? LTPalette.neonGreen : LTPalette.gold)
+
+            HStack {
+                Text("\(mission.currentProgress) / \(mission.targetValue)")
+                    .font(.system(size: 12, design: .monospaced))
+                    .foregroundStyle(.secondary)
+                Spacer()
+                if mission.isCompleted {
+                    Text("KLART")
+                        .font(.system(size: 10, weight: .black, design: .monospaced))
+                        .foregroundStyle(LTPalette.neonGreen)
+                        .tracking(2)
+                }
+            }
+        }
+        .padding(LTSpacing.md)
+        .background(LTPalette.gold.opacity(0.06))
+        .clipShape(RoundedRectangle(cornerRadius: LTRadius.sm))
+        .overlay(RoundedRectangle(cornerRadius: LTRadius.sm).stroke(LTPalette.gold.opacity(0.25), lineWidth: 1))
     }
 
     private var noFactionSection: some View {

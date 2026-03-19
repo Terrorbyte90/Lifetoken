@@ -1,6 +1,18 @@
 import Foundation
 import Combine
 
+// MARK: - Faction Mission
+
+struct FactionMission: Codable, Identifiable {
+    let id: String
+    let title: String
+    let targetType: String
+    var currentProgress: Int
+    let targetValue: Int
+    let weekStart: Date
+    var isCompleted: Bool { currentProgress >= targetValue }
+}
+
 struct Faction: Codable, Identifiable {
     let id: String
     var name: String
@@ -35,6 +47,26 @@ final class FactionManager: ObservableObject {
     init() {
         loadCached()
         startSyncTimer()
+    }
+
+    private let missionTemplates: [(String, String, Int)] = [
+        ("Stegjägare", "steps", 500_000),
+        ("Kasinokollektiv", "casinoWins", 50),
+        ("Yrkesmässigt", "jobs", 100),
+        ("Massiva steg", "steps", 1_000_000),
+        ("Spelveckan", "casinoWins", 100),
+        ("Arbetslaget", "jobs", 200),
+        ("Snabbfötterna", "steps", 250_000),
+        ("Lyckodragarna", "casinoWins", 25),
+        ("Skiftarbetarna", "jobs", 50),
+        ("Ultralöparna", "steps", 2_000_000),
+    ]
+
+    func currentWeekMission() -> FactionMission {
+        let week = Calendar.current.component(.weekOfYear, from: Date.now)
+        let template = missionTemplates[week % missionTemplates.count]
+        let weekStart = Calendar.current.date(from: Calendar.current.dateComponents([.yearForWeekOfYear, .weekOfYear], from: Date.now))!
+        return FactionMission(id: "mission_week_\(week)", title: template.0, targetType: template.1, currentProgress: 0, targetValue: template.2, weekStart: weekStart)
     }
 
     func canJoin(faction: Faction) -> Bool {
