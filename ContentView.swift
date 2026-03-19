@@ -868,6 +868,7 @@ struct MainTabView: View {
             }
         }
         .animation(.easeInOut(duration: 0.5), value: TimeEngine.shared.cryoSleepActive)
+        .modifier(ZoneUpgradeFlash())
     }
 }
 
