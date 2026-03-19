@@ -343,6 +343,18 @@ class ServerSync: ObservableObject, @unchecked Sendable {
         }
     }
 
+    // MARK: - Faction
+
+    func fetchFaction() async throws -> Faction? {
+        // Stub — implement with real API when backend is ready
+        throw URLError(.notConnectedToInternet)
+    }
+
+    func pushFactionContribution(factionID: String, seconds: Int) async throws {
+        // Stub — implement with real API when backend is ready
+        throw URLError(.notConnectedToInternet)
+    }
+
     // MARK: - HTTP helpers
 
     private func get(path: String, requireAuth: Bool) async throws -> Data {
