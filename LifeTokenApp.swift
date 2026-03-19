@@ -11,6 +11,7 @@ struct LifeTokenApp: App {
             MainTabView()
                 .environment(\.managedObjectContext, persistenceController.container.viewContext)
                 .environmentObject(ZoneManager.shared)
+                .environmentObject(ThemeEngine.shared)
                 .preferredColorScheme(.dark)
         }
     }
