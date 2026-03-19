@@ -1,10 +1,12 @@
 import SwiftUI
+import UserNotifications
 
 // MARK: - Dystopisk Onboarding — 6 steg + namnregistrering
 // Premium: stegindikator, spring-animationer, neon-accenter, haptics
 
 struct OnboardingView: View {
     @Binding var showOnboarding: Bool
+    @StateObject private var onboarding = OnboardingEngine.shared
     @State private var step: Int = 0
     @State private var playerName: String = ""
     @State private var nameError: String = ""
@@ -89,15 +91,46 @@ struct OnboardingView: View {
 
     @ViewBuilder
     private var stepContent: some View {
-        switch step {
-        case 0: stepVerkligheten
-        case 1: stepSystemet
-        case 2: stepMakthierarkin
-        case 3: stepZonerna
-        case 4: stepOforlatande
-        case 5: stepAcceptansen
-        case 6: stepNamn
-        default: EmptyView()
+        if onboarding.currentStep == 0.5 {
+            stepHealthKit
+        } else {
+            switch step {
+            case 0: stepVerkligheten
+            case 1: stepSystemet
+            case 2: stepMakthierarkin
+            case 3: stepZonerna
+            case 4: stepOforlatande
+            case 5: stepAcceptansen
+            case 6: stepNamn
+            default: EmptyView()
+            }
+        }
+    }
+
+    // Steg 0.5 — HealthKit-tillåtelse
+    private var stepHealthKit: some View {
+        VStack(spacing: 24) {
+            Text("Dina steg ger dig tid.")
+                .font(.system(size: 22, weight: .bold))
+                .foregroundStyle(LTPalette.neonGreen)
+            Text("Lifetoken läser dina hälsodata — ingenting delas.")
+                .font(.system(size: 16))
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+            Button("Godkänn") {
+                HealthKitManager.shared.requestAuthorization { granted in
+                    Task { @MainActor in
+                        OnboardingEngine.shared.setHealthKitAccess(granted)
+                        step = 1
+                    }
+                }
+            }
+            .buttonStyle(.borderedProminent)
+            Button("Hoppa över") {
+                OnboardingEngine.shared.healthKitDenied()
+                step = 1
+            }
+            .foregroundStyle(.secondary)
         }
     }
 
@@ -319,7 +352,9 @@ struct OnboardingView: View {
 
     @ViewBuilder
     private var mainButton: some View {
-        if step < 5 {
+        if onboarding.currentStep == 0.5 {
+            EmptyView() // HealthKit screen has its own Godkänn/Hoppa över buttons
+        } else if step < 5 {
             actionButton(
                 label: "FORTSÄTT",
                 color: .white,
@@ -389,7 +424,11 @@ struct OnboardingView: View {
             buttonOpacity = 0
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.22) {
-            step += 1
+            onboarding.advance()
+            // Step 0.5 is the HealthKit screen — integer step stays at 0 until HealthKit resolves
+            if onboarding.currentStep != 0.5 {
+                step = Int(onboarding.currentStep)
+            }
             contentOffset = 20
             animateIn()
         }
@@ -409,7 +448,8 @@ struct OnboardingView: View {
         notif.notificationOccurred(.success)
         UserDefaults.standard.set(name, forKey: "username")
         GameState.shared.username = name
-        UserDefaults.standard.set(true, forKey: "hasLaunched")
+        OnboardingEngine.shared.completeOnboarding()
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { _, _ in }
         Task { await ServerSync.shared.startup() }
         withAnimation(LTAnimation.springSmooth) { showOnboarding = false }
     }
