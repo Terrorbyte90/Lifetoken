@@ -861,6 +861,13 @@ struct MainTabView: View {
         .preferredColorScheme(.dark)
         .toolbarBackground(.ultraThinMaterial, for: .tabBar)
         .toolbarColorScheme(.dark, for: .tabBar)
+        .overlay {
+            if TimeEngine.shared.cryoSleepActive {
+                CryoSleepOverlay()
+                    .transition(.opacity)
+            }
+        }
+        .animation(.easeInOut(duration: 0.5), value: TimeEngine.shared.cryoSleepActive)
     }
 }
 

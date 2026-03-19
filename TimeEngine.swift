@@ -11,6 +11,7 @@ class TimeEngine: ObservableObject {
     @Published var isTimedOut: Bool = false
     @Published var ntpVerified: Bool = false
     @Published var cheatingDetected: Bool = false
+    @Published private(set) var cryoSleepActive: Bool = false
 
     private let service = "com.lifetoken.engine"
     private let balanceKey = "lifetoken_balance_v2"
@@ -241,6 +242,19 @@ class TimeEngine: ObservableObject {
     func setDrainRate(_ rate: TimeInterval) {
         currentDrainRate = rate
         saveToKeychain(balance: balance, timestamp: Date())
+    }
+
+    // MARK: - Cryo Sleep
+
+    func activateCryoSleep() {
+        cryoSleepActive = true
+        tickTimer?.invalidate()
+        tickTimer = nil
+    }
+
+    func deactivateCryoSleep() {
+        cryoSleepActive = false
+        startTicking()
     }
 
     /// DEV ONLY — Reset balance, persist to Keychain, and push to server
