@@ -47,6 +47,16 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         // Check midnight health-income award (catches missed midnight if app was closed)
         IncomeManager.shared.checkAndAwardDailyHealthIncome()
 
+        // Adaptive engine boot: rescue notification + session tracking
+        Task { @MainActor in
+            AdaptiveEngine.shared.scheduleRescueNotificationIfNeeded()
+            BehaviorTracker.shared.recordSession(
+                hourOfDay: Calendar.current.component(.hour, from: Date()),
+                durationSeconds: 0,
+                primaryActivity: "launch"
+            )
+        }
+
         return true
     }
 

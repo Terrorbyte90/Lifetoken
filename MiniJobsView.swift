@@ -126,34 +126,39 @@ struct MiniJobsView: View {
     // ── Pay tables ───────────────────────────────────────────────────
 
     var pipeDiffs: [MiniJobDiff] { [
-        MiniJobDiff(id:0, label:"Enkel",  timeSeconds:30, rewardBest:6,  rewardNormal:6,  rewardWorse:0, penalty:2),
-        MiniJobDiff(id:1, label:"Medel",  timeSeconds:25, rewardBest:11, rewardNormal:11, rewardWorse:0, penalty:4),
-        MiniJobDiff(id:2, label:"Svår",   timeSeconds:20, rewardBest:19, rewardNormal:19, rewardWorse:0, penalty:6),
-        MiniJobDiff(id:3, label:"Expert", timeSeconds:15, rewardBest:32, rewardNormal:32, rewardWorse:0, penalty:11),
+        MiniJobDiff(id:0, label:"Enkel",   timeSeconds:30, rewardBest:6,  rewardNormal:6,  rewardWorse:0, penalty:2),
+        MiniJobDiff(id:1, label:"Medel",   timeSeconds:25, rewardBest:11, rewardNormal:11, rewardWorse:0, penalty:4),
+        MiniJobDiff(id:2, label:"Svår",    timeSeconds:20, rewardBest:19, rewardNormal:19, rewardWorse:0, penalty:6),
+        MiniJobDiff(id:3, label:"Expert",  timeSeconds:15, rewardBest:32, rewardNormal:32, rewardWorse:0, penalty:11),
+        MiniJobDiff(id:4, label:"Legende", timeSeconds:10, rewardBest:64, rewardNormal:64, rewardWorse:0, penalty:17),
     ]}
     var codeDiffs: [MiniJobDiff] { [
-        MiniJobDiff(id:0, label:"Enkel",  timeSeconds:90, rewardBest:9,  rewardNormal:6,  rewardWorse:3,  penalty:0),
-        MiniJobDiff(id:1, label:"Medel",  timeSeconds:90, rewardBest:15, rewardNormal:10, rewardWorse:5,  penalty:0),
-        MiniJobDiff(id:2, label:"Svår",   timeSeconds:90, rewardBest:25, rewardNormal:16, rewardWorse:8,  penalty:0),
-        MiniJobDiff(id:3, label:"Expert", timeSeconds:60, rewardBest:40, rewardNormal:26, rewardWorse:13, penalty:0),
+        MiniJobDiff(id:0, label:"Enkel",   timeSeconds:90, rewardBest:9,  rewardNormal:6,  rewardWorse:3,  penalty:0),
+        MiniJobDiff(id:1, label:"Medel",   timeSeconds:90, rewardBest:15, rewardNormal:10, rewardWorse:5,  penalty:0),
+        MiniJobDiff(id:2, label:"Svår",    timeSeconds:90, rewardBest:25, rewardNormal:16, rewardWorse:8,  penalty:0),
+        MiniJobDiff(id:3, label:"Expert",  timeSeconds:60, rewardBest:40, rewardNormal:26, rewardWorse:13, penalty:0),
+        MiniJobDiff(id:4, label:"Legende", timeSeconds:40, rewardBest:80, rewardNormal:52, rewardWorse:26, penalty:0),
     ]}
     var sortDiffs: [MiniJobDiff] { [
-        MiniJobDiff(id:0, label:"Enkel",  timeSeconds:60, rewardBest:7,  rewardNormal:4,  rewardWorse:1,  penalty:2),
-        MiniJobDiff(id:1, label:"Medel",  timeSeconds:60, rewardBest:12, rewardNormal:7,  rewardWorse:2,  penalty:4),
-        MiniJobDiff(id:2, label:"Svår",   timeSeconds:45, rewardBest:21, rewardNormal:11, rewardWorse:3,  penalty:6),
-        MiniJobDiff(id:3, label:"Expert", timeSeconds:40, rewardBest:35, rewardNormal:19, rewardWorse:5,  penalty:10),
+        MiniJobDiff(id:0, label:"Enkel",   timeSeconds:60, rewardBest:7,  rewardNormal:4,  rewardWorse:1,  penalty:2),
+        MiniJobDiff(id:1, label:"Medel",   timeSeconds:60, rewardBest:12, rewardNormal:7,  rewardWorse:2,  penalty:4),
+        MiniJobDiff(id:2, label:"Svår",    timeSeconds:45, rewardBest:21, rewardNormal:11, rewardWorse:3,  penalty:6),
+        MiniJobDiff(id:3, label:"Expert",  timeSeconds:40, rewardBest:35, rewardNormal:19, rewardWorse:5,  penalty:10),
+        MiniJobDiff(id:4, label:"Legende", timeSeconds:25, rewardBest:70, rewardNormal:38, rewardWorse:10, penalty:15),
     ]}
     var bombDiffs: [MiniJobDiff] { [
-        MiniJobDiff(id:0, label:"Enkel",  timeSeconds:20, rewardBest:10, rewardNormal:6,  rewardWorse:0, penalty:5),
-        MiniJobDiff(id:1, label:"Medel",  timeSeconds:15, rewardBest:17, rewardNormal:10, rewardWorse:0, penalty:10),
-        MiniJobDiff(id:2, label:"Svår",   timeSeconds:12, rewardBest:30, rewardNormal:17, rewardWorse:0, penalty:20),
-        MiniJobDiff(id:3, label:"Expert", timeSeconds:8,  rewardBest:50, rewardNormal:30, rewardWorse:0, penalty:40),
+        MiniJobDiff(id:0, label:"Enkel",   timeSeconds:20, rewardBest:10, rewardNormal:6,  rewardWorse:0, penalty:5),
+        MiniJobDiff(id:1, label:"Medel",   timeSeconds:15, rewardBest:17, rewardNormal:10, rewardWorse:0, penalty:10),
+        MiniJobDiff(id:2, label:"Svår",    timeSeconds:12, rewardBest:30, rewardNormal:17, rewardWorse:0, penalty:20),
+        MiniJobDiff(id:3, label:"Expert",  timeSeconds:8,  rewardBest:50, rewardNormal:30, rewardWorse:0, penalty:40),
+        MiniJobDiff(id:4, label:"Legende", timeSeconds:5,  rewardBest:100,rewardNormal:60, rewardWorse:0, penalty:60),
     ]}
     var timingDiffs: [MiniJobDiff] { [
-        MiniJobDiff(id:0, label:"Enkel",  timeSeconds:90, rewardBest:8,  rewardNormal:5,  rewardWorse:2,  penalty:2),
-        MiniJobDiff(id:1, label:"Medel",  timeSeconds:90, rewardBest:14, rewardNormal:9,  rewardWorse:4,  penalty:4),
-        MiniJobDiff(id:2, label:"Svår",   timeSeconds:90, rewardBest:22, rewardNormal:14, rewardWorse:7,  penalty:7),
-        MiniJobDiff(id:3, label:"Expert", timeSeconds:90, rewardBest:37, rewardNormal:24, rewardWorse:12, penalty:11),
+        MiniJobDiff(id:0, label:"Enkel",   timeSeconds:90, rewardBest:8,  rewardNormal:5,  rewardWorse:2,  penalty:2),
+        MiniJobDiff(id:1, label:"Medel",   timeSeconds:90, rewardBest:14, rewardNormal:9,  rewardWorse:4,  penalty:4),
+        MiniJobDiff(id:2, label:"Svår",    timeSeconds:90, rewardBest:22, rewardNormal:14, rewardWorse:7,  penalty:7),
+        MiniJobDiff(id:3, label:"Expert",  timeSeconds:90, rewardBest:37, rewardNormal:24, rewardWorse:12, penalty:11),
+        MiniJobDiff(id:4, label:"Legende", timeSeconds:60, rewardBest:74, rewardNormal:48, rewardWorse:24, penalty:17),
     ]}
 }
 

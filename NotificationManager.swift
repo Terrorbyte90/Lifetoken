@@ -82,6 +82,18 @@ class NotificationManager {
         UNUserNotificationCenter.current().add(req, withCompletionHandler: nil)
     }
 
+    // MARK: - Rescue Boost Notification
+
+    func scheduleRescueNotification() {
+        let content = UNMutableNotificationContent()
+        content.title = "LIFETOKEN — Kritisk tidsnivå"
+        content.body = "Du har under 2 timmar kvar. En Nöd-boost väntar på dig."
+        content.sound = .default
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 60, repeats: false)
+        let request = UNNotificationRequest(identifier: "rescue_boost", content: content, trigger: trigger)
+        UNUserNotificationCenter.current().add(request)
+    }
+
     // MARK: - Generic Game Alert
 
     func sendGameAlert(title: String, body: String) {
