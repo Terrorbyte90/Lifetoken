@@ -249,6 +249,8 @@ struct SocialView: View {
         case yatzy    = "Yatzy"
         case chat     = "Zon-chatt"
         case lan      = "Lån"
+        case fraktion = "Fraktion"
+        case topplista = "Topplista"
     }
 
     var body: some View {
@@ -265,10 +267,12 @@ struct SocialView: View {
                 Divider().background(Color.white.opacity(0.08))
 
                 switch selectedTab {
-                case .spelare: playerSection
-                case .yatzy:   yatzySection
-                case .chat:    chatSection
-                case .lan:     loanSection
+                case .spelare:   playerSection
+                case .yatzy:     yatzySection
+                case .chat:      chatSection
+                case .lan:       loanSection
+                case .fraktion:  FactionView()
+                case .topplista: LeaderboardView()
                 }
             }
         }
