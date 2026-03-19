@@ -4,6 +4,27 @@ import Foundation
 // MARK: - StepBet — Arbetsduell
 // Två spelare satsar tid mot varandra. Flest steg vinner vid deadline.
 
+// MARK: - GroupBet model
+
+struct GroupBet: Codable, Identifiable {
+    let id: String
+    let participantIDs: [String]
+    var stepCounts: [String: Int]
+    var eliminatedIDs: [String]
+    let stakeSeconds: Int
+    let startDate: Date
+    let endDate: Date
+    var isActive: Bool
+}
+
+func processGroupBetElimination(bet: inout GroupBet) {
+    let remaining = bet.participantIDs.filter { !bet.eliminatedIDs.contains($0) }
+    guard remaining.count > 1 else { return }
+    if let loser = remaining.min(by: { (bet.stepCounts[$0] ?? 0) < (bet.stepCounts[$1] ?? 0) }) {
+        bet.eliminatedIDs.append(loser)
+    }
+}
+
 // MARK: - Modeller
 
 enum BetDeadline: String, CaseIterable {
@@ -256,6 +277,8 @@ struct StepBetView: View {
     @State private var showChallenge: Bool = false
     @State private var challengeResult: String = ""
     @State private var showResult: Bool = false
+    @State private var groupPlayerCount: Int = 3
+    @State private var isServerReachable: Bool = false
 
     var body: some View {
         NavigationStack {
@@ -278,6 +301,25 @@ struct StepBetView: View {
                             if selectedTab == 0 { activeBetsTab }
                             else if selectedTab == 1 { pendingBetsTab }
                             else { historyTab }
+
+                            // MARK: - Gruppduel section
+                            VStack(alignment: .leading, spacing: LTSpacing.md) {
+                                Text("GRUPPDUEL (3-6 SPELARE)")
+                                    .font(.system(size: 11, weight: .black, design: .monospaced))
+                                    .tracking(3)
+                                    .foregroundStyle(.secondary)
+
+                                Stepper("Antal spelare: \(groupPlayerCount)", value: $groupPlayerCount, in: 3...6)
+
+                                Button(isServerReachable ? "Starta gruppduel" : "Kräver anslutning") {
+                                    // Start group bet — requires backend
+                                }
+                                .buttonStyle(.borderedProminent)
+                                .disabled(!isServerReachable)
+                            }
+                            .padding(14)
+                            .background(Color(red: 0.06, green: 0.06, blue: 0.09))
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
                         }
                         .padding(16)
                     }
