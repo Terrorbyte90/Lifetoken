@@ -10,6 +10,8 @@ struct InTimeClockView: View {
     let balance: TimeInterval
     let pulseAnim: Bool
 
+    @State private var isPulsing = false
+
     // MARK: Adaptiv neon-färg
     private var displayColor: Color {
         if balance <= 0    { return LTPalette.danger }
@@ -47,8 +49,15 @@ struct InTimeClockView: View {
             colonSep(color: col)
             unitCell(value: String(format: "%02d", c.sec), label: "SEK", color: col)
         }
-        .scaleEffect(pulseAnim ? 1.04 : 1.0)
+        .scaleEffect(pulseAnim ? 1.04 : (isPulsing ? 1.02 : 1.0))
         .animation(LTAnimation.springFast, value: pulseAnim)
+        .animation(.easeInOut(duration: 0.15), value: isPulsing)
+        .onChange(of: Int(balance)) { _, _ in
+            withAnimation(.easeInOut(duration: 0.15)) { isPulsing = true }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                withAnimation(.easeInOut(duration: 0.15)) { isPulsing = false }
+            }
+        }
     }
 
     // MARK: - Siffercell med neon-glow
