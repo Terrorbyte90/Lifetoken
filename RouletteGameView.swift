@@ -49,6 +49,7 @@ struct RouletteGameView: View {
     @State private var result:        Int? = nil
     @State private var resultMessage: String = ""
     @State private var showResult:    Bool = false
+    @State private var showConfetti:  Bool = false
     @State private var wheelAngle:    Double = 0
     @State private var ballAngle:     Double = 0
     @State private var history:       [Int] = []
@@ -86,6 +87,12 @@ struct RouletteGameView: View {
             Button("OK") {}
         } message: {
             Text(resultMessage)
+        }
+        .overlay {
+            if showConfetti {
+                CasinoParticleView()
+                    .environmentObject(ThemeEngine.shared)
+            }
         }
     }
 
@@ -361,6 +368,8 @@ struct RouletteGameView: View {
             MissionsManager.incrementProgress("casino_total_wins")
             TransactionLedger.shared.record(label: "Roulette — vinst", amount: net - betAmount)
             resultMessage = "Vinst! Nummer \(n)\n+\(TimeEngine.shortFormatted(net - betAmount)) (efter \(Int(taxRate * 100))% skatt)"
+            showConfetti = true
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3) { showConfetti = false }
         } else {
             TransactionLedger.shared.record(label: "Roulette — förlust", amount: -betAmount)
             resultMessage = "Nummer \(n) — ingen vinst.\nFörlorade \(TimeEngine.shortFormatted(betAmount))."

@@ -118,6 +118,7 @@ struct BlackjackView: View {
     @State private var bjState:      BJGameState = .betting
     @State private var resultMessage: String = ""
     @State private var showResult:   Bool = false
+    @State private var showConfetti: Bool = false
     @State private var dealerHidden: Bool = true
     @State private var playerTotal:  Int = 0
     @State private var dealerTotal:  Int = 0
@@ -155,6 +156,12 @@ struct BlackjackView: View {
             Button("OK") { resetGame() }
         } message: {
             Text(resultMessage)
+        }
+        .overlay {
+            if showConfetti {
+                CasinoParticleView()
+                    .environmentObject(ThemeEngine.shared)
+            }
         }
     }
 
@@ -488,6 +495,8 @@ struct BlackjackView: View {
                 MissionsManager.incrementProgress("casino_total_wins")
                 TransactionLedger.shared.record(label: "Blackjack — blackjack!", amount: net - betAmount)
                 resultMessage = "BLACKJACK! +\(TimeEngine.shortFormatted(net - betAmount)) (efter \(Int(taxRate * 100))% skatt)"
+                showConfetti = true
+                DispatchQueue.main.asyncAfter(deadline: .now() + 3) { showConfetti = false }
             } else if dealerTotal > 21 || pTotal > dealerTotal {
                 let net = betAmount * 2.0 * (1.0 - taxRate)
                 TimeEngine.shared.addTime(net)
@@ -495,6 +504,8 @@ struct BlackjackView: View {
                 MissionsManager.incrementProgress("casino_total_wins")
                 TransactionLedger.shared.record(label: "Blackjack — vinst", amount: net - betAmount)
                 resultMessage = "Du vann! +\(TimeEngine.shortFormatted(net - betAmount)) (efter skatt)"
+                showConfetti = true
+                DispatchQueue.main.asyncAfter(deadline: .now() + 3) { showConfetti = false }
             } else if pTotal == dealerTotal {
                 TimeEngine.shared.addTime(betAmount)
                 TransactionLedger.shared.record(label: "Blackjack — lika", amount: 0)

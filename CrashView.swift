@@ -26,6 +26,7 @@ struct CrashView: View {
     // Result
     @State private var resultMessage: String = ""
     @State private var showResult: Bool = false
+    @State private var showConfetti: Bool = false
 
     enum CrashPhase { case waiting, countdown, running, crashed }
 
@@ -79,6 +80,12 @@ struct CrashView: View {
             Button("OK") { resetGame() }
         } message: { Text(resultMessage) }
         .onDisappear { stopTimer() }
+        .overlay {
+            if showConfetti {
+                CasinoParticleView()
+                    .environmentObject(ThemeEngine.shared)
+            }
+        }
     }
 
     // MARK: Header
@@ -351,6 +358,9 @@ struct CrashView: View {
         GameState.shared.recordEarning(net - betAmount)
         MissionsManager.incrementProgress("casino_total_wins")
         TransactionLedger.shared.record(label: "Crash — cash out \(String(format: "%.2fx", cashedOutMultiplier))", amount: net - betAmount)
+
+        showConfetti = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3) { showConfetti = false }
     }
 
     func triggerCrash() {
