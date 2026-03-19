@@ -100,7 +100,8 @@ class HandEvaluator {
         }
         if cards.count <= 5 { return evalFive(cards) }
         let combos = combinations(of: cards, count: 5)
-        return combos.map { evalFive($0) }.max()!
+        guard let best = combos.map({ evalFive($0) }).max() else { return evalFive(cards) }
+        return best
     }
 
     private static func evalFive(_ cards: [Card]) -> HandResult {
@@ -122,15 +123,15 @@ class HandEvaluator {
 
         // Four of a Kind
         if counts == [4, 1] {
-            let four   = rankCounts.first(where: { $0.value == 4 })!.key.rawValue
-            let kicker = rankCounts.first(where: { $0.value == 1 })!.key.rawValue
+            let four   = rankCounts.first(where: { $0.value == 4 })?.key.rawValue ?? 0
+            let kicker = rankCounts.first(where: { $0.value == 1 })?.key.rawValue ?? 0
             return HandResult(rank: .fourOfAKind, tiebreakers: [four, kicker])
         }
 
         // Full House
         if counts == [3, 2] {
-            let three = rankCounts.first(where: { $0.value == 3 })!.key.rawValue
-            let pair  = rankCounts.first(where: { $0.value == 2 })!.key.rawValue
+            let three = rankCounts.first(where: { $0.value == 3 })?.key.rawValue ?? 0
+            let pair  = rankCounts.first(where: { $0.value == 2 })?.key.rawValue ?? 0
             return HandResult(rank: .fullHouse, tiebreakers: [three, pair])
         }
 
@@ -142,7 +143,7 @@ class HandEvaluator {
 
         // Three of a Kind
         if counts == [3, 1, 1] {
-            let three   = rankCounts.first(where: { $0.value == 3 })!.key.rawValue
+            let three   = rankCounts.first(where: { $0.value == 3 })?.key.rawValue ?? 0
             let kickers = rankCounts.filter { $0.value == 1 }.keys.map { $0.rawValue }.sorted(by: >)
             return HandResult(rank: .threeOfAKind, tiebreakers: [three] + kickers)
         }
@@ -150,13 +151,13 @@ class HandEvaluator {
         // Two Pair
         if counts == [2, 2, 1] {
             let pairs  = rankCounts.filter { $0.value == 2 }.keys.map { $0.rawValue }.sorted(by: >)
-            let kicker = rankCounts.first(where: { $0.value == 1 })!.key.rawValue
+            let kicker = rankCounts.first(where: { $0.value == 1 })?.key.rawValue ?? 0
             return HandResult(rank: .twoPair, tiebreakers: pairs + [kicker])
         }
 
         // One Pair
         if counts == [2, 1, 1, 1] {
-            let pair    = rankCounts.first(where: { $0.value == 2 })!.key.rawValue
+            let pair    = rankCounts.first(where: { $0.value == 2 })?.key.rawValue ?? 0
             let kickers = rankCounts.filter { $0.value == 1 }.keys.map { $0.rawValue }.sorted(by: >)
             return HandResult(rank: .onePair, tiebreakers: [pair] + kickers)
         }
