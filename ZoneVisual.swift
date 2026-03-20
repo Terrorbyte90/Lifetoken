@@ -1,5 +1,29 @@
 import SwiftUI
 import AVKit
+import UIKit
+
+// MARK: - LoopingVideoPlayer (UIViewRepresentable med resizeAspectFill)
+
+struct LoopingVideoPlayer: UIViewRepresentable {
+    let player: AVPlayer
+
+    class PlayerView: UIView {
+        override class var layerClass: AnyClass { AVPlayerLayer.self }
+        var playerLayer: AVPlayerLayer { layer as! AVPlayerLayer }
+    }
+
+    func makeUIView(context: Context) -> PlayerView {
+        let view = PlayerView()
+        view.playerLayer.player = player
+        view.playerLayer.videoGravity = .resizeAspectFill
+        view.backgroundColor = .black
+        return view
+    }
+
+    func updateUIView(_ uiView: PlayerView, context: Context) {
+        uiView.playerLayer.player = player
+    }
+}
 
 // MARK: - ZoneVisual — vertikal lista med zonkort
 
@@ -94,8 +118,7 @@ struct ZoneCardView: View {
             // Videoyta eller zonfärgad fallback
             Group {
                 if let player = player {
-                    VideoPlayer(player: player)
-                        .disabled(true)
+                    LoopingVideoPlayer(player: player)
                 } else {
                     zone.color.opacity(0.15)
                 }
