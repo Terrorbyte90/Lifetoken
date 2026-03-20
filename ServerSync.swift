@@ -209,10 +209,7 @@ class ServerSync: ObservableObject, @unchecked Sendable {
                 if let adj = resp.adjustedBalance, resp.adminOverride == true {
                     TimeEngine.shared.balance = adj
                 }
-                // Fusk-kontroll
-                if resp.antiCheatFlag == true {
-                    TimeEngine.shared.cheatingDetected = true
-                }
+                // Anti-cheat handled server-side silently
             }
         } catch {
             DispatchQueue.main.async { self.isOnline = false }

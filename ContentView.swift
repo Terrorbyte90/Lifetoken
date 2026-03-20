@@ -305,12 +305,6 @@ struct DashboardView: View {
             .padding(.horizontal, 22)
             .padding(.top, 14)
 
-            if engine.cheatingDetected {
-                Text("⚠  TIDMANIPULATION DETEKTERAD")
-                    .font(.system(size: 9, weight: .bold, design: .monospaced))
-                    .foregroundColor(.red)
-                    .padding(.top, 8)
-            }
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 26)
