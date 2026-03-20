@@ -9,7 +9,7 @@ struct ZoneVisual: View {
     @ObservedObject private var server    = ServerSync.shared
     @Environment(\.dismiss) var dismiss
 
-    private var zones: [ZoneProfile] { ZoneProfile.allZones }
+    private var zones: [ZoneProfile] { ZoneProfile.allZones.reversed() }
 
     var body: some View {
         ZStack {
@@ -19,7 +19,7 @@ struct ZoneVisual: View {
                     ForEach(zones.indices, id: \.self) { index in
                         ZoneCardView(
                             zone: zones[index],
-                            zoneIndex: index,
+                            zoneIndex: zones[index].index,
                             currentZoneIndex: gameState.currentZone.index,
                             playerCount: playerCount(for: zones[index])
                         )
@@ -188,7 +188,7 @@ struct ZoneCardView: View {
                     HStack(spacing: LTSpacing.sm) {
                         Image(systemName: "arrow.right.circle.fill")
                             .font(.system(size: 13))
-                        Text("MIGRERA — \(TimeEngine.shortFormatted(zone.entryCostSeconds))")
+                        Text("TA DIG HIT — \(TimeEngine.shortFormatted(zone.entryCostSeconds))")
                             .font(LTFont.label(11))
                     }
                     .foregroundColor(zone.color)
@@ -296,7 +296,7 @@ struct MigrationConfirmView: View {
                     .buttonStyle(LTPressEffect())
                     .accessibilityLabel("Stäng migreringsvy")
                     Spacer()
-                    Text("MIGRERA")
+                    Text("FLYTTA HIT")
                         .font(LTFont.heading(16))
                         .foregroundColor(.white)
                     Spacer()
@@ -398,7 +398,7 @@ struct MigrationConfirmView: View {
                                 }
                             }
                         } label: {
-                            Text(canAfford ? "MIGRERA TILL \(zone.name.uppercased())" : "OTILLRÄCKLIGA MEDEL")
+                            Text(canAfford ? "FLY TILL \(zone.name.uppercased())" : "OTILLRÄCKLIGA MEDEL")
                                 .font(LTFont.heading(15))
                                 .foregroundColor(canAfford ? .black : .white.opacity(0.35))
                                 .frame(maxWidth: .infinity)
@@ -410,8 +410,8 @@ struct MigrationConfirmView: View {
                         .buttonStyle(LTPressEffect())
                         .disabled(!canAfford)
                         .padding(.horizontal, LTSpacing.horizontal)
-                        .accessibilityLabel(canAfford ? "Migrera till \(zone.name)" : "Otillräckliga medel för migration")
-                        .accessibilityHint(canAfford ? "Debiterar inträdesavgift och startar migration" : "Du behöver \(TimeEngine.shortFormatted(minRequired)) totalt")
+                        .accessibilityLabel(canAfford ? "Fly till \(zone.name)" : "Otillräckliga medel")
+                        .accessibilityHint(canAfford ? "Debiterar inträdesavgift" : "Du behöver \(TimeEngine.shortFormatted(minRequired)) totalt")
 
                         Spacer(minLength: LTSpacing.xxxl + LTSpacing.xl)
                     }

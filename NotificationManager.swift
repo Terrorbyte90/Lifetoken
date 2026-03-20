@@ -94,6 +94,19 @@ class NotificationManager {
         UNUserNotificationCenter.current().add(request)
     }
 
+    // MARK: - Step Duel Challenge Notification
+
+    func sendStepDuelChallenge(from challenger: String, to opponent: String, stake: String, deadline: String) {
+        let content = UNMutableNotificationContent()
+        content.title = "👟 Stegduell-utmaning!"
+        content.body = "\(challenger) utmanar \(opponent) — insats: \(stake), deadline: \(deadline). Acceptera nu!"
+        content.sound = .default
+        content.userInfo = ["type": "step_duel", "challenger": challenger]
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
+        let req = UNNotificationRequest(identifier: "step_duel_\(Date().timeIntervalSince1970)", content: content, trigger: trigger)
+        UNUserNotificationCenter.current().add(req, withCompletionHandler: nil)
+    }
+
     // MARK: - Generic Game Alert
 
     func sendGameAlert(title: String, body: String) {
