@@ -1,4 +1,5 @@
 import SwiftUI
+import AVKit
 
 // MARK: - ZoneChatMessage
 
@@ -111,12 +112,17 @@ struct DashboardView: View {
                     clockSection
                     if engine.balance > 0 && engine.balance < 86400 { lowBalanceBanner }
                     if inflation.isWarning { inflationBanner }
-                    zoneInfoCard
+                    ZoneVideoInfoCard(
+                        zone: gameState.currentZone,
+                        memberCount: server.zoneMembers.count,
+                        onTap: { showZoneMap = true }
+                    )
+                    .padding(.horizontal)
                     salaryCard
-                    toplistaSection
+                    pvpSection
                     zoneChatCard
                     missionsCard
-                    pvpSection
+                    toplistaSection
                     NewsFeedWidget(maxItems: 3).padding(.horizontal)
                     microTextBar
                     Spacer(minLength: LTSpacing.scrollBottom)
@@ -132,8 +138,8 @@ struct DashboardView: View {
             OnboardingView(showOnboarding: $showOnboarding)
         }
         .sheet(isPresented: $showTimeMarket)          { TimeMarketView() }
-        .fullScreenCover(isPresented: $showZoneMap)     { ZoneVisual() }
-        .fullScreenCover(isPresented: $showMissions)    { MissionsView() }
+        .fullScreenCover(isPresented: $showZoneMap)     { NavigationStack { ZoneVisual() } }
+        .sheet(isPresented: $showMissions)              { MissionsView() }
         .fullScreenCover(isPresented: $showBank)        { BankView() }
         .sheet(isPresented: $showStepBet)              { StepBetView() }
         .fullScreenCover(isPresented: $showNightMarket) { NightMarketView() }
@@ -326,52 +332,6 @@ struct DashboardView: View {
         .padding(.horizontal)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Livsbalans: \(clockLabel.lowercased()). \(TimeEngine.formatted(engine.balance)) återstår.")
-    }
-
-    // MARK: - Zone Info Card
-
-    private var zoneInfoCard: some View {
-        let zone = gameState.currentZone
-        return VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Image(systemName: zone.zoneIcon)
-                    .foregroundColor(zone.color)
-                Text(zone.name.uppercased())
-                    .font(.system(size: 12, weight: .black, design: .monospaced))
-                    .foregroundColor(zone.color)
-                    .tracking(2)
-                Spacer()
-                Button { showZoneMap = true } label: {
-                    Text("VISA ZONER →")
-                        .font(.system(size: 9, design: .monospaced))
-                        .foregroundColor(.white.opacity(0.4))
-                }
-            }
-            if !zone.shortLore.isEmpty {
-                Text(zone.shortLore)
-                    .font(.system(size: 11, design: .monospaced))
-                    .foregroundColor(.white.opacity(0.55))
-                    .italic()
-                    .lineLimit(2)
-            }
-            HStack(spacing: 16) {
-                Label("\(server.zoneMembers.count) spelare", systemImage: "person.2.fill")
-                    .font(.system(size: 10, design: .monospaced))
-                    .foregroundColor(.white.opacity(0.45))
-                Label("\(Int(zone.taxRate * 100))% skatt", systemImage: "percent")
-                    .font(.system(size: 10, design: .monospaced))
-                    .foregroundColor(.orange.opacity(0.7))
-                Label(String(format: "%.1f%% infl/dag", zone.inflationRatePerDay * 100), systemImage: "arrow.up.right")
-                    .font(.system(size: 10, design: .monospaced))
-                    .foregroundColor(.red.opacity(0.7))
-            }
-        }
-        .padding(14)
-        .background(zone.color.opacity(0.07))
-        .overlay(RoundedRectangle(cornerRadius: 12).stroke(zone.color.opacity(0.25), lineWidth: 1))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-        .padding(.horizontal)
-        .onTapGesture { showZoneMap = true }
     }
 
     // MARK: - Salary Card
@@ -769,6 +729,85 @@ struct DashboardView: View {
         let m = (Int(secs) % 3600) / 60
         let s = Int(secs) % 60
         return String(format: "%02d:%02d:%02d", h, m, s)
+    }
+}
+
+// MARK: - ZoneVideoInfoCard
+
+struct ZoneVideoInfoCard: View {
+    let zone: ZoneProfile
+    let memberCount: Int
+    let onTap: () -> Void
+
+    @State private var player: AVPlayer? = nil
+
+    var body: some View {
+        ZStack(alignment: .bottom) {
+            Group {
+                if let p = player {
+                    LoopingVideoPlayer(player: p)
+                } else {
+                    zone.color.opacity(0.15)
+                }
+            }
+            .frame(height: 160)
+
+            LinearGradient(
+                colors: [.clear, .black.opacity(0.88)],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .frame(height: 160)
+
+            VStack(alignment: .leading, spacing: 6) {
+                HStack {
+                    Image(systemName: zone.zoneIcon)
+                        .foregroundColor(zone.color)
+                        .font(.system(size: 12))
+                    Text(zone.name.uppercased())
+                        .font(.system(size: 13, weight: .black, design: .monospaced))
+                        .foregroundColor(zone.color)
+                        .tracking(2)
+                    Spacer()
+                    Text("VISA ZONER →")
+                        .font(.system(size: 9, design: .monospaced))
+                        .foregroundColor(.white.opacity(0.5))
+                }
+                HStack(spacing: 16) {
+                    Label("\(memberCount) spelare", systemImage: "person.2.fill")
+                        .font(.system(size: 10, design: .monospaced))
+                        .foregroundColor(.white.opacity(0.6))
+                    Label("\(Int(zone.taxRate * 100))% skatt", systemImage: "percent")
+                        .font(.system(size: 10, design: .monospaced))
+                        .foregroundColor(.orange.opacity(0.85))
+                    Label(String(format: "%.1f%% infl/dag", zone.inflationRatePerDay * 100), systemImage: "arrow.up.right")
+                        .font(.system(size: 10, design: .monospaced))
+                        .foregroundColor(.red.opacity(0.85))
+                }
+            }
+            .padding(14)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .overlay(RoundedRectangle(cornerRadius: 16).stroke(zone.color.opacity(0.35), lineWidth: 1))
+        .onTapGesture { onTap() }
+        .onAppear { setupPlayer() }
+        .onDisappear { player?.pause() }
+    }
+
+    private func setupPlayer() {
+        let num = zone.index + 1
+        let name = "zon\(num)"
+        let url = Bundle.main.url(forResource: name, withExtension: "mp4")
+               ?? Bundle.main.url(forResource: name, withExtension: "mov")
+        guard let url else { return }
+        let p = AVPlayer(url: url)
+        p.actionAtItemEnd = .none
+        NotificationCenter.default.addObserver(
+            forName: .AVPlayerItemDidPlayToEndTime,
+            object: p.currentItem, queue: .main
+        ) { _ in p.seek(to: .zero); p.play() }
+        p.play()
+        player = p
     }
 }
 

@@ -75,11 +75,11 @@ class TimeEngine: ObservableObject {
     // MARK: - One-time balance restore (runs exactly once on first launch of this build)
 
     private func applyPendingServerReset() {
-        let doneKey = "balance_reset_done_v6"
+        let doneKey = "balance_reset_done_v7"
         guard !UserDefaults.standard.bool(forKey: doneKey) else { return }
         UserDefaults.standard.set(true, forKey: doneKey)
-        // Reset to 5 days — runs once on first launch of this build
-        let targetBalance: TimeInterval = 5 * 86400 // 432000 seconds
+        // Reset to 10 days — runs once on first launch of this build
+        let targetBalance: TimeInterval = 10 * 86400 // 864000 seconds
         balance = targetBalance
         isTimedOut = false
         cheatingDetected = false

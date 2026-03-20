@@ -139,7 +139,7 @@ struct OnboardingView: View {
         VStack(alignment: .leading, spacing: LTSpacing.xxl) {
             stepLabel("VERKLIGHETEN")
 
-            Text("Du föddes med exakt 24 timmar.")
+            Text("Du har 10 dagar på dig.")
                 .font(.system(size: 28, weight: .bold, design: .monospaced))
                 .foregroundColor(.white)
                 .lineSpacing(6)
@@ -149,7 +149,7 @@ struct OnboardingView: View {
                 .foregroundColor(LTPalette.danger)
                 .neonGlow(LTPalette.danger, intensity: 0.4)
 
-            Text("Det finns inget sätt att pausa den.")
+            Text("Tjäna mer tid — eller dö.")
                 .font(.system(size: 16, weight: .regular, design: .monospaced))
                 .foregroundColor(.white.opacity(0.45))
                 .padding(.top, LTSpacing.sm)
@@ -249,7 +249,7 @@ struct OnboardingView: View {
                 .font(.system(size: 16, weight: .medium, design: .monospaced))
                 .foregroundColor(.white.opacity(0.38))
 
-            Text("Din hälsa är din lön. Dina steg är din valuta. Sover du dåligt — tjänar du mindre. Rör du dig inte — dör du snabbare.")
+            Text("Din hälsa är din lön. Dina steg ger tid. Tjäna på jobbet, vinn på kasinot, råna andra spelare — gör vad som krävs.")
                 .font(.system(size: 13, weight: .regular, design: .monospaced))
                 .foregroundColor(.white.opacity(0.42))
                 .lineSpacing(4)

@@ -80,6 +80,6 @@ class GameState: ObservableObject {
     }
 
     func updateZone() {
-        currentZone = ZoneProfile.currentZone(forTime: TimeEngine.shared.balance)
+        currentZone = ZoneManager.shared.currentZone
     }
 }

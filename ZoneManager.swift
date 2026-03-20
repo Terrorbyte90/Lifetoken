@@ -8,13 +8,19 @@ public class ZoneManager: ObservableObject {
     @Published var currentZone: ZoneProfile = .askan
 
     private init() {
-        // Restore last known zone from UserDefaults (preserves hysteresis)
+        // One-time reset: all users start in Askan (first zone)
+        let startKey = "zone_start_v1"
+        if !UserDefaults.standard.bool(forKey: startKey) {
+            UserDefaults.standard.set(true, forKey: startKey)
+            UserDefaults.standard.removeObject(forKey: lastZoneKey)
+        }
+        // Restore last known zone from UserDefaults; default to Askan
         if let saved = UserDefaults.standard.string(forKey: lastZoneKey),
            let zone = ZoneProfile.allZones.first(where: { $0.name == saved }) {
             currentZone = zone
         } else {
-            currentZone = ZoneProfile.currentZone(forTime: TimeEngine.shared.balance)
-            UserDefaults.standard.set(currentZone.name, forKey: lastZoneKey)
+            currentZone = .askan
+            UserDefaults.standard.set(ZoneProfile.askan.name, forKey: lastZoneKey)
         }
     }
 
@@ -26,17 +32,6 @@ public class ZoneManager: ObservableObject {
     /// Uses fallThresholdSeconds for downgrade (hysteresis) and unlockRequirementSeconds for upgrade.
     func evaluateZoneChange(currentTime: TimeInterval) {
         let current = currentZone
-
-        // Check if we qualify for a HIGHER zone automatically
-        let naturalZone = ZoneProfile.currentZone(forTime: currentTime)
-        if naturalZone.index > current.index {
-            DispatchQueue.main.async {
-                self.currentZone = naturalZone
-                UserDefaults.standard.set(naturalZone.name, forKey: self.lastZoneKey)
-                self.triggerZoneMissionProgress(for: naturalZone)
-            }
-            return
-        }
 
         // Check if we've fallen BELOW the current zone's fallThreshold → downgrade
         if currentTime < current.fallThresholdSeconds && current.index > 0 {
