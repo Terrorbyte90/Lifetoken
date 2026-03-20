@@ -15,7 +15,7 @@ enum RaidOutcome {
     case backfire   // anfallaren rånas — förlorar MER än insatsen
 }
 
-struct RaidScenario: Identifiable {
+struct RaidScenario: Identifiable, Equatable {
     let id = UUID()
     let outcome: RaidOutcome
     let title: String
