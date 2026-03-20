@@ -183,6 +183,19 @@ enum ZoneLore {
         all[zoneID]
     }
 
+    // MARK: - Översättning från zonnamn till lore-nyckel
+
+    /// Returnerar rätt nyckel i `all`-ordboken givet ett zonnamn (t.ex. "Stigarnas Dal" → "stigarnasdal").
+    static func loreID(forZoneName name: String) -> ZoneID {
+        name
+            .lowercased()
+            .replacingOccurrences(of: " ", with: "")
+            .replacingOccurrences(of: "ö", with: "o")
+            .replacingOccurrences(of: "ä", with: "a")
+            .replacingOccurrences(of: "å", with: "a")
+            .folding(options: .diacriticInsensitive, locale: .current)
+    }
+
     // MARK: - Persistence
     static func isUnlocked(zoneID: ZoneID, day: Int) -> Bool {
         UserDefaults.standard.bool(forKey: "loreUnlocked_\(zoneID)_day\(day)")

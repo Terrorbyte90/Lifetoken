@@ -380,6 +380,28 @@ struct ZoneProfile: Equatable {
     }
 
     var color: Color { Color(hex: zoneColor) ?? .gray }
+
+    // MARK: - Kort lore-text för zonkort
+
+    var shortLore: String {
+        switch name {
+        case "Askan":         return "Ingenting föds här. Allt dör här."
+        case "Spillrorna":    return "Ruinerna av vad som en gång var. Håll dig nere."
+        case "Betongen":      return "Grå.. Tung.. Oförlåtande.."
+        case "Dimman":        return "Du ser inte vad som väntar. Det vet du om du stannar."
+        case "Halvmörkret":   return "Halvvägs till ingenstans. Precis vad de vill."
+        case "Gränslandet":   return "Varken inne eller ute. En farlig plats att existera."
+        case "Stigarnas Dal": return "De flesta slutar här. Därav namnet."
+        case "Uppgången":     return "Första tecknet på att du kanske faktiskt klarar dig."
+        case "Tröskeln":      return "Du är nära något. Frågan är om du är redo."
+        case "Klarljuset":    return "Klart. Skarpt. Obarmhärtigt uppmärksamt på dina misstag."
+        case "Vakttornet":    return "Härifrån ser du ner. Kom ihåg hur det kändes."
+        case "Valvet":        return "Tid förvaras säkert här. Alla andras tid."
+        case "Kronan":        return "Makt kostar. Du har råd. Hittills."
+        case "Evigheten":     return "Några få lever här. De flesta av dem förtjänar det inte."
+        default:              return ""
+        }
+    }
 }
 
 extension Color {
