@@ -245,7 +245,9 @@ struct ZoneCardView: View {
 
     private func setupVideo() {
         let videoName = "zon\(zoneIndex + 1)"
-        guard let url = Bundle.main.url(forResource: videoName, withExtension: "mp4") else { return }
+        let url: URL? = Bundle.main.url(forResource: videoName, withExtension: "mp4")
+            ?? Bundle.main.url(forResource: videoName, withExtension: "mov")
+        guard let url else { return }
         let p = AVPlayer(url: url)
         p.actionAtItemEnd = .none
         NotificationCenter.default.addObserver(
