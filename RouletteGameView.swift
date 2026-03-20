@@ -14,7 +14,7 @@ enum RouletteBet: String, CaseIterable, Hashable {
     case dozen3 = "25–36"
     case number = "Nummer"
 
-    /// Net payout multiplier on the original bet (excluding stake return).
+    /// Netto utdelnings-multiplikator på den ursprungliga insatsen (exklusive insatsåterbetalning).
     var payout: Double {
         switch self {
         case .red, .black, .odd, .even, .high, .low: return 1.0
@@ -42,36 +42,51 @@ struct RouletteGameView: View {
     @ObservedObject private var engine    = TimeEngine.shared
     @ObservedObject private var gameState = GameState.shared
 
-    @State private var betAmount:     TimeInterval = 300   // 5 minutes default
-    @State private var selectedBet:   RouletteBet = .red
+    @State private var betAmount:      TimeInterval = 300
+    @State private var selectedBet:    RouletteBet = .red
     @State private var selectedNumber: Int = 7
-    @State private var isSpinning:    Bool = false
-    @State private var result:        Int? = nil
-    @State private var resultMessage: String = ""
-    @State private var showResult:    Bool = false
-    @State private var showConfetti:  Bool = false
-    @State private var wheelAngle:    Double = 0
-    @State private var ballAngle:     Double = 0
-    @State private var history:       [Int] = []
+    @State private var isSpinning:     Bool = false
+    @State private var result:         Int? = nil
+    @State private var resultMessage:  String = ""
+    @State private var showResult:     Bool = false
+    @State private var showConfetti:   Bool = false
+    @State private var wheelAngle:     Double = 0
+    @State private var ballAngle:      Double = 0
+    @State private var history:        [Int] = []
+    @State private var showResultBanner: Bool = false
+    @State private var lastWin:        Bool = false
 
-    // European roulette red numbers
+    // Europeisk roulette röda nummer
     private let redNumbers = Set([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36])
 
-    // Bet types that appear in the grid (excludes .number which has custom UI)
+    // Spel-typer i rutnätet (exkluderar .number som har eget UI)
     private let gridBets: [RouletteBet] = [
         .red, .black, .odd, .even, .low, .high, .dozen1, .dozen2, .dozen3
     ]
 
+    // Mörkgrön filtbakgrund
+    private let feltBackground = Color(red: 0.02, green: 0.08, blue: 0.02)
+
     var body: some View {
         ZStack {
-            Color.black.ignoresSafeArea()
+            feltBackground.ignoresSafeArea()
+
+            // Subtil mönstrad filttextur
+            LinearGradient(
+                colors: [
+                    Color(red: 0.03, green: 0.12, blue: 0.04).opacity(0.6),
+                    Color(red: 0.01, green: 0.05, blue: 0.01).opacity(0.6)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            ).ignoresSafeArea()
 
             VStack(spacing: 0) {
                 headerBar
 
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 20) {
-                        wheelView
+                        wheelSection
                         historyRow
                         betTypeGrid
                         numberBetSection
@@ -80,6 +95,16 @@ struct RouletteGameView: View {
                         Spacer(minLength: 80)
                     }
                     .padding(.bottom, 8)
+                }
+            }
+
+            // Resultatbanner med glöd-effekt
+            if showResultBanner {
+                VStack {
+                    Spacer()
+                    resultBanner
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                        .padding(.bottom, 40)
                 }
             }
         }
@@ -96,147 +121,283 @@ struct RouletteGameView: View {
         }
     }
 
-    // MARK: Sub-views
+    // MARK: - Delvyer
 
     private var headerBar: some View {
         HStack {
             Button(action: { dismiss() }) {
                 Image(systemName: "xmark")
-                    .foregroundColor(.white.opacity(0.6))
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundColor(.white.opacity(0.7))
+                    .padding(10)
+                    .background(Color.black.opacity(0.4))
+                    .clipShape(Circle())
             }
             Spacer()
-            Text("TIME ROULETTE")
-                .font(.system(size: 18, weight: .bold, design: .monospaced))
-                .foregroundColor(.white)
+            VStack(spacing: 2) {
+                Text("EUROPEISK ROULETT")
+                    .font(.system(size: 16, weight: .black, design: .monospaced))
+                    .foregroundColor(.white)
+                Text("37 fickor · Hus 2.7%")
+                    .font(.system(size: 9, design: .monospaced))
+                    .foregroundColor(.yellow.opacity(0.6))
+            }
             Spacer()
             Text(TimeEngine.shortFormatted(engine.balance))
-                .font(.system(size: 13, design: .monospaced))
+                .font(.system(size: 12, weight: .bold, design: .monospaced))
                 .foregroundColor(.yellow)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+                .background(Color.yellow.opacity(0.12))
+                .clipShape(Capsule())
+                .overlay(Capsule().stroke(Color.yellow.opacity(0.3), lineWidth: 1))
         }
         .padding()
         .padding(.top, 20)
+        .background(Color.black.opacity(0.3))
     }
 
-    private var wheelView: some View {
+    // Hjulsektionen med rotation-animation
+    private var wheelSection: some View {
         ZStack {
-            // Outer ring
+            // Yttre dekorativ ring
             Circle()
-                .stroke(Color.green.opacity(0.3), lineWidth: 2)
-                .frame(width: 172, height: 172)
+                .stroke(
+                    LinearGradient(
+                        colors: [Color(red: 0.8, green: 0.65, blue: 0.1), Color(red: 0.5, green: 0.4, blue: 0.05)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    lineWidth: 3
+                )
+                .frame(width: 196, height: 196)
+                .shadow(color: .yellow.opacity(0.3), radius: 8)
 
-            // Wheel body
+            // Hjulkropp
             Circle()
-                .fill(Color(red: 0.10, green: 0.10, blue: 0.10))
-                .frame(width: 164, height: 164)
+                .fill(
+                    RadialGradient(
+                        colors: [Color(red: 0.08, green: 0.08, blue: 0.08), Color(red: 0.03, green: 0.03, blue: 0.03)],
+                        center: .center,
+                        startRadius: 10,
+                        endRadius: 90
+                    )
+                )
+                .frame(width: 188, height: 188)
                 .rotationEffect(.degrees(wheelAngle))
+                .animation(.easeOut(duration: 3.0), value: wheelAngle)
 
-            // Number segments as colored ticks
+            // Numrerade segment som färgade tick-märken
             ForEach(0..<37, id: \.self) { num in
                 let angle = Double(num) * (360.0 / 37.0)
                 let isRed = redNumbers.contains(num)
-                Rectangle()
-                    .fill(num == 0 ? Color.green : (isRed ? Color.red : Color.white.opacity(0.85)))
-                    .frame(width: 2, height: 60)
-                    .offset(y: -30)
-                    .rotationEffect(.degrees(angle + wheelAngle))
+                ZStack {
+                    // Färgat segment
+                    Rectangle()
+                        .fill(num == 0 ? Color(red: 0.1, green: 0.6, blue: 0.1) : (isRed ? Color(red: 0.8, green: 0.1, blue: 0.1) : Color(white: 0.15)))
+                        .frame(width: 3, height: 55)
+                        .offset(y: -40)
+                    // Nummer-label
+                    Text("\(num)")
+                        .font(.system(size: 6, weight: .bold, design: .monospaced))
+                        .foregroundColor(.white.opacity(0.7))
+                        .offset(y: -72)
+                }
+                .rotationEffect(.degrees(angle + wheelAngle))
+                .animation(.easeOut(duration: 3.0), value: wheelAngle)
             }
 
-            // Ball
+            // Rörlig boll
             Circle()
-                .fill(Color.white)
-                .frame(width: 10, height: 10)
-                .offset(y: -62)
+                .fill(
+                    RadialGradient(colors: [.white, Color(white: 0.8)], center: .topLeading, startRadius: 1, endRadius: 6)
+                )
+                .frame(width: 12, height: 12)
+                .shadow(color: .white.opacity(0.8), radius: 4)
+                .offset(y: -78)
                 .rotationEffect(.degrees(ballAngle))
+                .animation(.easeOut(duration: 3.5), value: ballAngle)
 
-            // Center hub
+            // Centrum-nav
             Circle()
-                .fill(Color(red: 0.07, green: 0.07, blue: 0.07))
-                .frame(width: 48, height: 48)
+                .fill(
+                    RadialGradient(
+                        colors: [Color(red: 0.3, green: 0.25, blue: 0.05), Color(red: 0.1, green: 0.08, blue: 0.02)],
+                        center: .center,
+                        startRadius: 2,
+                        endRadius: 25
+                    )
+                )
+                .frame(width: 50, height: 50)
+                .overlay(Circle().stroke(Color.yellow.opacity(0.5), lineWidth: 1.5))
+                .shadow(color: .yellow.opacity(0.3), radius: 6)
 
-            // Result number in center
+            // Resultatsiffra i centrum
             if let r = result {
                 Text("\(r)")
-                    .font(.system(size: 18, weight: .bold, design: .monospaced))
+                    .font(.system(size: 16, weight: .black, design: .monospaced))
                     .foregroundColor(numberColor(r))
+                    .shadow(color: numberColor(r).opacity(0.8), radius: 6)
             } else {
                 Image(systemName: "circle.dotted")
-                    .foregroundColor(.green.opacity(0.4))
+                    .foregroundColor(.yellow.opacity(0.4))
             }
         }
-        .frame(width: 172, height: 172)
+        .frame(width: 196, height: 196)
+        .padding(.top, 8)
+    }
+
+    private var resultBanner: some View {
+        HStack(spacing: 12) {
+            Image(systemName: lastWin ? "star.fill" : "xmark.circle.fill")
+                .font(.system(size: 20))
+                .foregroundColor(lastWin ? .yellow : .red)
+            Text(lastWin ? "VINST!" : "INGEN VINST")
+                .font(.system(size: 18, weight: .black, design: .monospaced))
+                .foregroundColor(lastWin ? .yellow : .red)
+        }
+        .padding(.horizontal, 28)
+        .padding(.vertical, 14)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color.black.opacity(0.85))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16)
+                        .stroke(lastWin ? Color.yellow.opacity(0.6) : Color.red.opacity(0.4), lineWidth: 1.5)
+                )
+        )
+        .shadow(color: (lastWin ? Color.yellow : Color.red).opacity(0.5), radius: 16)
     }
 
     private var historyRow: some View {
         Group {
             if !history.isEmpty {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 6) {
-                        ForEach(Array(history.suffix(14).enumerated()), id: \.offset) { _, num in
-                            Text("\(num)")
-                                .font(.system(size: 11, weight: .bold, design: .monospaced))
-                                .foregroundColor(numberColor(num))
-                                .frame(width: 26, height: 26)
-                                .background(Color.white.opacity(0.08))
-                                .cornerRadius(6)
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("HISTORIK")
+                        .font(.system(size: 8, weight: .black, design: .monospaced))
+                        .foregroundColor(.white.opacity(0.3))
+                        .tracking(4)
+                        .padding(.horizontal)
+
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 6) {
+                            ForEach(Array(history.suffix(14).enumerated()), id: \.offset) { _, num in
+                                // Färgad chip med vitt nummer
+                                ZStack {
+                                    Circle()
+                                        .fill(chipColor(num))
+                                        .frame(width: 30, height: 30)
+                                        .shadow(color: chipColor(num).opacity(0.5), radius: 4)
+                                    Circle()
+                                        .stroke(Color.white.opacity(0.3), lineWidth: 1)
+                                        .frame(width: 30, height: 30)
+                                    Text("\(num)")
+                                        .font(.system(size: 10, weight: .bold, design: .monospaced))
+                                        .foregroundColor(.white)
+                                }
+                            }
                         }
+                        .padding(.horizontal)
                     }
-                    .padding(.horizontal)
                 }
             }
         }
     }
 
+    // Satsningsrutnät med mörkgrön filtupplevelse och guldkanter
     private var betTypeGrid: some View {
-        LazyVGrid(
-            columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())],
-            spacing: 8
-        ) {
-            ForEach(gridBets, id: \.self) { bet in
-                Button { selectedBet = bet } label: {
-                    VStack(spacing: 2) {
-                        Text(bet.displayLabel)
-                            .font(.system(size: 11, weight: .bold, design: .monospaced))
-                        Text(bet.payoutLabel)
-                            .font(.system(size: 9, design: .monospaced))
-                            .foregroundColor(.yellow)
+        VStack(spacing: 10) {
+            Text("VÄLJ SATS")
+                .font(.system(size: 8, weight: .black, design: .monospaced))
+                .foregroundColor(.white.opacity(0.3))
+                .tracking(4)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal)
+
+            LazyVGrid(
+                columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())],
+                spacing: 8
+            ) {
+                ForEach(gridBets, id: \.self) { bet in
+                    Button { selectedBet = bet } label: {
+                        VStack(spacing: 3) {
+                            Text(bet.displayLabel)
+                                .font(.system(size: 12, weight: .bold, design: .monospaced))
+                            Text(bet.payoutLabel)
+                                .font(.system(size: 9, weight: .bold, design: .monospaced))
+                                .foregroundColor(.yellow.opacity(0.8))
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                        .background(
+                            selectedBet == bet
+                                ? Color(red: 0.1, green: 0.4, blue: 0.15)
+                                : Color(red: 0.04, green: 0.14, blue: 0.06)
+                        )
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8)
+                                .stroke(
+                                    selectedBet == bet
+                                        ? Color(red: 0.7, green: 0.6, blue: 0.1)
+                                        : Color(red: 0.2, green: 0.4, blue: 0.2).opacity(0.5),
+                                    lineWidth: selectedBet == bet ? 1.5 : 0.5
+                                )
+                        )
+                        .foregroundColor(selectedBet == bet ? .white : .white.opacity(0.7))
+                        .shadow(color: selectedBet == bet ? Color.yellow.opacity(0.2) : .clear, radius: 6)
                     }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 8)
-                    .background(selectedBet == bet ? Color.green.opacity(0.25) : Color.white.opacity(0.07))
-                    .cornerRadius(8)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 8)
-                            .stroke(selectedBet == bet ? Color.green : Color.clear, lineWidth: 1)
-                    )
-                    .foregroundColor(.white)
                 }
             }
+            .padding(.horizontal)
         }
-        .padding(.horizontal)
     }
 
     private var numberBetSection: some View {
         VStack(spacing: 8) {
             Button { selectedBet = .number } label: {
                 HStack {
+                    // Chip med valt nummer
+                    ZStack {
+                        Circle()
+                            .fill(chipColor(selectedNumber))
+                            .frame(width: 28, height: 28)
+                        Text("\(selectedNumber)")
+                            .font(.system(size: 10, weight: .black, design: .monospaced))
+                            .foregroundColor(.white)
+                    }
                     Text("NUMMER (\(selectedNumber))  —  x36")
                         .font(.system(size: 12, weight: .bold, design: .monospaced))
                     Spacer()
                     Image(systemName: selectedBet == .number ? "checkmark.circle.fill" : "circle")
-                        .foregroundColor(.green)
+                        .foregroundColor(selectedBet == .number ? .yellow : .white.opacity(0.3))
                 }
-                .padding(10)
-                .background(selectedBet == .number ? Color.green.opacity(0.15) : Color.white.opacity(0.05))
-                .cornerRadius(10)
+                .padding(12)
+                .background(
+                    selectedBet == .number
+                        ? Color(red: 0.1, green: 0.4, blue: 0.15)
+                        : Color(red: 0.04, green: 0.14, blue: 0.06)
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10)
+                        .stroke(
+                            selectedBet == .number
+                                ? Color(red: 0.7, green: 0.6, blue: 0.1)
+                                : Color(red: 0.2, green: 0.4, blue: 0.2).opacity(0.5),
+                            lineWidth: selectedBet == .number ? 1.5 : 0.5
+                        )
+                )
                 .foregroundColor(.white)
             }
             .padding(.horizontal)
 
             if selectedBet == .number {
                 HStack {
-                    Text("0")
-                        .font(.system(size: 11, design: .monospaced))
-                        .foregroundColor(.green)
+                    ZStack {
+                        Circle().fill(Color.green).frame(width: 20, height: 20)
+                        Text("0").font(.system(size: 9, weight: .bold, design: .monospaced)).foregroundColor(.white)
+                    }
                     Slider(
                         value: Binding(
                             get: { Double(selectedNumber) },
@@ -244,26 +405,30 @@ struct RouletteGameView: View {
                         ),
                         in: 0...36, step: 1
                     )
-                    .tint(.red)
-                    Text("36")
-                        .font(.system(size: 11, design: .monospaced))
-                        .foregroundColor(.white.opacity(0.5))
+                    .tint(Color(red: 0.7, green: 0.6, blue: 0.1))
+                    ZStack {
+                        Circle().fill(Color.red).frame(width: 20, height: 20)
+                        Text("36").font(.system(size: 7, weight: .bold, design: .monospaced)).foregroundColor(.white)
+                    }
                 }
                 .padding(.horizontal)
+                .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
     }
 
     private var betAmountSection: some View {
-        VStack(spacing: 6) {
+        VStack(spacing: 8) {
             HStack {
-                Text("Insats:")
-                    .font(.system(size: 13, design: .monospaced))
-                    .foregroundColor(.white.opacity(0.6))
+                Text("INSATS:")
+                    .font(.system(size: 10, weight: .black, design: .monospaced))
+                    .foregroundColor(.white.opacity(0.4))
+                    .tracking(2)
                 Spacer()
                 Text(TimeEngine.shortFormatted(betAmount))
-                    .font(.system(size: 14, weight: .bold, design: .monospaced))
+                    .font(.system(size: 16, weight: .black, design: .monospaced))
                     .foregroundColor(.yellow)
+                    .shadow(color: .yellow.opacity(0.4), radius: 6)
             }
             .padding(.horizontal)
 
@@ -272,22 +437,23 @@ struct RouletteGameView: View {
                 in: 60...max(120, min(engine.balance, 86400 * 30)),
                 step: 60
             )
-            .tint(.green)
+            .tint(Color(red: 0.7, green: 0.6, blue: 0.1))
             .padding(.horizontal)
 
-            // Quick-bet buttons
+            // Snabbvalstknappar
             HStack(spacing: 8) {
                 ForEach([300.0, 1800.0, 3600.0, 21600.0], id: \.self) { amt in
                     Button {
                         betAmount = min(amt, engine.balance)
                     } label: {
                         Text(TimeEngine.shortFormatted(amt))
-                            .font(.system(size: 10, design: .monospaced))
-                            .foregroundColor(.white.opacity(0.7))
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 5)
-                            .background(Color.white.opacity(0.07))
-                            .cornerRadius(6)
+                            .font(.system(size: 10, weight: .bold, design: .monospaced))
+                            .foregroundColor(.yellow.opacity(0.8))
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .background(Color.yellow.opacity(0.08))
+                            .clipShape(Capsule())
+                            .overlay(Capsule().stroke(Color.yellow.opacity(0.2), lineWidth: 0.5))
                     }
                 }
             }
@@ -297,23 +463,46 @@ struct RouletteGameView: View {
 
     private var spinButton: some View {
         Button { spin() } label: {
-            Text(isSpinning
-                 ? "SNURRAR..."
-                 : "SNURRA  (\(TimeEngine.shortFormatted(betAmount)))")
-                .font(.system(size: 16, weight: .bold, design: .monospaced))
-                .foregroundColor(.black)
-                .frame(maxWidth: .infinity)
-                .padding()
-                .background(isSpinning || betAmount > engine.balance
-                             ? Color.gray
-                             : Color.green)
-                .cornerRadius(12)
+            HStack(spacing: 10) {
+                Image(systemName: isSpinning ? "circle.dotted" : "arrow.clockwise.circle.fill")
+                    .font(.system(size: 18))
+                Text(isSpinning
+                     ? "SNURRAR..."
+                     : "SNURRA  (\(TimeEngine.shortFormatted(betAmount)))")
+                    .font(.system(size: 16, weight: .black, design: .monospaced))
+            }
+            .foregroundColor(isSpinning || betAmount > engine.balance ? Color.white.opacity(0.4) : .black)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 18)
+            .background {
+                if isSpinning || betAmount > engine.balance {
+                    Color(white: 0.2)
+                } else {
+                    LinearGradient(
+                        colors: [Color(red: 0.7, green: 0.6, blue: 0.1), Color(red: 0.5, green: 0.4, blue: 0.05)],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                }
+            }
+            .clipShape(RoundedRectangle(cornerRadius: 14))
+            .shadow(
+                color: isSpinning ? .clear : Color.yellow.opacity(0.4),
+                radius: 10, y: 4
+            )
         }
         .disabled(isSpinning || betAmount > engine.balance)
         .padding(.horizontal)
     }
 
-    // MARK: - Game Logic
+    // MARK: - Spellogik
+
+    private func chipColor(_ n: Int) -> Color {
+        if n == 0 { return Color(red: 0.1, green: 0.55, blue: 0.1) }
+        return redNumbers.contains(n)
+            ? Color(red: 0.75, green: 0.1, blue: 0.1)
+            : Color(red: 0.12, green: 0.12, blue: 0.14)
+    }
 
     private func numberColor(_ n: Int) -> Color {
         if n == 0 { return .green }
@@ -324,6 +513,7 @@ struct RouletteGameView: View {
         guard TimeEngine.shared.deductTime(betAmount) else { return }
         isSpinning = true
         result = nil
+        showResultBanner = false
 
         let spinResult   = Int.random(in: 0...36)
         let spinDuration = Double.random(in: 2.8...4.2)
@@ -359,7 +549,6 @@ struct RouletteGameView: View {
         }
 
         if win {
-            // Gross return = stake + winnings
             let gross   = betAmount * (selectedBet.payout + 1.0)
             let taxRate = gameState.currentZone.taxRate
             let net     = gross * (1.0 - taxRate)
@@ -373,6 +562,14 @@ struct RouletteGameView: View {
         } else {
             TransactionLedger.shared.record(label: "Roulette — förlust", amount: -betAmount)
             resultMessage = "Nummer \(n) — ingen vinst.\nFörlorade \(TimeEngine.shortFormatted(betAmount))."
+        }
+
+        lastWin = win
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
+            showResultBanner = true
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+            withAnimation { showResultBanner = false }
         }
         showResult = true
     }
