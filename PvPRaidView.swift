@@ -4,7 +4,65 @@ import Foundation
 // MARK: - PvP Rånet
 // Utmana en spelare i din zon på ett reaktionstest.
 // Vinner du → stjäl en del av deras tid. Förlorar du → de tar din insats.
+// Backfire → du förlorar insatsen PLUS 10% av din nuvarande balans.
 // Cooldown 4 timmar per offer.
+
+// MARK: - Raid-scenarions
+
+enum RaidOutcome {
+    case success    // anfallaren stjäl tid från försvararen
+    case failure    // anfallaren förlorar sin insats
+    case backfire   // anfallaren rånas — förlorar MER än insatsen
+}
+
+struct RaidScenario: Identifiable {
+    let id = UUID()
+    let outcome: RaidOutcome
+    let title: String
+    let story: String
+}
+
+// 5 framgångsscenarier
+private let successScenarios: [RaidScenario] = [
+    .init(outcome: .success, title: "Snabbt och obarmhärtigt",
+          story: "Du smög upp bakifrån. Innan de hann reagera var det klart. Deras tid är nu din."),
+    .init(outcome: .success, title: "Perfekt timing",
+          story: "Du väntade tills de var distraherade. Tre sekunder. Mer behövde du inte."),
+    .init(outcome: .success, title: "Välplanerat anfall",
+          story: "Du hade studerat deras mönster i dagar. I natt betalade det sig."),
+    .init(outcome: .success, title: "Övermäktig styrka",
+          story: "De försökte springa. Det hjälpte inte. Du är snabbare."),
+    .init(outcome: .success, title: "I mörkret",
+          story: "Nattmarknaden var tom. Bara du och dem. Och nu bara du.")
+]
+
+// 5 misslyckandescenarier
+private let failureScenarios: [RaidScenario] = [
+    .init(outcome: .failure, title: "De såg dig komma",
+          story: "Din approach var för uppenbar. De var förberedda och du sprang därifrån tomhänt."),
+    .init(outcome: .failure, title: "Vittnen i skuggorna",
+          story: "Någon annan bevittnade rånet och larmar. Du tvingas avbryta och fly."),
+    .init(outcome: .failure, title: "Fel mål",
+          story: "Du valde fel person. De visade sig vara beväpnade. Du drog dig tillbaka snabbt."),
+    .init(outcome: .failure, title: "Teknisk fördel",
+          story: "De hade ett system som varnade dem i förväg. Du kom tomhänt."),
+    .init(outcome: .failure, title: "Panikade i sista sekunden",
+          story: "Allt var planerat. Men när det väl kom till kritan, svek dig nerverna.")
+]
+
+// 5 backfire-scenarier
+private let backfireScenarios: [RaidScenario] = [
+    .init(outcome: .backfire, title: "Fällan",
+          story: "Det var en fälla från början. De väntade på dig. Nu ligger du nere och de tar din tid."),
+    .init(outcome: .backfire, title: "Motattack",
+          story: "Du attackerade. De slog tillbaka hårdare. Du vaknar utan vad du kom med, och lite till."),
+    .init(outcome: .backfire, title: "Övermannad",
+          story: "De var inte ensamma. Tre mot en. Du hade ingen chans. Ditt insats är deras nu."),
+    .init(outcome: .backfire, title: "Spelade svagt",
+          story: "De låtsades vara svaga. Det var de inte. Nu betalar du priset för din arrogans."),
+    .init(outcome: .backfire, title: "Drog fel kort",
+          story: "Slumpen var inte på din sida. De var snabbare, starkare och mer hänsynslösa.")
+]
 
 // MARK: - Modeller
 
@@ -13,6 +71,7 @@ enum RaidStatus: String, Codable {
     case active    = "active"
     case won       = "won"
     case lost      = "lost"
+    case backfired = "backfired"
     case declined  = "declined"
 }
 
@@ -45,6 +104,8 @@ class PvPRaidManager: ObservableObject {
     @Published var reactionTarget: Bool = false
     @Published var playerReactionMs: Int? = nil
     @Published var opponentReactionMs: Int? = nil
+    @Published var resolvedScenario: RaidScenario? = nil
+    @Published var resolvedTimeDelta: TimeInterval = 0
 
     private var targetAppearTime: Date? = nil
     private var raidTimer: Timer? = nil
@@ -85,6 +146,8 @@ class PvPRaidManager: ObservableObject {
             timestamp: Date()
         )
         activeRaid = record
+        resolvedScenario = nil
+        resolvedTimeDelta = 0
 
         raidPhase = .waiting
         startReactionTest()
@@ -122,30 +185,61 @@ class PvPRaidManager: ObservableObject {
         let opponentMs = Int.random(in: 180...600)
         opponentReactionMs = opponentMs
 
-        let iWon = success && ms < opponentMs
-        resolveRaid(playerWon: iWon)
+        // Utfall baserat på differens i reaktionstid
+        let diff = opponentMs - ms  // positivt = spelaren är snabbare
+        let outcome: RaidOutcome
+        if diff > 100 {
+            // Spelaren är signifikant snabbare → framgång
+            outcome = .success
+        } else if diff < -200 {
+            // Motståndaren är signifikant snabbare → backfire
+            outcome = .backfire
+        } else {
+            // Ungefär lika → misslyckande
+            outcome = .failure
+        }
+
+        resolveRaid(outcome: outcome, success: success)
     }
 
-    private func resolveRaid(playerWon: Bool) {
+    private func resolveRaid(outcome: RaidOutcome, success: Bool) {
         guard var record = activeRaid else { return }
         raidPhase = .done
 
-        if playerWon {
-            let stolen = record.stake
-            TimeEngine.shared.addTime(record.stake + stolen)
+        // Välj slumpmässigt scenario baserat på utfall
+        let scenario: RaidScenario
+        switch outcome {
+        case .success:
+            scenario = successScenarios.randomElement()!
+            let gained = record.stake
+            TimeEngine.shared.addTime(record.stake + gained)
             record.status = .won
+            resolvedTimeDelta = gained
             MissionsManager.incrementProgress("pvp_raids_won")
-        } else {
+        case .failure:
+            scenario = failureScenarios.randomElement()!
             record.status = .lost
+            resolvedTimeDelta = -record.stake
+        case .backfire:
+            scenario = backfireScenarios.randomElement()!
+            // Förlorar insatsen PLUS 10% av balansen (upp till stakebeloppet)
+            let extraPenalty = min(TimeEngine.shared.balance * 0.10, record.stake)
+            if extraPenalty > 0 {
+                TimeEngine.shared.deductTime(extraPenalty)
+            }
+            record.status = .backfired
+            resolvedTimeDelta = -(record.stake + extraPenalty)
         }
 
+        resolvedScenario = scenario
         MissionsManager.incrementProgress("pvp_raids_done")
 
         cooldowns[record.defenderName] = Date()
         saveCooldowns()
 
         history.insert(record, at: 0)
-        NotificationManager.shared.sendRaidNotification(from: record.attackerName, amount: TimeEngine.shortFormatted(record.stake), won: playerWon)
+        let won = outcome == .success
+        NotificationManager.shared.sendRaidNotification(from: record.attackerName, amount: TimeEngine.shortFormatted(record.stake), won: won)
         activeRaid = nil
         saveHistory()
     }
@@ -156,6 +250,8 @@ class PvPRaidManager: ObservableObject {
         playerReactionMs = nil
         opponentReactionMs = nil
         activeRaid = nil
+        resolvedScenario = nil
+        resolvedTimeDelta = 0
         raidTimer?.invalidate()
     }
 
@@ -200,6 +296,8 @@ struct PvPRaidView: View {
     @State private var phase: ViewPhase = .selection
     @State private var targetScale: CGFloat = 0.6
     @State private var resultAppeared: Bool = false
+    @State private var targetPulse: Bool = false
+    @State private var raidScenario: RaidScenario? = nil
 
     private let hapticImpact = UIImpactFeedbackGenerator(style: .heavy)
     private let hapticNotif  = UINotificationFeedbackGenerator()
@@ -210,11 +308,11 @@ struct PvPRaidView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                // Background
+                // Mörk röd-svart bakgrund
                 LinearGradient(
                     colors: [
-                        Color(red: 0.07, green: 0.02, blue: 0.02),
-                        Color(red: 0.03, green: 0.01, blue: 0.01),
+                        Color(red: 0.09, green: 0.01, blue: 0.01),
+                        Color(red: 0.04, green: 0.01, blue: 0.01),
                         Color.black
                     ],
                     startPoint: .top, endPoint: .bottom
@@ -228,6 +326,8 @@ struct PvPRaidView: View {
             }
             .navigationTitle("RÅNET")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(Color(red: 0.09, green: 0.01, blue: 0.01), for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("Stäng") { dismiss() }
@@ -241,6 +341,15 @@ struct PvPRaidView: View {
             Button("OK", role: .cancel) {}
         } message: { Text(errorMessage) }
         .preferredColorScheme(.dark)
+        // Visa resultatscenario som ett sheet när det sätts
+        .sheet(item: $raidScenario) { scenario in
+            scenarioResultSheet(scenario)
+        }
+        .onChange(of: manager.resolvedScenario) { _, newScenario in
+            if let s = newScenario {
+                raidScenario = s
+            }
+        }
     }
 
     // MARK: - Val av mål
@@ -289,17 +398,22 @@ struct PvPRaidView: View {
                         }
                     }
                 } label: {
-                    Text("STARTA RÅNET")
-                        .font(LTFont.heading(14))
-                        .foregroundColor(.black)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, LTSpacing.lg)
-                        .background(
-                            selectedTarget != nil
-                                ? LTPalette.danger
-                                : Color(red: 0.3, green: 0.3, blue: 0.35)
-                        )
-                        .clipShape(RoundedRectangle(cornerRadius: LTRadius.sm))
+                    HStack(spacing: LTSpacing.sm) {
+                        Image(systemName: "bolt.fill")
+                            .font(.system(size: 14))
+                        Text("STARTA RÅNET")
+                            .font(LTFont.heading(14))
+                    }
+                    .foregroundColor(.black)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, LTSpacing.lg)
+                    .background(
+                        selectedTarget != nil
+                            ? LTPalette.danger
+                            : Color(red: 0.3, green: 0.3, blue: 0.35)
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: LTRadius.sm))
+                    .shadow(color: selectedTarget != nil ? LTPalette.danger.opacity(0.4) : .clear, radius: 12)
                 }
                 .disabled(selectedTarget == nil)
                 .buttonStyle(LTPressEffect())
@@ -319,49 +433,88 @@ struct PvPRaidView: View {
             Spacer()
 
             if manager.raidPhase == .waiting {
-                VStack(spacing: LTSpacing.lg) {
+                VStack(spacing: LTSpacing.xl) {
+                    // Nedräkningspuls-ikon
+                    ZStack {
+                        Circle()
+                            .stroke(LTPalette.danger.opacity(0.2), lineWidth: 2)
+                            .frame(width: 120, height: 120)
+                        Circle()
+                            .stroke(LTPalette.danger.opacity(targetPulse ? 0.6 : 0.1), lineWidth: 1)
+                            .frame(width: 160, height: 160)
+                            .animation(LTAnimation.ambientPulse, value: targetPulse)
+                        Image(systemName: "eye.fill")
+                            .font(.system(size: 32))
+                            .foregroundColor(LTPalette.danger.opacity(0.7))
+                    }
+                    .onAppear { targetPulse = true }
+
                     Text("VÄNTA...")
                         .font(LTFont.value(32))
                         .foregroundColor(LTPalette.gold)
                         .accessibilityLabel("Vänta på målet")
+
                     Text("Tryck NÄR du ser målet.")
                         .font(LTFont.body(14))
-                        .foregroundColor(.white.opacity(0.5))
+                        .foregroundColor(.white.opacity(0.45))
+
+                    if let targetName = manager.history.first?.defenderName ?? selectedTarget?.username {
+                        Text("Offer: \(targetName.uppercased())")
+                            .font(LTFont.label(11))
+                            .foregroundColor(LTPalette.danger.opacity(0.7))
+                            .tracking(2)
+                    }
                 }
                 .transition(.opacity)
             } else if manager.raidPhase == .target {
                 VStack(spacing: LTSpacing.xl) {
-                    Circle()
-                        .fill(LTPalette.danger)
-                        .frame(width: 140, height: 140)
-                        .overlay(
-                            Text("TRYCK!")
-                                .font(LTFont.heading(22))
-                                .foregroundColor(.white)
-                        )
-                        .shadow(color: LTPalette.danger.opacity(0.7), radius: 24)
-                        .neonGlow(LTPalette.danger, intensity: 1.2)
-                        .scaleEffect(targetScale)
-                        .onAppear {
-                            hapticImpact.impactOccurred()
-                            withAnimation(.spring(response: 0.35, dampingFraction: 0.55)) {
-                                targetScale = 1.0
-                            }
+                    ZStack {
+                        // Yttre glödring
+                        Circle()
+                            .fill(LTPalette.danger.opacity(0.15))
+                            .frame(width: 200, height: 200)
+                            .blur(radius: 30)
+
+                        // Mittcirkel
+                        Circle()
+                            .fill(
+                                RadialGradient(
+                                    colors: [LTPalette.danger, Color(red: 0.8, green: 0.0, blue: 0.0)],
+                                    center: .center,
+                                    startRadius: 0,
+                                    endRadius: 70
+                                )
+                            )
+                            .frame(width: 160, height: 160)
+                            .shadow(color: LTPalette.danger.opacity(0.8), radius: 30)
+                            .neonGlow(LTPalette.danger, intensity: 1.5)
+
+                        // Träffmarkör
+                        Image(systemName: "target")
+                            .font(.system(size: 50))
+                            .foregroundColor(.white.opacity(0.9))
+                    }
+                    .scaleEffect(targetScale)
+                    .onAppear {
+                        hapticImpact.impactOccurred()
+                        withAnimation(.spring(response: 0.30, dampingFraction: 0.50)) {
+                            targetScale = 1.0
                         }
-                        .onTapGesture {
-                            hapticNotif.notificationOccurred(.success)
-                            manager.playerTapped(success: true)
-                            withAnimation(LTAnimation.springFast) { phase = .result }
-                        }
-                        .accessibilityLabel("Tryck nu!")
-                        .accessibilityAddTraits(.isButton)
+                    }
+                    .onTapGesture {
+                        hapticNotif.notificationOccurred(.success)
+                        manager.playerTapped(success: true)
+                        withAnimation(LTAnimation.springFast) { phase = .result }
+                    }
+                    .accessibilityLabel("Tryck nu!")
+                    .accessibilityAddTraits(.isButton)
 
                     Text("TAP NOW!")
-                        .font(LTFont.label(14))
+                        .font(LTFont.value(22))
                         .foregroundColor(LTPalette.danger)
-                        .neonGlow(LTPalette.danger, intensity: 0.5)
+                        .neonGlow(LTPalette.danger, intensity: 0.7)
                 }
-                .transition(.scale(scale: 0.5).combined(with: .opacity))
+                .transition(.scale(scale: 0.4).combined(with: .opacity))
             }
 
             Spacer()
@@ -384,36 +537,44 @@ struct PvPRaidView: View {
     // MARK: - Resultat
 
     private var resultView: some View {
-        let won = manager.history.first?.status == .won
+        let lastRecord = manager.history.first
+        let status = lastRecord?.status ?? .lost
+        let won = status == .won
+        let backfired = status == .backfired
         let playerMs = manager.playerReactionMs ?? 0
         let oppMs    = manager.opponentReactionMs ?? 0
+        let timeDelta = manager.resolvedTimeDelta
 
         return VStack(spacing: LTSpacing.xxl) {
             Spacer()
 
+            // Statusikon med dramatisk animation
             ZStack {
                 Circle()
-                    .fill((won ? LTPalette.neonGreen : LTPalette.danger).opacity(0.12))
-                    .frame(width: 90, height: 90)
-                    .blur(radius: 20)
-                Image(systemName: won ? "checkmark.seal.fill" : "xmark.seal.fill")
-                    .font(.system(size: 44))
-                    .foregroundColor(won ? LTPalette.neonGreen : LTPalette.danger)
-                    .neonGlow(won ? LTPalette.neonGreen : LTPalette.danger, intensity: 0.8)
+                    .fill(resultIconColor(won: won, backfired: backfired).opacity(0.15))
+                    .frame(width: 110, height: 110)
+                    .blur(radius: 25)
+                Image(systemName: resultIconName(won: won, backfired: backfired))
+                    .font(.system(size: 52))
+                    .foregroundColor(resultIconColor(won: won, backfired: backfired))
+                    .neonGlow(resultIconColor(won: won, backfired: backfired), intensity: 1.0)
             }
-            .scaleEffect(resultAppeared ? 1.0 : 0.4)
-            .animation(.spring(response: 0.5, dampingFraction: 0.6), value: resultAppeared)
+            .scaleEffect(resultAppeared ? 1.0 : 0.3)
+            .opacity(resultAppeared ? 1.0 : 0.0)
+            .animation(.spring(response: 0.5, dampingFraction: 0.55), value: resultAppeared)
             .onAppear {
                 hapticNotif.notificationOccurred(won ? .success : .error)
                 withAnimation { resultAppeared = true }
             }
 
-            Text(won ? "RÅNET LYCKADES" : "RÅNET MISSLYCKADES")
-                .font(LTFont.value(24))
-                .foregroundColor(won ? LTPalette.neonGreen : LTPalette.danger)
+            // Rubrik
+            Text(resultHeadline(won: won, backfired: backfired))
+                .font(LTFont.value(22))
+                .foregroundColor(resultIconColor(won: won, backfired: backfired))
                 .multilineTextAlignment(.center)
-                .accessibilityLabel(won ? "Rånet lyckades" : "Rånet misslyckades")
+                .accessibilityLabel(resultHeadline(won: won, backfired: backfired))
 
+            // Reaktionsjämförelse
             VStack(spacing: LTSpacing.sm) {
                 reactionRow(label: "Du", ms: playerMs, best: playerMs < oppMs)
                 reactionRow(label: "Motståndare", ms: oppMs, best: oppMs <= playerMs)
@@ -421,19 +582,40 @@ struct PvPRaidView: View {
             .padding(LTSpacing.lg)
             .ltCard(radius: LTRadius.sm)
 
-            if won {
-                Text("Du stal \(TimeEngine.shortFormatted(manager.history.first?.stake ?? 0)) från offret.")
-                    .font(LTFont.body(13))
-                    .foregroundColor(LTPalette.neonGreenDim)
-            } else {
-                Text("Din insats förlorades.")
-                    .font(LTFont.body(13))
-                    .foregroundColor(LTPalette.danger.opacity(0.8))
+            // Tidskonsekvens
+            HStack(spacing: LTSpacing.xs) {
+                Image(systemName: timeDelta >= 0 ? "arrow.up.circle.fill" : "arrow.down.circle.fill")
+                    .foregroundColor(timeDelta >= 0 ? LTPalette.neonGreen : LTPalette.danger)
+                Text(timeDeltaLabel(delta: timeDelta))
+                    .font(LTFont.heading(14))
+                    .foregroundColor(timeDelta >= 0 ? LTPalette.neonGreen : LTPalette.danger)
+            }
+
+            // Scenario-knapp (öppnar sheet med narrativ)
+            if manager.resolvedScenario != nil {
+                Button {
+                    raidScenario = manager.resolvedScenario
+                } label: {
+                    HStack(spacing: LTSpacing.xs) {
+                        Image(systemName: "text.book.closed.fill")
+                            .font(.system(size: 13))
+                        Text("VIS RAPPORT")
+                            .font(LTFont.heading(12))
+                    }
+                    .foregroundColor(LTPalette.gold)
+                    .padding(.horizontal, LTSpacing.lg)
+                    .padding(.vertical, LTSpacing.sm)
+                    .background(LTPalette.gold.opacity(0.12))
+                    .clipShape(RoundedRectangle(cornerRadius: LTRadius.xs))
+                    .overlay(RoundedRectangle(cornerRadius: LTRadius.xs).stroke(LTPalette.gold.opacity(0.3), lineWidth: 1))
+                }
+                .buttonStyle(LTPressEffect())
             }
 
             Button {
                 hapticLight.impactOccurred()
                 manager.resetRaid()
+                resultAppeared = false
                 withAnimation(LTAnimation.springSmooth) { phase = .selection }
             } label: {
                 Text("TILLBAKA")
@@ -452,6 +634,129 @@ struct PvPRaidView: View {
         .padding(LTSpacing.xxl)
     }
 
+    // MARK: - Scenario-resultatsheet
+
+    @ViewBuilder
+    private func scenarioResultSheet(_ scenario: RaidScenario) -> some View {
+        ZStack {
+            LinearGradient(
+                colors: [
+                    Color(red: 0.06, green: 0.01, blue: 0.01),
+                    Color.black
+                ],
+                startPoint: .top, endPoint: .bottom
+            ).ignoresSafeArea()
+
+            VStack(spacing: LTSpacing.xxl) {
+                Spacer()
+
+                // Outcome-badge
+                Text(outcomeBadgeText(scenario.outcome))
+                    .font(LTFont.label(10))
+                    .foregroundColor(outcomeColor(scenario.outcome))
+                    .tracking(3)
+                    .padding(.horizontal, LTSpacing.lg)
+                    .padding(.vertical, LTSpacing.xs)
+                    .background(outcomeColor(scenario.outcome).opacity(0.15))
+                    .clipShape(Capsule())
+                    .overlay(Capsule().stroke(outcomeColor(scenario.outcome).opacity(0.4), lineWidth: 1))
+
+                // Rubrik
+                Text(scenario.title.uppercased())
+                    .font(LTFont.value(26))
+                    .foregroundColor(.white)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, LTSpacing.lg)
+
+                // Narrativ text
+                Text(scenario.story)
+                    .font(LTFont.body(15))
+                    .foregroundColor(Color(red: 0.75, green: 0.72, blue: 0.70))
+                    .multilineTextAlignment(.center)
+                    .lineSpacing(4)
+                    .padding(.horizontal, LTSpacing.xxl)
+
+                Divider()
+                    .background(outcomeColor(scenario.outcome).opacity(0.3))
+                    .padding(.horizontal, LTSpacing.xxxl)
+
+                // Tidsresultat
+                let delta = manager.resolvedTimeDelta
+                VStack(spacing: LTSpacing.xs) {
+                    Text(delta >= 0 ? "VINST" : "FÖRLUST")
+                        .font(LTFont.label(10))
+                        .foregroundColor(delta >= 0 ? LTPalette.neonGreen : LTPalette.danger)
+                        .tracking(3)
+                    Text(timeDeltaLabel(delta: delta))
+                        .font(LTFont.value(32))
+                        .foregroundColor(delta >= 0 ? LTPalette.neonGreen : LTPalette.danger)
+                        .contentTransition(.numericText())
+                }
+
+                Spacer()
+
+                // Stäng-knapp
+                Button {
+                    raidScenario = nil
+                } label: {
+                    Text("STÄNG")
+                        .font(LTFont.heading(14))
+                        .foregroundColor(.black)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, LTSpacing.md)
+                        .background(.white)
+                        .clipShape(RoundedRectangle(cornerRadius: LTRadius.sm))
+                }
+                .buttonStyle(LTPressEffect())
+                .padding(.horizontal, LTSpacing.xl)
+                .padding(.bottom, LTSpacing.xxxl)
+            }
+        }
+        .preferredColorScheme(.dark)
+    }
+
+    // MARK: - Hjälpfunktioner
+
+    private func resultIconName(won: Bool, backfired: Bool) -> String {
+        if won { return "checkmark.seal.fill" }
+        if backfired { return "exclamationmark.triangle.fill" }
+        return "xmark.seal.fill"
+    }
+
+    private func resultIconColor(won: Bool, backfired: Bool) -> Color {
+        if won { return LTPalette.neonGreen }
+        if backfired { return LTPalette.warning }
+        return LTPalette.danger
+    }
+
+    private func resultHeadline(won: Bool, backfired: Bool) -> String {
+        if won { return "RÅNET LYCKADES" }
+        if backfired { return "DU RÅNADES TILLBAKA" }
+        return "RÅNET MISSLYCKADES"
+    }
+
+    private func outcomeBadgeText(_ outcome: RaidOutcome) -> String {
+        switch outcome {
+        case .success:  return "FRAMGÅNG"
+        case .failure:  return "MISSLYCKADE"
+        case .backfire: return "BACKFIRE"
+        }
+    }
+
+    private func outcomeColor(_ outcome: RaidOutcome) -> Color {
+        switch outcome {
+        case .success:  return LTPalette.neonGreen
+        case .failure:  return LTPalette.danger
+        case .backfire: return LTPalette.warning
+        }
+    }
+
+    private func timeDeltaLabel(delta: TimeInterval) -> String {
+        let abs = Swift.abs(delta)
+        let prefix = delta >= 0 ? "+" : "-"
+        return "\(prefix)\(TimeEngine.shortFormatted(abs))"
+    }
+
     private func reactionRow(label: String, ms: Int, best: Bool) -> some View {
         HStack {
             Text(label)
@@ -465,7 +770,7 @@ struct PvPRaidView: View {
         }
     }
 
-    // MARK: - Sub-views
+    // MARK: - Sub-vyer
 
     private var warningBanner: some View {
         HStack(spacing: LTSpacing.sm) {
@@ -476,7 +781,7 @@ struct PvPRaidView: View {
                 Text("Din tid eller ditt liv.")
                     .font(LTFont.heading(12))
                     .foregroundColor(.white)
-                Text("Reagera snabbare än motståndaren. Vinner du → stjäl deras insats. Förlorar du → de tar din.")
+                Text("Reagera snabbare än motståndaren. Vinner du → stjäl deras tid. Förlorar du → de tar din insats. Backfire → du förlorar mer.")
                     .font(LTFont.body(10))
                     .foregroundColor(Color(red: 0.6, green: 0.6, blue: 0.65))
                     .lineSpacing(2)
@@ -501,7 +806,21 @@ struct PvPRaidView: View {
                 withAnimation(LTAnimation.springFast) { selectedTarget = member }
             }
         } label: {
-            HStack {
+            HStack(spacing: LTSpacing.md) {
+                // Spelarikon
+                ZStack {
+                    Circle()
+                        .fill(onCooldown
+                              ? Color(red: 0.15, green: 0.15, blue: 0.2)
+                              : (selected ? LTPalette.danger.opacity(0.25) : Color(red: 0.12, green: 0.04, blue: 0.06)))
+                        .frame(width: 36, height: 36)
+                    Image(systemName: onCooldown ? "shield.fill" : "person.fill")
+                        .font(.system(size: 14))
+                        .foregroundColor(onCooldown
+                                         ? Color(red: 0.4, green: 0.4, blue: 0.5)
+                                         : (selected ? LTPalette.danger : .white.opacity(0.7)))
+                }
+
                 VStack(alignment: .leading, spacing: 2) {
                     Text(member.username)
                         .font(LTFont.heading(13))
@@ -510,26 +829,38 @@ struct PvPRaidView: View {
                         Text("Immunitet aktiv")
                             .font(LTFont.body(9))
                             .foregroundColor(Color(red: 0.5, green: 0.5, blue: 0.55))
+                    } else {
+                        Text("Tillgänglig")
+                            .font(LTFont.body(9))
+                            .foregroundColor(LTPalette.neonGreenDim.opacity(0.6))
                     }
                 }
+
                 Spacer()
-                if selected {
+
+                if selected && !onCooldown {
                     Image(systemName: "target")
                         .foregroundColor(LTPalette.danger)
-                        .neonGlow(LTPalette.danger, intensity: 0.5)
+                        .font(.system(size: 18))
+                        .neonGlow(LTPalette.danger, intensity: 0.6)
                         .transition(.scale.combined(with: .opacity))
-                }
-                if onCooldown {
-                    Image(systemName: "shield.fill")
-                        .foregroundColor(Color(red: 0.4, green: 0.4, blue: 0.5))
-                        .font(.system(size: 14))
                 }
             }
             .padding(LTSpacing.md)
-            .background(selected ? Color(red: 0.12, green: 0.04, blue: 0.04) : Color(red: 0.06, green: 0.06, blue: 0.09))
+            .background(
+                selected
+                    ? Color(red: 0.14, green: 0.03, blue: 0.03)
+                    : Color(red: 0.06, green: 0.06, blue: 0.09)
+            )
             .clipShape(RoundedRectangle(cornerRadius: LTRadius.sm))
-            .overlay(RoundedRectangle(cornerRadius: LTRadius.sm)
-                .stroke(selected ? LTPalette.danger.opacity(0.6) : Color(red: 0.2, green: 0.2, blue: 0.28), lineWidth: 1))
+            .overlay(
+                RoundedRectangle(cornerRadius: LTRadius.sm)
+                    .stroke(
+                        selected ? LTPalette.danger.opacity(0.7) : Color(red: 0.18, green: 0.18, blue: 0.26),
+                        lineWidth: selected ? 1.5 : 1
+                    )
+            )
+            .shadow(color: selected ? LTPalette.danger.opacity(0.25) : .clear, radius: 8)
             .animation(LTAnimation.springFast, value: selected)
         }
         .disabled(onCooldown)
@@ -552,17 +883,36 @@ struct PvPRaidView: View {
                             .font(LTFont.heading(11))
                             .foregroundColor(.white)
                         Spacer()
-                        Text(r.status == .won ? "VANN" : "FÖRLORADE")
+                        Text(historyStatusLabel(r.status))
                             .font(LTFont.label(10))
-                            .foregroundColor(r.status == .won ? LTPalette.neonGreen : LTPalette.danger)
+                            .foregroundColor(historyStatusColor(r.status))
                     }
                     .padding(LTSpacing.sm + 2)
                     .background(Color(red: 0.06, green: 0.06, blue: 0.09))
                     .clipShape(RoundedRectangle(cornerRadius: LTRadius.xs))
                     .accessibilityElement(children: .combine)
-                    .accessibilityLabel("\(r.attackerName == gameState.username ? "Mot \(r.defenderName)" : "\(r.attackerName) mot dig"): \(r.status == .won ? "Vann" : "Förlorade")")
+                    .accessibilityLabel(
+                        "\(r.attackerName == gameState.username ? "Mot \(r.defenderName)" : "\(r.attackerName) mot dig"): \(historyStatusLabel(r.status))"
+                    )
                 }
             }
+        }
+    }
+
+    private func historyStatusLabel(_ status: RaidStatus) -> String {
+        switch status {
+        case .won:       return "VANN"
+        case .lost:      return "FÖRLORADE"
+        case .backfired: return "BACKFIRE"
+        default:         return status.rawValue.uppercased()
+        }
+    }
+
+    private func historyStatusColor(_ status: RaidStatus) -> Color {
+        switch status {
+        case .won:       return LTPalette.neonGreen
+        case .backfired: return LTPalette.warning
+        default:         return LTPalette.danger
         }
     }
 

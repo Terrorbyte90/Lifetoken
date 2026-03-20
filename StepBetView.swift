@@ -267,9 +267,9 @@ class StepBetManager: ObservableObject {
 // MARK: - StepBet View
 
 struct StepBetView: View {
-    @ObservedObject private var manager = StepBetManager.shared
-    @ObservedObject private var server  = ServerSync.shared
-    @ObservedObject private var engine  = TimeEngine.shared
+    @ObservedObject private var manager   = StepBetManager.shared
+    @ObservedObject private var server    = ServerSync.shared
+    @ObservedObject private var engine    = TimeEngine.shared
     @ObservedObject private var gameState = GameState.shared
     @Environment(\.dismiss) var dismiss
 
@@ -279,49 +279,43 @@ struct StepBetView: View {
     @State private var showResult: Bool = false
     @State private var groupPlayerCount: Int = 3
     @State private var isServerReachable: Bool = false
+    @State private var now: Date = Date()
+
+    // Timer för live-nedräkning
+    private let countdownTimer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
 
     var body: some View {
         NavigationStack {
             ZStack {
                 Color.black.ignoresSafeArea()
+
                 VStack(spacing: 0) {
-                    // Tab bar
+                    // Flik-bar
                     HStack(spacing: 0) {
-                        tabBtn("Aktiva", tag: 0)
-                        tabBtn("Utmaningar", tag: 1)
-                        tabBtn("Historik", tag: 2)
+                        tabBtn("AKTIVA",     tag: 0, count: manager.activeBets.count)
+                        tabBtn("VÄNTAR",     tag: 1, count: manager.pendingBets.count)
+                        tabBtn("HISTORIK",   tag: 2, count: nil)
                     }
-                    .padding(.horizontal)
-                    .padding(.top, 8)
+                    .padding(.horizontal, LTSpacing.lg)
+                    .padding(.top, LTSpacing.sm)
 
-                    Divider().background(Color(red: 0.15, green: 0.15, blue: 0.2)).padding(.top, 6)
+                    Divider()
+                        .background(Color(red: 0.15, green: 0.15, blue: 0.2))
+                        .padding(.top, 6)
 
-                    ScrollView {
-                        VStack(spacing: 14) {
-                            if selectedTab == 0 { activeBetsTab }
-                            else if selectedTab == 1 { pendingBetsTab }
-                            else { historyTab }
-
-                            // MARK: - Gruppduel section
-                            VStack(alignment: .leading, spacing: LTSpacing.md) {
-                                Text("GRUPPDUEL (3-6 SPELARE)")
-                                    .font(.system(size: 11, weight: .black, design: .monospaced))
-                                    .tracking(3)
-                                    .foregroundStyle(.secondary)
-
-                                Stepper("Antal spelare: \(groupPlayerCount)", value: $groupPlayerCount, in: 3...6)
-
-                                Button(isServerReachable ? "Starta gruppduel" : "Kräver anslutning") {
-                                    // Start group bet — requires backend
-                                }
-                                .buttonStyle(.borderedProminent)
-                                .disabled(!isServerReachable)
+                    ScrollView(showsIndicators: false) {
+                        VStack(spacing: LTSpacing.md) {
+                            switch selectedTab {
+                            case 0: activeBetsTab
+                            case 1: pendingBetsTab
+                            default: historyTab
                             }
-                            .padding(14)
-                            .background(Color(red: 0.06, green: 0.06, blue: 0.09))
-                            .clipShape(RoundedRectangle(cornerRadius: 12))
+
+                            // Gruppduel-sektion
+                            groupDuelSection
                         }
-                        .padding(16)
+                        .padding(LTSpacing.lg)
+                        .padding(.bottom, LTSpacing.scrollBottom)
                     }
                 }
             }
@@ -329,13 +323,17 @@ struct StepBetView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Stäng") { dismiss() }.foregroundColor(.white).font(.system(size: 13, design: .monospaced))
+                    Button("Stäng") { dismiss() }
+                        .foregroundColor(.white)
+                        .font(LTFont.body(13))
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button { showChallenge = true } label: {
                         Image(systemName: "plus.circle.fill")
-                            .foregroundColor(Color(red: 0.1, green: 0.9, blue: 0.5))
+                            .foregroundColor(LTPalette.neonGreen)
+                            .font(.system(size: 20))
                     }
+                    .accessibilityLabel("Ny duell")
                 }
             }
         }
@@ -346,6 +344,7 @@ struct StepBetView: View {
             Button("OK", role: .cancel) {}
         } message: { Text(challengeResult) }
         .preferredColorScheme(.dark)
+        .onReceive(countdownTimer) { t in now = t }
     }
 
     // MARK: - Aktiva bets
@@ -353,7 +352,7 @@ struct StepBetView: View {
     private var activeBetsTab: some View {
         Group {
             if manager.activeBets.isEmpty {
-                emptyState(text: "Inga aktiva dueller.\nUtmana någon i din zon.")
+                emptyState(text: "Inga aktiva dueller.\nUtmana en spelare.")
             } else {
                 ForEach(manager.activeBets) { bet in
                     activeBetCard(bet)
@@ -363,62 +362,129 @@ struct StepBetView: View {
     }
 
     private func activeBetCard(_ bet: StepBet) -> some View {
-        let myName = gameState.username
-        let mySteps = bet.challengerName == myName ? bet.challengerSteps : bet.opponentSteps
-        let theirSteps = bet.challengerName == myName ? bet.opponentSteps : bet.challengerSteps
-        let opponent = bet.challengerName == myName ? bet.opponentName : bet.challengerName
-        let leading = mySteps >= theirSteps
+        let myName      = gameState.username
+        let mySteps     = bet.challengerName == myName ? bet.challengerSteps : bet.opponentSteps
+        let theirSteps  = bet.challengerName == myName ? bet.opponentSteps : bet.challengerSteps
+        let myLabel     = myName
+        let opponentName = bet.challengerName == myName ? bet.opponentName : bet.challengerName
+        let leading     = mySteps >= theirSteps
+        let countdown   = countdownString(to: bet.deadline, from: now)
 
-        return VStack(spacing: 12) {
+        return VStack(spacing: LTSpacing.md) {
+            // Rubrik-rad
             HStack {
-                Text("VS \(opponent.uppercased())")
-                    .font(.system(size: 13, weight: .bold, design: .monospaced))
-                    .foregroundColor(.white)
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: LTSpacing.xs) {
+                        Text(myLabel.uppercased())
+                            .font(LTFont.heading(13))
+                            .foregroundColor(.white)
+                        Text("VS")
+                            .font(LTFont.label(10))
+                            .foregroundColor(Color(red: 0.5, green: 0.5, blue: 0.55))
+                        Text(opponentName.uppercased())
+                            .font(LTFont.heading(13))
+                            .foregroundColor(.white)
+                    }
+                    Text("Insats: \(TimeEngine.shortFormatted(bet.stake))")
+                        .font(LTFont.body(10))
+                        .foregroundColor(LTPalette.gold)
+                }
                 Spacer()
-                Text("INSATS: \(TimeEngine.shortFormatted(bet.stake))")
-                    .font(.system(size: 11, design: .monospaced))
-                    .foregroundColor(Color(red: 0.9, green: 0.7, blue: 0.1))
+                // Statusbadge
+                statusBadge(.active)
+            }
+
+            // Steg-display — stora siffror
+            HStack(alignment: .bottom) {
+                // Mina steg
+                VStack(spacing: 2) {
+                    Text("\(mySteps)")
+                        .font(LTFont.value(34))
+                        .foregroundColor(leading ? LTPalette.neonGreen : LTPalette.danger)
+                        .contentTransition(.numericText())
+                    Text(myLabel)
+                        .font(LTFont.caption(9))
+                        .foregroundColor(Color(red: 0.5, green: 0.5, blue: 0.55))
+                        .lineLimit(1)
+                }
+                .frame(maxWidth: .infinity)
+
+                // VS-separator
+                VStack(spacing: 4) {
+                    Image(systemName: "figure.walk")
+                        .font(.system(size: 18))
+                        .foregroundColor(Color(red: 0.4, green: 0.4, blue: 0.5))
+                    Text("STEG")
+                        .font(LTFont.caption(8))
+                        .foregroundColor(Color(red: 0.4, green: 0.4, blue: 0.5))
+                }
+
+                // Motståndarens steg
+                VStack(spacing: 2) {
+                    Text("\(theirSteps)")
+                        .font(LTFont.value(34))
+                        .foregroundColor(leading ? LTPalette.danger : LTPalette.neonGreen)
+                        .contentTransition(.numericText())
+                    Text(opponentName)
+                        .font(LTFont.caption(9))
+                        .foregroundColor(Color(red: 0.5, green: 0.5, blue: 0.55))
+                        .lineLimit(1)
+                }
+                .frame(maxWidth: .infinity)
             }
 
             // Progress-bar
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
                     RoundedRectangle(cornerRadius: 4)
-                        .fill(Color(red: 0.15, green: 0.15, blue: 0.2))
-                        .frame(height: 8)
+                        .fill(Color(red: 0.12, green: 0.12, blue: 0.18))
+                        .frame(height: 6)
                     let total = max(Double(mySteps + theirSteps), 1)
                     RoundedRectangle(cornerRadius: 4)
-                        .fill(leading ? Color(red: 0.1, green: 0.9, blue: 0.5) : Color(red: 0.9, green: 0.3, blue: 0.1))
-                        .frame(width: geo.size.width * CGFloat(mySteps) / CGFloat(total), height: 8)
+                        .fill(
+                            LinearGradient(
+                                colors: leading
+                                    ? [LTPalette.neonGreen, LTPalette.neonGreenDim]
+                                    : [LTPalette.danger, Color(red: 0.7, green: 0.1, blue: 0.1)],
+                                startPoint: .leading, endPoint: .trailing
+                            )
+                        )
+                        .frame(width: geo.size.width * CGFloat(mySteps) / CGFloat(total), height: 6)
+                        .animation(LTAnimation.springSmooth, value: mySteps)
                 }
             }
-            .frame(height: 8)
+            .frame(height: 6)
 
+            // Nedräkning
             HStack {
-                stepPill(steps: mySteps, label: "Du", leading: leading)
+                Image(systemName: "clock.fill")
+                    .font(.system(size: 10))
+                    .foregroundColor(Color(red: 0.5, green: 0.5, blue: 0.55))
+                Text(countdown)
+                    .font(LTFont.body(11))
+                    .foregroundColor(Color(red: 0.55, green: 0.55, blue: 0.6))
                 Spacer()
-                Text("Deadline \(bet.formattedDeadline)")
-                    .font(.system(size: 10, design: .monospaced))
-                    .foregroundColor(Color(red: 0.5, green: 0.5, blue: 0.5))
-                Spacer()
-                stepPill(steps: theirSteps, label: opponent, leading: !leading)
+                Text(leading ? "DU LEDER" : "DU FÖRLORAR")
+                    .font(LTFont.label(10))
+                    .foregroundColor(leading ? LTPalette.neonGreen : LTPalette.danger)
+                    .tracking(1)
             }
         }
-        .padding(14)
+        .padding(LTSpacing.lg)
         .background(Color(red: 0.06, green: 0.06, blue: 0.09))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-        .overlay(RoundedRectangle(cornerRadius: 12).stroke(leading ? Color(red: 0.1, green: 0.5, blue: 0.2) : Color(red: 0.5, green: 0.15, blue: 0.1), lineWidth: 1))
-    }
-
-    private func stepPill(steps: Int, label: String, leading: Bool) -> some View {
-        VStack(spacing: 2) {
-            Text("\(steps)")
-                .font(.system(size: 16, weight: .bold, design: .monospaced))
-                .foregroundColor(leading ? Color(red: 0.1, green: 0.9, blue: 0.5) : Color(red: 0.9, green: 0.3, blue: 0.1))
-            Text(label)
-                .font(.system(size: 9, design: .monospaced))
-                .foregroundColor(Color(red: 0.5, green: 0.5, blue: 0.5))
-        }
+        .clipShape(RoundedRectangle(cornerRadius: LTRadius.sm))
+        .overlay(
+            RoundedRectangle(cornerRadius: LTRadius.sm)
+                .stroke(
+                    leading
+                        ? LTPalette.neonGreen.opacity(0.25)
+                        : LTPalette.danger.opacity(0.25),
+                    lineWidth: 1
+                )
+        )
+        .shadow(color: leading ? LTPalette.neonGreen.opacity(0.08) : LTPalette.danger.opacity(0.08), radius: 10)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Duell mot \(opponentName): \(mySteps) vs \(theirSteps) steg. \(countdown) kvar.")
     }
 
     // MARK: - Pending bets
@@ -437,49 +503,70 @@ struct StepBetView: View {
 
     private func pendingBetCard(_ bet: StepBet) -> some View {
         let isChallenger = bet.challengerName == gameState.username
-        return VStack(spacing: 10) {
-            HStack {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(isChallenger ? "Du utmanade \(bet.opponentName)" : "\(bet.challengerName) utmanar dig")
-                        .font(.system(size: 13, weight: .bold, design: .monospaced))
-                        .foregroundColor(.white)
-                    Text("Insats: \(TimeEngine.shortFormatted(bet.stake)) • \(bet.formattedDeadline)")
-                        .font(.system(size: 10, design: .monospaced))
+        return VStack(spacing: LTSpacing.md) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: LTSpacing.xs) {
+                        Text(bet.challengerName.uppercased())
+                            .font(LTFont.heading(13))
+                            .foregroundColor(isChallenger ? LTPalette.neonGreen : .white)
+                        Text("VS")
+                            .font(LTFont.label(10))
+                            .foregroundColor(Color(red: 0.5, green: 0.5, blue: 0.55))
+                        Text(bet.opponentName.uppercased())
+                            .font(LTFont.heading(13))
+                            .foregroundColor(!isChallenger ? LTPalette.neonGreen : .white)
+                    }
+                    Text("Insats: \(TimeEngine.shortFormatted(bet.stake))  •  Deadline: \(bet.formattedDeadline)")
+                        .font(LTFont.body(10))
                         .foregroundColor(Color(red: 0.5, green: 0.5, blue: 0.55))
                 }
                 Spacer()
+                statusBadge(.pending)
             }
+
             if !isChallenger {
-                HStack(spacing: 10) {
+                HStack(spacing: LTSpacing.sm) {
                     Button {
                         manager.acceptBet(betId: bet.id) { _ in }
                     } label: {
                         Text("ACCEPTERA")
-                            .font(.system(size: 12, weight: .bold, design: .monospaced))
+                            .font(LTFont.heading(12))
                             .foregroundColor(.black)
                             .frame(maxWidth: .infinity)
-                            .padding(.vertical, 9)
-                            .background(Color(red: 0.1, green: 0.9, blue: 0.5))
-                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                            .padding(.vertical, LTSpacing.sm + 2)
+                            .background(LTPalette.neonGreen)
+                            .clipShape(RoundedRectangle(cornerRadius: LTRadius.xs))
                     }
+                    .buttonStyle(LTPressEffect())
+
                     Button {
                         manager.declineBet(betId: bet.id)
                     } label: {
                         Text("AVBÖJ")
-                            .font(.system(size: 12, weight: .bold, design: .monospaced))
+                            .font(LTFont.heading(12))
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
-                            .padding(.vertical, 9)
+                            .padding(.vertical, LTSpacing.sm + 2)
                             .background(Color(red: 0.15, green: 0.15, blue: 0.2))
-                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                            .clipShape(RoundedRectangle(cornerRadius: LTRadius.xs))
                     }
+                    .buttonStyle(LTPressEffect())
                 }
+            } else {
+                Text("Väntar på att \(bet.opponentName) accepterar...")
+                    .font(LTFont.body(11))
+                    .foregroundColor(Color(red: 0.5, green: 0.5, blue: 0.55))
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
-        .padding(14)
+        .padding(LTSpacing.lg)
         .background(Color(red: 0.06, green: 0.06, blue: 0.09))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color(red: 0.3, green: 0.3, blue: 0.4), lineWidth: 1))
+        .clipShape(RoundedRectangle(cornerRadius: LTRadius.sm))
+        .overlay(
+            RoundedRectangle(cornerRadius: LTRadius.sm)
+                .stroke(Color(red: 0.25, green: 0.25, blue: 0.35), lineWidth: 1)
+        )
     }
 
     // MARK: - History
@@ -497,49 +584,182 @@ struct StepBetView: View {
     }
 
     private func historyCard(_ bet: StepBet) -> some View {
-        let won = bet.winnerName == gameState.username
-        return HStack {
+        let myName  = gameState.username
+        let won     = bet.winnerName == myName
+        let oppName = bet.challengerName == myName ? bet.opponentName : bet.challengerName
+        let mySteps = bet.challengerName == myName ? bet.challengerSteps : bet.opponentSteps
+        let opSteps = bet.challengerName == myName ? bet.opponentSteps : bet.challengerSteps
+
+        return HStack(spacing: LTSpacing.md) {
+            // Resultatsymbol
+            ZStack {
+                Circle()
+                    .fill(won ? LTPalette.neonGreen.opacity(0.15) : LTPalette.danger.opacity(0.15))
+                    .frame(width: 40, height: 40)
+                Image(systemName: won ? "trophy.fill" : "xmark")
+                    .font(.system(size: 16))
+                    .foregroundColor(won ? LTPalette.neonGreen : LTPalette.danger)
+            }
+
             VStack(alignment: .leading, spacing: 3) {
-                Text("VS \(bet.challengerName == gameState.username ? bet.opponentName : bet.challengerName)")
-                    .font(.system(size: 12, weight: .bold, design: .monospaced))
+                Text("VS \(oppName.uppercased())")
+                    .font(LTFont.heading(12))
                     .foregroundColor(.white)
-                Text("\(bet.challengerSteps) vs \(bet.opponentSteps) steg")
-                    .font(.system(size: 10, design: .monospaced))
+                Text("\(mySteps) vs \(opSteps) steg")
+                    .font(LTFont.body(10))
                     .foregroundColor(Color(red: 0.5, green: 0.5, blue: 0.55))
             }
+
             Spacer()
-            Text(won ? "VANN" : "FÖRLORADE")
-                .font(.system(size: 11, weight: .bold, design: .monospaced))
-                .foregroundColor(won ? Color(red: 0.1, green: 0.9, blue: 0.5) : Color(red: 0.9, green: 0.3, blue: 0.1))
+
+            VStack(alignment: .trailing, spacing: 2) {
+                Text(won ? "VANN" : "FÖRLORADE")
+                    .font(LTFont.label(11))
+                    .foregroundColor(won ? LTPalette.neonGreen : LTPalette.danger)
+                Text(TimeEngine.shortFormatted(bet.stake))
+                    .font(LTFont.body(10))
+                    .foregroundColor(LTPalette.gold.opacity(0.8))
+            }
         }
-        .padding(12)
+        .padding(LTSpacing.md)
         .background(Color(red: 0.06, green: 0.06, blue: 0.09))
-        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .clipShape(RoundedRectangle(cornerRadius: LTRadius.sm))
+        .overlay(
+            RoundedRectangle(cornerRadius: LTRadius.sm)
+                .stroke(
+                    won ? LTPalette.neonGreen.opacity(0.15) : LTPalette.danger.opacity(0.15),
+                    lineWidth: 1
+                )
+        )
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Mot \(oppName): \(mySteps) mot \(opSteps) steg. \(won ? "Vann" : "Förlorade").")
     }
 
-    private func tabBtn(_ title: String, tag: Int) -> some View {
+    // MARK: - Gruppduel-sektion
+
+    private var groupDuelSection: some View {
+        VStack(alignment: .leading, spacing: LTSpacing.md) {
+            Text("GRUPPDUEL")
+                .font(LTFont.label(9))
+                .foregroundColor(Color(red: 0.5, green: 0.5, blue: 0.55))
+                .tracking(2)
+
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("3–6 spelare")
+                        .font(LTFont.heading(13))
+                        .foregroundColor(.white)
+                    Text("Kräver serveranslutning")
+                        .font(LTFont.body(10))
+                        .foregroundColor(Color(red: 0.5, green: 0.5, blue: 0.55))
+                }
+                Spacer()
+                Stepper("", value: $groupPlayerCount, in: 3...6)
+                    .labelsHidden()
+                Text("\(groupPlayerCount)")
+                    .font(LTFont.value(20))
+                    .foregroundColor(.white)
+                    .frame(width: 28)
+            }
+
+            Button(isServerReachable ? "Starta gruppduel" : "Kräver anslutning") {
+                // Kräver backend-stöd
+            }
+            .font(LTFont.heading(13))
+            .foregroundColor(isServerReachable ? .black : Color(red: 0.4, green: 0.4, blue: 0.45))
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, LTSpacing.sm + 2)
+            .background(isServerReachable ? LTPalette.neonGreen : Color(red: 0.15, green: 0.15, blue: 0.2))
+            .clipShape(RoundedRectangle(cornerRadius: LTRadius.xs))
+            .disabled(!isServerReachable)
+        }
+        .padding(LTSpacing.lg)
+        .background(Color(red: 0.06, green: 0.06, blue: 0.09))
+        .clipShape(RoundedRectangle(cornerRadius: LTRadius.sm))
+        .overlay(
+            RoundedRectangle(cornerRadius: LTRadius.sm)
+                .stroke(Color(red: 0.18, green: 0.18, blue: 0.26), lineWidth: 1)
+        )
+    }
+
+    // MARK: - Hjälpkomponenter
+
+    private func tabBtn(_ title: String, tag: Int, count: Int?) -> some View {
         Button { selectedTab = tag } label: {
-            Text(title)
-                .font(.system(size: 11, weight: .bold, design: .monospaced))
-                .foregroundColor(selectedTab == tag ? .white : Color(red: 0.45, green: 0.45, blue: 0.5))
-                .frame(maxWidth: .infinity)
-                .padding(.bottom, 6)
-                .overlay(
-                    Rectangle()
-                        .frame(height: 2)
-                        .foregroundColor(selectedTab == tag ? Color(red: 0.1, green: 0.9, blue: 0.5) : .clear),
-                    alignment: .bottom
-                )
+            VStack(spacing: 4) {
+                HStack(spacing: 4) {
+                    Text(title)
+                        .font(LTFont.label(11))
+                        .foregroundColor(selectedTab == tag ? .white : Color(red: 0.45, green: 0.45, blue: 0.5))
+                    if let n = count, n > 0 {
+                        Text("\(n)")
+                            .font(LTFont.caption(8))
+                            .foregroundColor(selectedTab == tag ? .black : .white)
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 2)
+                            .background(selectedTab == tag ? LTPalette.neonGreen : Color(red: 0.3, green: 0.3, blue: 0.4))
+                            .clipShape(Capsule())
+                    }
+                }
+                Rectangle()
+                    .frame(height: 2)
+                    .foregroundColor(selectedTab == tag ? LTPalette.neonGreen : .clear)
+                    .padding(.bottom, 4)
+            }
+            .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(.plain)
+    }
+
+    @ViewBuilder
+    private func statusBadge(_ status: BetStatus) -> some View {
+        let (label, color): (String, Color) = {
+            switch status {
+            case .pending:  return ("VÄNTAR",  LTPalette.warning)
+            case .active:   return ("AKTIV",   LTPalette.neonGreen)
+            case .settled:  return ("AVGJORD", Color(red: 0.5, green: 0.5, blue: 0.6))
+            case .declined: return ("AVBÖJD",  LTPalette.danger)
+            }
+        }()
+
+        Text(label)
+            .font(LTFont.caption(8))
+            .foregroundColor(color)
+            .tracking(1)
+            .padding(.horizontal, LTSpacing.sm)
+            .padding(.vertical, 3)
+            .background(color.opacity(0.15))
+            .clipShape(Capsule())
+            .overlay(Capsule().stroke(color.opacity(0.4), lineWidth: 1))
+    }
+
+    private func countdownString(to deadline: Date, from now: Date) -> String {
+        let remaining = deadline.timeIntervalSince(now)
+        guard remaining > 0 else { return "Utgången" }
+        let days    = Int(remaining) / 86400
+        let hours   = (Int(remaining) % 86400) / 3600
+        let minutes = (Int(remaining) % 3600) / 60
+        if days > 0 {
+            return "\(days)d \(hours)h \(minutes)m kvar"
+        } else if hours > 0 {
+            return "\(hours)h \(minutes)m kvar"
+        } else {
+            return "\(minutes)m kvar"
         }
     }
 
     private func emptyState(text: String) -> some View {
-        Text(text)
-            .font(.system(size: 12, design: .monospaced))
-            .foregroundColor(Color(red: 0.4, green: 0.4, blue: 0.45))
-            .multilineTextAlignment(.center)
-            .frame(maxWidth: .infinity)
-            .padding(.top, 60)
+        VStack(spacing: LTSpacing.md) {
+            Image(systemName: "figure.walk.circle")
+                .font(.system(size: 36))
+                .foregroundColor(Color(red: 0.3, green: 0.3, blue: 0.4))
+            Text(text)
+                .font(LTFont.body(13))
+                .foregroundColor(Color(red: 0.4, green: 0.4, blue: 0.45))
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.top, 60)
     }
 }
 
@@ -548,8 +768,8 @@ struct StepBetView: View {
 struct CreateChallengeSheet: View {
     @Binding var result: String
     @Binding var showResult: Bool
-    @ObservedObject private var server  = ServerSync.shared
-    @ObservedObject private var engine  = TimeEngine.shared
+    @ObservedObject private var server    = ServerSync.shared
+    @ObservedObject private var engine    = TimeEngine.shared
     @ObservedObject private var gameState = GameState.shared
     @Environment(\.dismiss) var dismiss
 
@@ -561,21 +781,22 @@ struct CreateChallengeSheet: View {
     private var maxStakeHours: Double {
         let secs = StepBetManager.shared.maxStake(for: gameState.currentZone)
         let hours = secs == .infinity ? 24.0 : secs / 3600
-        return max(0.5, hours)   // must be >= lower(0.25) + step(0.25) to avoid stride crash
+        return max(0.5, hours)
     }
 
     var body: some View {
         NavigationStack {
             ZStack {
                 Color.black.ignoresSafeArea()
-                ScrollView {
-                    VStack(spacing: 20) {
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: LTSpacing.xl) {
+
                         // Välj motståndare
-                        VStack(alignment: .leading, spacing: 8) {
+                        VStack(alignment: .leading, spacing: LTSpacing.sm) {
                             sectionHeader("VÄLJ MOTSTÅNDARE")
                             if server.zoneMembers.isEmpty {
                                 Text("Inga spelare i din zon just nu.")
-                                    .font(.system(size: 12, design: .monospaced))
+                                    .font(LTFont.body(12))
                                     .foregroundColor(Color(red: 0.4, green: 0.4, blue: 0.45))
                             } else {
                                 ForEach(server.zoneMembers.filter { $0.username != gameState.username }) { member in
@@ -585,22 +806,25 @@ struct CreateChallengeSheet: View {
                         }
 
                         // Insats
-                        VStack(alignment: .leading, spacing: 8) {
+                        VStack(alignment: .leading, spacing: LTSpacing.sm) {
                             sectionHeader("INSATS: \(TimeEngine.shortFormatted(stakeHours * 3600))")
                             Slider(value: $stakeHours, in: 0.25...maxStakeHours, step: 0.25)
-                                .tint(Color(red: 0.1, green: 0.9, blue: 0.5))
+                                .tint(LTPalette.neonGreen)
                             HStack {
-                                Text("15 min").font(.system(size: 9, design: .monospaced)).foregroundColor(.gray)
+                                Text("15 min")
+                                    .font(LTFont.caption(9))
+                                    .foregroundColor(.gray)
                                 Spacer()
                                 Text("Max \(TimeEngine.shortFormatted(maxStakeHours * 3600))")
-                                    .font(.system(size: 9, design: .monospaced)).foregroundColor(.gray)
+                                    .font(LTFont.caption(9))
+                                    .foregroundColor(.gray)
                             }
                         }
 
-                        // Deadline
-                        VStack(alignment: .leading, spacing: 8) {
+                        // Deadline — varaktighet 1-7 dagar
+                        VStack(alignment: .leading, spacing: LTSpacing.sm) {
                             sectionHeader("DEADLINE")
-                            HStack(spacing: 10) {
+                            HStack(spacing: LTSpacing.sm) {
                                 ForEach(BetDeadline.allCases, id: \.self) { d in
                                     deadlineBtn(d)
                                 }
@@ -630,27 +854,42 @@ struct CreateChallengeSheet: View {
                                 }
                             }
                         } label: {
-                            Text(sending ? "SKICKAR..." : "SKICKA UTMANING")
-                                .font(.system(size: 14, weight: .bold, design: .monospaced))
-                                .foregroundColor(.black)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 16)
-                                .background(selectedOpponent != nil && stakeHours * 3600 <= engine.balance
-                                            ? Color(red: 0.1, green: 0.9, blue: 0.5)
-                                            : Color(red: 0.3, green: 0.3, blue: 0.35))
+                            HStack(spacing: LTSpacing.xs) {
+                                if sending {
+                                    ProgressView()
+                                        .tint(.black)
+                                        .scaleEffect(0.8)
+                                } else {
+                                    Image(systemName: "figure.walk")
+                                }
+                                Text(sending ? "SKICKAR..." : "SKICKA UTMANING")
+                                    .font(LTFont.heading(14))
+                            }
+                            .foregroundColor(.black)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, LTSpacing.lg)
+                            .background(
+                                selectedOpponent != nil && stakeHours * 3600 <= engine.balance
+                                    ? LTPalette.neonGreen
+                                    : Color(red: 0.3, green: 0.3, blue: 0.35)
+                            )
+                            .clipShape(RoundedRectangle(cornerRadius: LTRadius.sm))
                         }
                         .disabled(selectedOpponent == nil || stakeHours * 3600 > engine.balance || sending)
+                        .buttonStyle(LTPressEffect())
 
-                        Spacer(minLength: 40)
+                        Spacer(minLength: LTSpacing.xxxl)
                     }
-                    .padding(16)
+                    .padding(LTSpacing.lg)
                 }
             }
             .navigationTitle("NY DUELL")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Avbryt") { dismiss() }.foregroundColor(.white)
+                    Button("Avbryt") { dismiss() }
+                        .foregroundColor(.white)
+                        .font(LTFont.body(13))
                 }
             }
         }
@@ -660,50 +899,77 @@ struct CreateChallengeSheet: View {
     private func opponentRow(_ member: ServerUser) -> some View {
         let selected = selectedOpponent?.id == member.id
         return Button { selectedOpponent = member } label: {
-            HStack {
+            HStack(spacing: LTSpacing.md) {
+                ZStack {
+                    Circle()
+                        .fill(selected
+                              ? LTPalette.neonGreen.opacity(0.2)
+                              : Color(red: 0.1, green: 0.1, blue: 0.15))
+                        .frame(width: 36, height: 36)
+                    Image(systemName: "person.fill")
+                        .font(.system(size: 14))
+                        .foregroundColor(selected ? LTPalette.neonGreen : .white.opacity(0.6))
+                }
                 Text(member.username)
-                    .font(.system(size: 13, weight: .bold, design: .monospaced))
+                    .font(LTFont.heading(13))
                     .foregroundColor(.white)
                 Spacer()
                 if selected {
                     Image(systemName: "checkmark.circle.fill")
-                        .foregroundColor(Color(red: 0.1, green: 0.9, blue: 0.5))
+                        .foregroundColor(LTPalette.neonGreen)
+                        .font(.system(size: 18))
+                        .transition(.scale.combined(with: .opacity))
                 }
             }
-            .padding(12)
-            .background(selected ? Color(red: 0.05, green: 0.15, blue: 0.08) : Color(red: 0.06, green: 0.06, blue: 0.09))
-            .clipShape(RoundedRectangle(cornerRadius: 10))
-            .overlay(RoundedRectangle(cornerRadius: 10).stroke(selected ? Color(red: 0.1, green: 0.6, blue: 0.2) : Color(red: 0.2, green: 0.2, blue: 0.28), lineWidth: 1))
+            .padding(LTSpacing.md)
+            .background(selected ? Color(red: 0.04, green: 0.12, blue: 0.07) : Color(red: 0.06, green: 0.06, blue: 0.09))
+            .clipShape(RoundedRectangle(cornerRadius: LTRadius.sm))
+            .overlay(
+                RoundedRectangle(cornerRadius: LTRadius.sm)
+                    .stroke(
+                        selected ? LTPalette.neonGreen.opacity(0.5) : Color(red: 0.2, green: 0.2, blue: 0.28),
+                        lineWidth: selected ? 1.5 : 1
+                    )
+            )
+            .animation(LTAnimation.springFast, value: selected)
         }
+        .buttonStyle(LTPressEffect())
+        .accessibilityLabel(member.username)
+        .accessibilityHint(selected ? "Vald motståndare" : "Välj som motståndare")
     }
 
     private func deadlineBtn(_ d: BetDeadline) -> some View {
         let sel = selectedDeadline == d
         return Button { selectedDeadline = d } label: {
             Text(d.rawValue)
-                .font(.system(size: 12, weight: .bold, design: .monospaced))
+                .font(LTFont.heading(12))
                 .foregroundColor(sel ? .black : .white)
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 10)
-                .background(sel ? Color(red: 0.1, green: 0.9, blue: 0.5) : Color(red: 0.1, green: 0.1, blue: 0.15))
-                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .padding(.vertical, LTSpacing.sm + 2)
+                .background(sel ? LTPalette.neonGreen : Color(red: 0.1, green: 0.1, blue: 0.15))
+                .clipShape(RoundedRectangle(cornerRadius: LTRadius.xs))
         }
+        .buttonStyle(LTPressEffect())
     }
 
     private func sectionHeader(_ text: String) -> some View {
         Text(text)
-            .font(.system(size: 9, weight: .bold, design: .monospaced))
+            .font(LTFont.label(9))
             .foregroundColor(Color(red: 0.5, green: 0.5, blue: 0.55))
             .tracking(2)
     }
 
     private func warningRow(_ text: String) -> some View {
-        HStack {
-            Image(systemName: "exclamationmark.triangle.fill").foregroundColor(.red)
-            Text(text).font(.system(size: 11, design: .monospaced)).foregroundColor(.red)
+        HStack(spacing: LTSpacing.sm) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .foregroundColor(LTPalette.danger)
+            Text(text)
+                .font(LTFont.body(11))
+                .foregroundColor(LTPalette.danger)
         }
-        .padding(10)
-        .background(Color.red.opacity(0.1))
-        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .padding(LTSpacing.md)
+        .background(LTPalette.danger.opacity(0.1))
+        .clipShape(RoundedRectangle(cornerRadius: LTRadius.xs))
+        .overlay(RoundedRectangle(cornerRadius: LTRadius.xs).stroke(LTPalette.danger.opacity(0.3), lineWidth: 1))
     }
 }
