@@ -149,6 +149,8 @@ struct CasinoHubView: View {
             ).ignoresSafeArea()
 
             VStack(spacing: 0) {
+                Spacer().frame(height: 80)
+
                 CasinoVideoCard()
                     .frame(height: 220)
                     .clipShape(RoundedRectangle(cornerRadius: 16))

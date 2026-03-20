@@ -41,47 +41,38 @@ struct PlayingCardView: View {
     }
 
     private var faceUpCard: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: large ? 10 : 7)
-                .fill(Color.white)
-                .shadow(color: .black.opacity(0.7), radius: 5, y: 3)
-                .shadow(color: isRed ? Color.red.opacity(0.15) : .clear, radius: 6)
+        let w: CGFloat = large ? 64 : 40
+        let h: CGFloat = large ? 90 : 56
+        let r: CGFloat = large ? 10 : 7
+        let p: CGFloat = large ? 4 : 3
+        let rankFont = Font.system(size: large ? 14 : 9, weight: .bold)
+        let suitSmall = Font.system(size: large ? 11 : 7)
+        let suitCenter = Font.system(size: large ? 24 : 15)
+        let cardColor = isRed ? Color.red : Color(white: 0.08)
 
-            VStack(spacing: 0) {
-                HStack {
-                    VStack(spacing: -2) {
-                        Text(rank)
-                            .font(.system(size: large ? 16 : 10, weight: .bold, design: .default))
-                            .foregroundColor(isRed ? .red : Color(white: 0.08))
-                        Text(suit)
-                            .font(.system(size: large ? 12 : 8))
-                            .foregroundColor(isRed ? .red : Color(white: 0.08))
-                    }
-                    Spacer()
+        return RoundedRectangle(cornerRadius: r)
+            .fill(Color.white)
+            .frame(width: w, height: h)
+            .shadow(color: .black.opacity(0.7), radius: 5, y: 3)
+            .overlay(alignment: .topLeading) {
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(rank).font(rankFont).foregroundColor(cardColor).lineLimit(1)
+                    Text(suit).font(suitSmall).foregroundColor(cardColor).lineLimit(1)
                 }
-                Spacer()
-                Text(suit)
-                    .font(.system(size: large ? 28 : 18))
-                    .foregroundColor(isRed ? .red : Color(white: 0.08))
-                Spacer()
-                HStack {
-                    Spacer()
-                    VStack(spacing: -2) {
-                        Text(suit)
-                            .font(.system(size: large ? 12 : 8))
-                            .foregroundColor(isRed ? .red : Color(white: 0.08))
-                        Text(rank)
-                            .font(.system(size: large ? 16 : 10, weight: .bold, design: .default))
-                            .foregroundColor(isRed ? .red : Color(white: 0.08))
-                    }
-                    .rotationEffect(.degrees(180))
-                }
+                .padding(p)
             }
-            .padding(large ? 5 : 3)
-            .frame(width: large ? 64 : 40, height: large ? 90 : 56)
-        }
-        .frame(width: large ? 64 : 40, height: large ? 90 : 56)
-        .clipShape(RoundedRectangle(cornerRadius: large ? 10 : 7))
+            .overlay {
+                Text(suit).font(suitCenter).foregroundColor(cardColor)
+            }
+            .overlay(alignment: .bottomTrailing) {
+                VStack(alignment: .trailing, spacing: 0) {
+                    Text(suit).font(suitSmall).foregroundColor(cardColor).lineLimit(1)
+                    Text(rank).font(rankFont).foregroundColor(cardColor).lineLimit(1)
+                }
+                .rotationEffect(.degrees(180))
+                .padding(p)
+            }
+            .clipShape(RoundedRectangle(cornerRadius: r))
     }
 }
 
