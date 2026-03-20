@@ -13,6 +13,40 @@ class TimeEngine: ObservableObject {
     @Published var cheatingDetected: Bool = false
     @Published private(set) var cryoSleepActive: Bool = false
 
+    // Dödsläge — transient flagga som förhindrar att recordDeath anropas flera gånger per session
+    @Published var hasDied: Bool = false
+
+    // MARK: - Dödsläge — UserDefaults-nycklar
+    static let deathTimestampKey = "lt_death_timestamp"
+    static let deathUsernameKey  = "lt_death_username"
+
+    /// Sant om spelaren dog inom de senaste 24 timmarna
+    var isDead: Bool {
+        guard let ts = UserDefaults.standard.object(forKey: TimeEngine.deathTimestampKey) as? Date else { return false }
+        return Date().timeIntervalSince(ts) < 86400
+    }
+
+    /// Återstående tid (sekunder) tills spelaren kan återuppstå
+    var timeUntilRebirth: TimeInterval {
+        guard let ts = UserDefaults.standard.object(forKey: TimeEngine.deathTimestampKey) as? Date else { return 0 }
+        return max(0, 86400 - Date().timeIntervalSince(ts))
+    }
+
+    /// Registrerar spelarens död — sparar tidsstämpel och postar till nyhetsflödet
+    func recordDeath() {
+        let username = UserDefaults.standard.string(forKey: "username") ?? "Okänd"
+        UserDefaults.standard.set(Date(), forKey: TimeEngine.deathTimestampKey)
+        UserDefaults.standard.set(username, forKey: TimeEngine.deathUsernameKey)
+        NewsManager.shared.addPlayerDeathEvent(username: username)
+    }
+
+    /// Rensar dödsläget — anropas när spelaren återuppstår
+    func clearDeath() {
+        UserDefaults.standard.removeObject(forKey: TimeEngine.deathTimestampKey)
+        hasDied = false
+        isTimedOut = false
+    }
+
     private let service = "com.lifetoken.engine"
     private let balanceKey = "lifetoken_balance_v2"
     private let lastSyncKey = "lifetoken_lastsync_v2"
@@ -115,6 +149,8 @@ class TimeEngine: ObservableObject {
         let drained = elapsed * currentDrainRate
         balance = max(0, savedBalance - drained)
         isTimedOut = balance <= 0
+        // Synka hasDied med det persisterade dödsläget
+        if isDead { hasDied = true }
     }
 
     // MARK: - Tick
@@ -129,6 +165,11 @@ class TimeEngine: ObservableObject {
                 let drain = self.currentDrainRate
                 self.balance = max(0, self.balance - drain)
                 self.isTimedOut = self.balance <= 0
+                // Utlös dödsregistrering första gången saldot når noll
+                if self.balance <= 0 && !self.hasDied && !self.isDead {
+                    self.hasDied = true
+                    self.recordDeath()
+                }
                 // Save every 30 seconds to avoid excessive Keychain writes
                 if Int(self.balance) % 30 == 0 {
                     self.saveToKeychain(balance: self.balance, timestamp: Date())
