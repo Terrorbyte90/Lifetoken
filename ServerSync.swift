@@ -1,6 +1,6 @@
 import Foundation
 import Security
-import UIKit
+import UIKit  // needed for UIDevice
 import CryptoKit
 
 struct AuthResponse: Codable {

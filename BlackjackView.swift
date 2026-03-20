@@ -286,7 +286,8 @@ struct BlackjackView: View {
             }
 
             HStack(spacing: 10) {
-                ForEach(Array(dealerCards.enumerated()), id: \.offset) { idx, card in
+                ForEach(dealerCards.indices, id: \.self) { idx in
+                    let card = dealerCards[idx]
                     if idx == 1 && dealerHidden {
                         PlayingCardView(rank: "?", suit: "?", faceDown: true, large: true, flipped: true)
                     } else {

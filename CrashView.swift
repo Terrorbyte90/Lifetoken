@@ -215,66 +215,56 @@ struct CrashView: View {
 
     // MARK: - Kraschgraf
 
+    private func gridPath(size: CGSize) -> Path {
+        var path = Path()
+        let w = size.width; let h = size.height
+        for i in 0...4 {
+            let y = h - (h * Double(i) / 4)
+            path.move(to: CGPoint(x: 0, y: y)); path.addLine(to: CGPoint(x: w, y: y))
+        }
+        for i in 0...4 {
+            let x = w * Double(i) / 4
+            path.move(to: CGPoint(x: x, y: 0)); path.addLine(to: CGPoint(x: x, y: h))
+        }
+        return path
+    }
+
+    private func crashLinePath(size: CGSize) -> Path {
+        var path = Path()
+        guard pathPoints.count > 1 else { return path }
+        let w = size.width; let h = size.height
+        let maxX = max(elapsed, 1); let maxY = max(multiplier, 2)
+        let first = pathPoints[0]
+        path.move(to: CGPoint(x: first.x / maxX * w, y: h - first.y / maxY * h))
+        for pt in pathPoints.dropFirst() {
+            path.addLine(to: CGPoint(x: pt.x / maxX * w, y: h - pt.y / maxY * h))
+        }
+        return path
+    }
+
+    private func cashOutY(height: CGFloat) -> CGFloat {
+        let maxY = max(multiplier, 2)
+        return height - cashedOutMultiplier / maxY * height
+    }
+
     private var crashGraph: some View {
         GeometryReader { geo in
             ZStack(alignment: .bottomLeading) {
-                // Bakgrundsgrid
-                Path { path in
-                    let w = geo.size.width
-                    let h = geo.size.height
-                    for i in 0...4 {
-                        let y = h - (h * Double(i) / 4)
-                        path.move(to: CGPoint(x: 0, y: y))
-                        path.addLine(to: CGPoint(x: w, y: y))
-                    }
-                    for i in 0...4 {
-                        let x = w * Double(i) / 4
-                        path.move(to: CGPoint(x: x, y: 0))
-                        path.addLine(to: CGPoint(x: x, y: h))
-                    }
-                }
-                .stroke(Color.white.opacity(0.04), lineWidth: 1)
+                gridPath(size: geo.size)
+                    .stroke(Color.white.opacity(0.04), lineWidth: 1)
 
-                // Neongrön krasch-linje
                 if pathPoints.count > 1 {
-                    Path { path in
-                        let w = geo.size.width
-                        let h = geo.size.height
-                        let maxX = max(elapsed, 1)
-                        let maxY = max(multiplier, 2)
-
-                        let firstPt = pathPoints[0]
-                        path.move(to: CGPoint(
-                            x: firstPt.x / maxX * w,
-                            y: h - firstPt.y / maxY * h
-                        ))
-                        for pt in pathPoints.dropFirst() {
-                            path.addLine(to: CGPoint(
-                                x: pt.x / maxX * w,
-                                y: h - pt.y / maxY * h
-                            ))
-                        }
-                    }
-                    .stroke(
-                        phase == .crashed ? Color.red : Color(red: 0.2, green: 1.0, blue: 0.4),
-                        style: StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round)
-                    )
-                    // Glöd-effekt på linjen
-                    .shadow(
-                        color: phase == .crashed ? .red.opacity(0.5) : Color(red: 0.2, green: 1.0, blue: 0.4).opacity(0.4),
-                        radius: 6
-                    )
+                    let lineColor: Color = phase == .crashed ? .red : Color(red: 0.2, green: 1.0, blue: 0.4)
+                    crashLinePath(size: geo.size)
+                        .stroke(lineColor, style: StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round))
+                        .shadow(color: lineColor.opacity(0.4), radius: 6)
                 }
 
-                // Cash out-linje (horisontell)
                 if hasCashedOut {
-                    let h = geo.size.height
-                    let w = geo.size.width
-                    let maxY = max(multiplier, 2)
-                    let y = h - cashedOutMultiplier / maxY * h
-                    Path { path in
-                        path.move(to: CGPoint(x: 0, y: y))
-                        path.addLine(to: CGPoint(x: w, y: y))
+                    let y = cashOutY(height: geo.size.height)
+                    Path { p in
+                        p.move(to: CGPoint(x: 0, y: y))
+                        p.addLine(to: CGPoint(x: geo.size.width, y: y))
                     }
                     .stroke(Color.yellow.opacity(0.7), style: StrokeStyle(lineWidth: 1.5, dash: [6, 3]))
                     .shadow(color: .yellow.opacity(0.4), radius: 4)
@@ -282,8 +272,7 @@ struct CrashView: View {
                     Text(String(format: "%.2fx", cashedOutMultiplier))
                         .font(.system(size: 9, weight: .bold, design: .monospaced))
                         .foregroundColor(.yellow)
-                        .padding(.horizontal, 5)
-                        .padding(.vertical, 2)
+                        .padding(.horizontal, 5).padding(.vertical, 2)
                         .background(Color.yellow.opacity(0.15))
                         .clipShape(RoundedRectangle(cornerRadius: 4))
                         .position(x: 35, y: max(12, y - 12))
@@ -293,10 +282,7 @@ struct CrashView: View {
         .frame(height: 200)
         .background(Color.white.opacity(0.02))
         .clipShape(RoundedRectangle(cornerRadius: 14))
-        .overlay(
-            RoundedRectangle(cornerRadius: 14)
-                .stroke(Color.white.opacity(0.06), lineWidth: 1)
-        )
+        .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.white.opacity(0.06), lineWidth: 1))
     }
 
     // MARK: - Kontroller

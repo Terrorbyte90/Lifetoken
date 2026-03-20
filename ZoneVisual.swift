@@ -16,12 +16,12 @@ struct ZoneVisual: View {
             Color.black.ignoresSafeArea()
             ScrollView(showsIndicators: false) {
                 LazyVStack(spacing: 14) {
-                    ForEach(Array(zones.enumerated()), id: \.offset) { index, zone in
+                    ForEach(zones.indices, id: \.self) { index in
                         ZoneCardView(
-                            zone: zone,
+                            zone: zones[index],
                             zoneIndex: index,
                             currentZoneIndex: gameState.currentZone.index,
-                            playerCount: playerCount(for: zone)
+                            playerCount: playerCount(for: zones[index])
                         )
                     }
                 }
