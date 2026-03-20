@@ -44,9 +44,7 @@ struct PlayingCardView: View {
         ZStack {
             RoundedRectangle(cornerRadius: large ? 10 : 7)
                 .fill(Color.white)
-                .frame(width: large ? 64 : 40, height: large ? 90 : 56)
                 .shadow(color: .black.opacity(0.7), radius: 5, y: 3)
-                // Subtil glöd för röda kort
                 .shadow(color: isRed ? Color.red.opacity(0.15) : .clear, radius: 6)
 
             VStack(spacing: 0) {
@@ -82,6 +80,8 @@ struct PlayingCardView: View {
             .padding(large ? 5 : 3)
             .frame(width: large ? 64 : 40, height: large ? 90 : 56)
         }
+        .frame(width: large ? 64 : 40, height: large ? 90 : 56)
+        .clipShape(RoundedRectangle(cornerRadius: large ? 10 : 7))
     }
 }
 

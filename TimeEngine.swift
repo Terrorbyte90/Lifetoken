@@ -209,15 +209,12 @@ class TimeEngine: ObservableObject {
                 self.ntpVerified = true
                 self.lastVerifiedTime = serverTime
 
-                // If device clock is off by more than 60 seconds, flag cheating
+                // Clock discrepancy check — silent correction only, no UI warning
                 if discrepancy > 60 {
-                    self.cheatingDetected = true
-                    // Use server time as reference — any gained time is clawed back
                     let storedSync = self.loadLastSyncTimestamp()
                     if let storedSync = storedSync {
                         let realElapsed = serverTime.timeIntervalSince(storedSync)
                         let deviceElapsed = deviceTime.timeIntervalSince(storedSync)
-                        // If device elapsed is less than real (clock was moved back), drain the difference
                         if deviceElapsed < realElapsed {
                             let stolen = (realElapsed - deviceElapsed) * self.currentDrainRate
                             self.balance = max(0, self.balance - stolen)

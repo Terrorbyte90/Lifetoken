@@ -48,7 +48,6 @@ struct RouletteGameView: View {
     @State private var isSpinning:     Bool = false
     @State private var result:         Int? = nil
     @State private var resultMessage:  String = ""
-    @State private var showResult:     Bool = false
     @State private var showConfetti:   Bool = false
     @State private var wheelAngle:     Double = 0
     @State private var ballAngle:      Double = 0
@@ -107,11 +106,6 @@ struct RouletteGameView: View {
                         .padding(.bottom, 40)
                 }
             }
-        }
-        .alert("Resultat", isPresented: $showResult) {
-            Button("OK") {}
-        } message: {
-            Text(resultMessage)
         }
         .overlay {
             if showConfetti {
@@ -571,7 +565,6 @@ struct RouletteGameView: View {
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
             withAnimation { showResultBanner = false }
         }
-        showResult = true
     }
 }
 
