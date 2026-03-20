@@ -1,4 +1,60 @@
 import SwiftUI
+import AVKit
+import UIKit
+
+// MARK: - Video-kort för kasinots entré
+
+struct CasinoVideoCard: View {
+    @State private var player: AVPlayer? = nil
+
+    var body: some View {
+        ZStack {
+            Group {
+                if let p = player {
+                    VideoPlayer(player: p)
+                        .disabled(true)
+                } else {
+                    Color.black
+                }
+            }
+            .frame(height: 180)
+            .clipped()
+
+            LinearGradient(
+                colors: [.clear, .black.opacity(0.75)],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .frame(height: 180)
+
+            VStack {
+                Spacer()
+                Text("CASINO")
+                    .font(.system(size: 36, weight: .black, design: .monospaced))
+                    .foregroundColor(.yellow)
+                    .shadow(color: .yellow.opacity(0.8), radius: 12)
+                    .padding(.bottom, 16)
+            }
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .onAppear {
+            guard let url = Bundle.main.url(forResource: "Casino", withExtension: "mp4") else { return }
+            let p = AVPlayer(url: url)
+            p.actionAtItemEnd = .none
+            NotificationCenter.default.addObserver(
+                forName: .AVPlayerItemDidPlayToEndTime,
+                object: p.currentItem,
+                queue: .main
+            ) { _ in
+                p.seek(to: .zero)
+                p.play()
+            }
+            p.play()
+            player = p
+        }
+        .onDisappear { player?.pause() }
+    }
+}
 
 // MARK: - Casino Hub — Fullständigt omdesignad
 
@@ -13,6 +69,7 @@ struct CasinoHubView: View {
     @State private var bribeAccepted: Bool = false
     @State private var bribePhase: BribePhase = .idle
     @State private var bribeStatusText: String = ""
+    @State private var bribeMessage: String = ""
     @State private var pulseGlow: Bool = false
 
     enum BribePhase { case idle, deducting, accepted, denied }
@@ -20,13 +77,20 @@ struct CasinoHubView: View {
     enum CasinoGame: String, Identifiable {
         case poker      = "poker"
         case roulette   = "roulette"
-        case slots      = "slots"
         case blackjack  = "blackjack"
-        case lottery    = "lottery"
         case yatzy      = "yatzy"
         case crash      = "crash"
         var id: String { rawValue }
     }
+
+    // Varierade avvisningsmeddelanden vid mutor som inte accepteras
+    private let bribeRejections = [
+        "Vakten sneglar på dina token... men skakar på huvudet.",
+        "Han tar emot, tittar ner, och säger 'inte tillräckligt.'",
+        "Vakten visslar lågt. Inte imponerad.",
+        "Du räcker fram handen. Han ignorerar den.",
+        "Vakten ler kallt. Du blir inte insläppt."
+    ]
 
     private let doormanQuotes = [
         "Titta på sig själv — tror du verkligen att du hör hemma här?",
@@ -43,14 +107,14 @@ struct CasinoHubView: View {
 
     var body: some View {
         ZStack {
-            // Deep casino background
+            // Djup kasinobakgrund
             LinearGradient(
                 colors: [Color(red: 0.02, green: 0.01, blue: 0.04), Color(red: 0.04, green: 0.02, blue: 0.06), Color.black],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             ).ignoresSafeArea()
 
-            // Atmospheric glow
+            // Atmosfärisk glöd
             RadialGradient(
                 colors: [Color(red: 0.4, green: 0.1, blue: 0.6).opacity(pulseGlow ? 0.12 : 0.07), .clear],
                 center: .top, startRadius: 0, endRadius: 500
@@ -67,9 +131,7 @@ struct CasinoHubView: View {
             switch game {
             case .poker:     PokerView()
             case .roulette:  RouletteGameView()
-            case .slots:     SlotMachineView()
             case .blackjack: BlackjackView()
-            case .lottery:   LotteryView()
             case .yatzy:     MultiplayerYatzyView()
             case .crash:     CrashView()
             }
@@ -81,7 +143,7 @@ struct CasinoHubView: View {
 
     private var doormanView: some View {
         ZStack {
-            // Dark smoky entrance
+            // Mörk rökig entré
             RadialGradient(
                 colors: [Color(red: 0.1, green: 0.04, blue: 0.02).opacity(0.9), Color.black],
                 center: .center, startRadius: 10, endRadius: 420
@@ -90,28 +152,31 @@ struct CasinoHubView: View {
             VStack(spacing: 0) {
                 Spacer()
 
-                // Bouncer silhouette
+                // Silhuett av vakt
                 ZStack {
                     Circle()
                         .fill(Color(red: 0.12, green: 0.05, blue: 0.04))
                         .frame(width: 100, height: 100)
                         .overlay(
                             Circle().stroke(
-                                LinearGradient(colors: [Color.red.opacity(0.5), Color.red.opacity(0.1)],
-                                               startPoint: .topLeading, endPoint: .bottomTrailing),
+                                LinearGradient(
+                                    colors: [Color.yellow.opacity(0.4), Color.yellow.opacity(0.1)],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                ),
                                 lineWidth: 1.5
                             )
                         )
-                        .shadow(color: .red.opacity(0.25), radius: 20)
+                        .shadow(color: .yellow.opacity(0.15), radius: 20)
                     Image(systemName: "person.crop.circle.badge.xmark")
                         .font(.system(size: 44))
-                        .foregroundColor(Color(red: 0.9, green: 0.3, blue: 0.1))
+                        .foregroundColor(Color(red: 0.9, green: 0.75, blue: 0.1))
                 }
                 .padding(.bottom, 18)
 
                 Text("DÖRRVAKT")
                     .font(.system(size: 11, weight: .black, design: .monospaced))
-                    .foregroundColor(.red.opacity(0.5))
+                    .foregroundColor(.yellow.opacity(0.5))
                     .tracking(8)
                     .padding(.bottom, 20)
 
@@ -124,12 +189,12 @@ struct CasinoHubView: View {
                     .padding(.horizontal, 36)
                     .padding(.bottom, 32)
 
-                // Bribe section
+                // Mutningssektion
                 let bribeAmt = engine.balance * 0.05
 
                 VStack(spacing: 16) {
                     VStack(spacing: 4) {
-                        Text("MUT VAKTEN")
+                        Text("FÖRSÖK MUTA VAKTEN")
                             .font(.system(size: 9, weight: .black, design: .monospaced))
                             .foregroundColor(.yellow.opacity(0.5))
                             .tracking(4)
@@ -146,7 +211,7 @@ struct CasinoHubView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 14))
                     .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.yellow.opacity(0.15), lineWidth: 1))
 
-                    // Status text (shown after bribe attempt)
+                    // Statustext visas efter mutningsförsök
                     if bribePhase != .idle {
                         Text(bribeStatusText)
                             .font(.system(size: 12, design: .monospaced))
@@ -163,15 +228,18 @@ struct CasinoHubView: View {
                     } label: {
                         HStack(spacing: LTSpacing.sm) {
                             Image(systemName: "banknote")
-                            Text("MUT VAKTEN")
+                            Text("FÖRSÖK MUTA VAKTEN")
                                 .font(LTFont.heading(14))
                         }
                         .foregroundColor(.black)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 16)
                         .background(
-                            LinearGradient(colors: [LTPalette.gold, Color(red: 0.9, green: 0.7, blue: 0.0)],
-                                           startPoint: .topLeading, endPoint: .bottomTrailing)
+                            LinearGradient(
+                                colors: [LTPalette.gold, Color(red: 0.9, green: 0.7, blue: 0.0)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
                         )
                         .clipShape(RoundedRectangle(cornerRadius: LTRadius.sm))
                         .shadow(color: LTPalette.gold.opacity(0.35), radius: 12, y: 4)
@@ -179,7 +247,7 @@ struct CasinoHubView: View {
                     }
                     .buttonStyle(LTPressEffect())
                     .disabled(bribePhase == .deducting || engine.balance < bribeAmt + 60)
-                    .accessibilityLabel("Mut vakten för \(TimeEngine.shortFormatted(bribeAmt))")
+                    .accessibilityLabel("Försök muta vakten för \(TimeEngine.shortFormatted(bribeAmt))")
                     .padding(.horizontal, 32)
 
                     Button("Lämna platsen") { selectedTab = 0 }
@@ -205,8 +273,10 @@ struct CasinoHubView: View {
                 withAnimation { bribeAccepted = true }
             }
         } else {
+            // Välj ett slumpmässigt avvisningsmeddelande
+            let rejection = bribeRejections.randomElement() ?? bribeRejections[0]
             withAnimation(.spring()) {
-                bribeStatusText = "Vakten skrattar. \"Du har inte ens råd med mutan.\""
+                bribeStatusText = rejection
                 bribePhase = .denied
             }
             DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
@@ -222,15 +292,53 @@ struct CasinoHubView: View {
             VStack(spacing: 0) {
                 casinoHeader
 
-                // Game grid
+                // Spelkort-rutnät
                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 14) {
-                    gameCard(.poker,     icon: "suit.spade.fill",            title: "POKERRÄVEN",        subtitle: "Texas Hold'em", tag: "Hus 5%",  gradient: [Color(red: 0.05, green: 0.25, blue: 0.10), Color(red: 0.02, green: 0.12, blue: 0.05)], accent: Color(red: 0.2, green: 0.9, blue: 0.4))
-                    gameCard(.roulette,  icon: "circle.grid.cross.fill",     title: "TIDSRULETT",        subtitle: "Europeisk",    tag: "Hus 2.7%", gradient: [Color(red: 0.28, green: 0.04, blue: 0.04), Color(red: 0.14, green: 0.02, blue: 0.02)], accent: Color.red)
-                    gameCard(.slots,     icon: "slider.horizontal.3",        title: "TIDSLUCKOR",        subtitle: "3-hjulig",     tag: "RTP 94%",  gradient: [Color(red: 0.28, green: 0.22, blue: 0.02), Color(red: 0.14, green: 0.11, blue: 0.01)], accent: Color.yellow)
-                    gameCard(.blackjack, icon: "rectangle.on.rectangle",     title: "SVARTJACK",         subtitle: "Klassiskt 21", tag: "Hus 0.5%", gradient: [Color(red: 0.02, green: 0.18, blue: 0.28), Color(red: 0.01, green: 0.10, blue: 0.16)], accent: Color.cyan)
-                    gameCard(.lottery,   icon: "ticket.fill",                 title: "TIDSLOTERIET",      subtitle: "Veckodragning",tag: "1:500 000",gradient: [Color(red: 0.22, green: 0.04, blue: 0.26), Color(red: 0.12, green: 0.02, blue: 0.14)], accent: Color.purple)
-                    gameCard(.yatzy,     icon: "dice.fill",                   title: "YATZY-DUELLEN",     subtitle: "Mot spel/AI",  tag: "Vinnaren tar allt", gradient: [Color(red: 0.20, green: 0.13, blue: 0.02), Color(red: 0.10, green: 0.07, blue: 0.01)], accent: Color.orange)
-                    gameCard(.crash,     icon: "chart.line.uptrend.xyaxis",   title: "KRASCHEN",          subtitle: "Cash out i tid",tag: "Hus ~5%", gradient: [Color(red: 0.26, green: 0.04, blue: 0.04), Color(red: 0.13, green: 0.02, blue: 0.02)], accent: Color(red: 1, green: 0.35, blue: 0.1))
+                    gameCard(
+                        .poker,
+                        icon: "suit.spade.fill",
+                        title: "TEXAS HOLD'EM",
+                        subtitle: "5% husfördel",
+                        tag: "Hus 5%",
+                        gradient: [Color(red: 0.05, green: 0.25, blue: 0.10), Color(red: 0.02, green: 0.12, blue: 0.05)],
+                        accent: Color(red: 0.2, green: 0.9, blue: 0.4)
+                    )
+                    gameCard(
+                        .roulette,
+                        icon: "circle.grid.cross.fill",
+                        title: "EUROPEISK ROULETT",
+                        subtitle: "Europeisk variant",
+                        tag: "Hus 2.7%",
+                        gradient: [Color(red: 0.28, green: 0.04, blue: 0.04), Color(red: 0.14, green: 0.02, blue: 0.02)],
+                        accent: Color.red
+                    )
+                    gameCard(
+                        .blackjack,
+                        icon: "rectangle.on.rectangle",
+                        title: "BLACKJACK 21",
+                        subtitle: "Klassiskt 21",
+                        tag: "Hus 0.5%",
+                        gradient: [Color(red: 0.02, green: 0.18, blue: 0.28), Color(red: 0.01, green: 0.10, blue: 0.16)],
+                        accent: Color.cyan
+                    )
+                    gameCard(
+                        .yatzy,
+                        icon: "dice.fill",
+                        title: "YATZY",
+                        subtitle: "Mot spel/AI",
+                        tag: "Vinnaren tar allt",
+                        gradient: [Color(red: 0.20, green: 0.13, blue: 0.02), Color(red: 0.10, green: 0.07, blue: 0.01)],
+                        accent: Color.orange
+                    )
+                    gameCard(
+                        .crash,
+                        icon: "chart.line.uptrend.xyaxis",
+                        title: "ROCKET CRASH",
+                        subtitle: "Cash out i tid",
+                        tag: "Hus ~5%",
+                        gradient: [Color(red: 0.26, green: 0.04, blue: 0.04), Color(red: 0.13, green: 0.02, blue: 0.02)],
+                        accent: Color(red: 1, green: 0.35, blue: 0.1)
+                    )
                 }
                 .padding(.horizontal, 16)
 
@@ -241,7 +349,7 @@ struct CasinoHubView: View {
 
     private var casinoHeader: some View {
         VStack(spacing: 10) {
-            // Crown/logo
+            // Onlinestatus
             HStack {
                 Spacer()
                 HStack(spacing: 4) {
@@ -256,10 +364,10 @@ struct CasinoHubView: View {
             .padding(.horizontal, 20)
             .padding(.top, 54)
 
-            Text("♣ TIDENS KASINO ♣")
-                .font(.system(size: 22, weight: .black, design: .monospaced))
-                .foregroundColor(.white)
-                .shadow(color: Color(red: 0.6, green: 0.2, blue: 1.0).opacity(0.5), radius: 12)
+            // Videokort med kasinonamn
+            CasinoVideoCard()
+                .padding(.horizontal, 16)
+                .padding(.bottom, 8)
 
             Text(TimeEngine.formatted(engine.balance))
                 .font(.system(size: 14, weight: .bold, design: .monospaced))
@@ -279,7 +387,15 @@ struct CasinoHubView: View {
     }
 
     @ViewBuilder
-    private func gameCard(_ game: CasinoGame, icon: String, title: String, subtitle: String, tag: String, gradient: [Color], accent: Color) -> some View {
+    private func gameCard(
+        _ game: CasinoGame,
+        icon: String,
+        title: String,
+        subtitle: String,
+        tag: String,
+        gradient: [Color],
+        accent: Color
+    ) -> some View {
         Button {
             let impact = UIImpactFeedbackGenerator(style: .medium)
             impact.impactOccurred()
@@ -308,16 +424,16 @@ struct CasinoHubView: View {
 
                 VStack(alignment: .leading, spacing: 3) {
                     Text(title)
-                        .font(.system(size: 12, weight: .black, design: .monospaced))
+                        .font(.system(size: 11, weight: .black, design: .monospaced))
                         .foregroundColor(.white)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.8)
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.75)
                     Text(subtitle)
                         .font(.system(size: 9, design: .monospaced))
                         .foregroundColor(.white.opacity(0.45))
                 }
 
-                // Glowing bottom bar
+                // Glödande botten-bar
                 RoundedRectangle(cornerRadius: 2)
                     .fill(accent.opacity(0.5))
                     .frame(height: 2)

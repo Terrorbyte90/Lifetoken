@@ -1,17 +1,17 @@
 import SwiftUI
 
-// MARK: - Crash Game
+// MARK: - Crash Game (Rocket Crash)
 
 struct CrashView: View {
     @Environment(\.dismiss) var dismiss
     @ObservedObject private var engine = TimeEngine.shared
     @ObservedObject private var gameState = GameState.shared
 
-    // Betting state
+    // Satsnings-tillstånd
     @State private var betAmount: TimeInterval = 1800
     @State private var phase: CrashPhase = .waiting
 
-    // Game state
+    // Speltillstånd
     @State private var multiplier: Double = 1.0
     @State private var crashPoint: Double = 1.0
     @State private var hasCashedOut: Bool = false
@@ -23,7 +23,15 @@ struct CrashView: View {
     @State private var elapsed: Double = 0
     @State private var pathPoints: [(x: Double, y: Double)] = [(0, 0)]
 
-    // Result
+    // Explosion-animation
+    @State private var showExplosion: Bool = false
+    @State private var explosionScale: CGFloat = 0.1
+    @State private var explosionOpacity: Double = 0
+
+    // Pulserande CASH OUT-knapp
+    @State private var cashOutPulse: Bool = false
+
+    // Resultat
     @State private var resultMessage: String = ""
     @State private var showResult: Bool = false
     @State private var showConfetti: Bool = false
@@ -32,8 +40,12 @@ struct CrashView: View {
 
     var body: some View {
         ZStack {
+            // Svart rymdliknande bakgrund
+            Color.black.ignoresSafeArea()
+
+            // Subtil stjärnhimmel-effekt
             LinearGradient(
-                colors: [Color(red: 0.04, green: 0.02, blue: 0.06), Color.black],
+                colors: [Color(red: 0.01, green: 0.01, blue: 0.04), Color.black],
                 startPoint: .top,
                 endPoint: .bottom
             ).ignoresSafeArea()
@@ -47,30 +59,62 @@ struct CrashView: View {
 
                 Spacer()
 
-                // Graph + multiplier display
+                // Graf + multiplikatordisplay
                 ZStack {
                     crashGraph
                         .padding(.horizontal, 16)
 
+                    // Explosionsanimation vid krasch
+                    if showExplosion {
+                        Circle()
+                            .fill(
+                                RadialGradient(
+                                    colors: [Color.orange, Color.red.opacity(0.8), Color.red.opacity(0)],
+                                    center: .center,
+                                    startRadius: 5,
+                                    endRadius: 80
+                                )
+                            )
+                            .frame(width: 160, height: 160)
+                            .scaleEffect(explosionScale)
+                            .opacity(explosionOpacity)
+                    }
+
                     VStack {
                         if phase == .crashed && !hasCashedOut {
-                            Text("KRASCH!")
-                                .font(.system(size: 36, weight: .black, design: .monospaced))
-                                .foregroundColor(.red)
-                                .shadow(color: .red.opacity(0.6), radius: 12)
+                            VStack(spacing: 4) {
+                                Image(systemName: "flame.fill")
+                                    .font(.system(size: 28))
+                                    .foregroundColor(.orange)
+                                Text("KRASCH!")
+                                    .font(.system(size: 36, weight: .black, design: .monospaced))
+                                    .foregroundColor(.red)
+                                    .shadow(color: .red.opacity(0.8), radius: 16)
+                                Text(String(format: "@ %.2fx", crashPoint))
+                                    .font(.system(size: 16, weight: .bold, design: .monospaced))
+                                    .foregroundColor(.red.opacity(0.7))
+                            }
                         } else {
-                            Text(String(format: "%.2fx", multiplier))
-                                .font(.system(size: 48, weight: .black, design: .monospaced))
-                                .foregroundColor(multiplierColor)
-                                .shadow(color: multiplierColor.opacity(0.5), radius: 8)
-                                .monospacedDigit()
+                            // Stor multiplikatordisplay
+                            VStack(spacing: 2) {
+                                Image(systemName: "rocket.fill")
+                                    .font(.system(size: 22))
+                                    .foregroundColor(multiplierDisplayColor)
+                                    .opacity(phase == .running ? 1.0 : 0.4)
+                                Text(String(format: "%.2fx", multiplier))
+                                    .font(.system(size: 60, weight: .black, design: .monospaced))
+                                    .foregroundColor(multiplierDisplayColor)
+                                    .shadow(color: multiplierDisplayColor.opacity(0.7), radius: 14)
+                                    .monospacedDigit()
+                                    .contentTransition(.numericText(value: multiplier))
+                            }
                         }
                     }
                 }
 
                 Spacer()
 
-                // Controls
+                // Kontroller
                 controlSection
                     .padding(.horizontal)
                     .padding(.bottom, 30)
@@ -88,55 +132,93 @@ struct CrashView: View {
         }
     }
 
-    // MARK: Header
+    // MARK: - Multiplier-färg
+
+    var multiplierDisplayColor: Color {
+        if phase == .crashed { return .red }
+        if multiplier >= 5.0  { return Color(red: 0.2, green: 1.0, blue: 0.4) }
+        if multiplier >= 2.0  { return Color(red: 0.6, green: 1.0, blue: 0.2) }
+        return .yellow
+    }
+
+    // MARK: - Header
+
     private var headerBar: some View {
         HStack {
             Button(action: { dismiss() }) {
                 Image(systemName: "xmark")
+                    .font(.system(size: 14, weight: .bold))
                     .foregroundColor(.white.opacity(0.7))
-                    .padding(8)
-                    .background(Color.white.opacity(0.1))
+                    .padding(10)
+                    .background(Color.white.opacity(0.08))
                     .clipShape(Circle())
             }
             Spacer()
-            Text("CRASH")
-                .font(.system(size: 18, weight: .bold, design: .monospaced))
-                .foregroundColor(.white)
+            VStack(spacing: 2) {
+                Text("ROCKET CRASH")
+                    .font(.system(size: 16, weight: .black, design: .monospaced))
+                    .foregroundColor(.white)
+                Text("Hus ~5%")
+                    .font(.system(size: 9, design: .monospaced))
+                    .foregroundColor(.orange.opacity(0.6))
+            }
             Spacer()
             Text(TimeEngine.shortFormatted(engine.balance))
-                .font(.system(size: 12, design: .monospaced))
+                .font(.system(size: 12, weight: .bold, design: .monospaced))
                 .foregroundColor(.yellow)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+                .background(Color.yellow.opacity(0.1))
+                .clipShape(Capsule())
+                .overlay(Capsule().stroke(Color.yellow.opacity(0.25), lineWidth: 1))
         }
         .padding()
         .padding(.top, 20)
+        .background(Color.black.opacity(0.5))
     }
 
-    // MARK: History Row
+    // MARK: - Historikrad med smådots
+
     private var historyRow: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 6) {
-                Text("Historia:")
-                    .font(.system(size: 9, design: .monospaced))
-                    .foregroundColor(.white.opacity(0.3))
-                ForEach(history.suffix(10).reversed(), id: \.self) { pt in
-                    Text(String(format: "%.2fx", pt))
-                        .font(.system(size: 10, weight: .bold, design: .monospaced))
-                        .foregroundColor(pt < 1.5 ? .red : (pt < 3.0 ? .yellow : .green))
-                        .padding(.horizontal, 7)
-                        .padding(.vertical, 3)
-                        .background(Color.white.opacity(0.06))
-                        .clipShape(Capsule())
+                Text("HISTORIK")
+                    .font(.system(size: 8, weight: .black, design: .monospaced))
+                    .foregroundColor(.white.opacity(0.25))
+                    .tracking(3)
+                ForEach(Array(history.suffix(12).reversed().enumerated()), id: \.offset) { _, pt in
+                    VStack(spacing: 2) {
+                        // Liten dot vars färg indikerar kraschpunkten
+                        Circle()
+                            .fill(historyDotColor(pt))
+                            .frame(width: 6, height: 6)
+                            .shadow(color: historyDotColor(pt).opacity(0.6), radius: 3)
+                        Text(String(format: "%.2fx", pt))
+                            .font(.system(size: 9, weight: .bold, design: .monospaced))
+                            .foregroundColor(historyDotColor(pt))
+                    }
+                    .padding(.horizontal, 5)
+                    .padding(.vertical, 4)
+                    .background(Color.white.opacity(0.04))
+                    .clipShape(RoundedRectangle(cornerRadius: 6))
                 }
             }
         }
-        .frame(height: 28)
+        .frame(height: 36)
     }
 
-    // MARK: Crash Graph
+    private func historyDotColor(_ pt: Double) -> Color {
+        if pt < 1.5 { return .red }
+        if pt < 3.0 { return .yellow }
+        return Color(red: 0.2, green: 1.0, blue: 0.4)
+    }
+
+    // MARK: - Kraschgraf
+
     private var crashGraph: some View {
         GeometryReader { geo in
             ZStack(alignment: .bottomLeading) {
-                // Background grid
+                // Bakgrundsgrid
                 Path { path in
                     let w = geo.size.width
                     let h = geo.size.height
@@ -145,10 +227,15 @@ struct CrashView: View {
                         path.move(to: CGPoint(x: 0, y: y))
                         path.addLine(to: CGPoint(x: w, y: y))
                     }
+                    for i in 0...4 {
+                        let x = w * Double(i) / 4
+                        path.move(to: CGPoint(x: x, y: 0))
+                        path.addLine(to: CGPoint(x: x, y: h))
+                    }
                 }
-                .stroke(Color.white.opacity(0.05), lineWidth: 1)
+                .stroke(Color.white.opacity(0.04), lineWidth: 1)
 
-                // Crash line
+                // Neongrön krasch-linje
                 if pathPoints.count > 1 {
                     Path { path in
                         let w = geo.size.width
@@ -169,12 +256,17 @@ struct CrashView: View {
                         }
                     }
                     .stroke(
-                        phase == .crashed ? Color.red : Color.green,
-                        style: StrokeStyle(lineWidth: 2.5, lineCap: .round)
+                        phase == .crashed ? Color.red : Color(red: 0.2, green: 1.0, blue: 0.4),
+                        style: StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round)
+                    )
+                    // Glöd-effekt på linjen
+                    .shadow(
+                        color: phase == .crashed ? .red.opacity(0.5) : Color(red: 0.2, green: 1.0, blue: 0.4).opacity(0.4),
+                        radius: 6
                     )
                 }
 
-                // Cash out line (horizontal)
+                // Cash out-linje (horisontell)
                 if hasCashedOut {
                     let h = geo.size.height
                     let w = geo.size.width
@@ -184,30 +276,45 @@ struct CrashView: View {
                         path.move(to: CGPoint(x: 0, y: y))
                         path.addLine(to: CGPoint(x: w, y: y))
                     }
-                    .stroke(Color.yellow.opacity(0.6), style: StrokeStyle(lineWidth: 1.5, dash: [6, 3]))
+                    .stroke(Color.yellow.opacity(0.7), style: StrokeStyle(lineWidth: 1.5, dash: [6, 3]))
+                    .shadow(color: .yellow.opacity(0.4), radius: 4)
 
                     Text(String(format: "%.2fx", cashedOutMultiplier))
-                        .font(.system(size: 9, design: .monospaced))
+                        .font(.system(size: 9, weight: .bold, design: .monospaced))
                         .foregroundColor(.yellow)
-                        .position(x: 30, y: y - 10)
+                        .padding(.horizontal, 5)
+                        .padding(.vertical, 2)
+                        .background(Color.yellow.opacity(0.15))
+                        .clipShape(RoundedRectangle(cornerRadius: 4))
+                        .position(x: 35, y: max(12, y - 12))
                 }
             }
         }
-        .frame(height: 180)
-        .background(Color.white.opacity(0.03))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .frame(height: 200)
+        .background(Color.white.opacity(0.02))
+        .clipShape(RoundedRectangle(cornerRadius: 14))
+        .overlay(
+            RoundedRectangle(cornerRadius: 14)
+                .stroke(Color.white.opacity(0.06), lineWidth: 1)
+        )
     }
 
-    // MARK: Controls
+    // MARK: - Kontroller
+
     private var controlSection: some View {
         VStack(spacing: 14) {
             switch phase {
             case .waiting, .crashed:
                 waitingControls
             case .countdown:
-                Text("Startar...")
-                    .font(.system(size: 16, weight: .bold, design: .monospaced))
-                    .foregroundColor(.yellow)
+                HStack(spacing: 10) {
+                    ProgressView()
+                        .tint(.yellow)
+                    Text("STARTAR RAKETEN...")
+                        .font(.system(size: 14, weight: .black, design: .monospaced))
+                        .foregroundColor(.yellow)
+                }
+                .padding(.vertical, 20)
             case .running:
                 cashOutButton
             }
@@ -215,87 +322,123 @@ struct CrashView: View {
     }
 
     private var waitingControls: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 14) {
             HStack {
-                Text("Insats: \(TimeEngine.shortFormatted(betAmount))")
-                    .font(.system(size: 14, design: .monospaced))
+                Text("INSATS:")
+                    .font(.system(size: 10, weight: .black, design: .monospaced))
+                    .foregroundColor(.white.opacity(0.4))
+                    .tracking(2)
+                Text(TimeEngine.shortFormatted(betAmount))
+                    .font(.system(size: 18, weight: .black, design: .monospaced))
                     .foregroundColor(.yellow)
+                    .shadow(color: .yellow.opacity(0.4), radius: 6)
                 Spacer()
             }
 
             Slider(value: $betAmount, in: 60...max(120, min(engine.balance, 86400 * 7)), step: 60)
-                .tint(.green)
+                .tint(Color(red: 0.2, green: 1.0, blue: 0.4))
 
             HStack(spacing: 8) {
                 ForEach([600.0, 1800.0, 3600.0, 21600.0, 86400.0], id: \.self) { v in
                     Button { betAmount = min(v, engine.balance) } label: {
                         Text(TimeEngine.shortFormatted(v))
-                            .font(.system(size: 9, design: .monospaced))
+                            .font(.system(size: 9, weight: .bold, design: .monospaced))
                             .foregroundColor(.white.opacity(0.7))
-                            .padding(.horizontal, 7)
-                            .padding(.vertical, 4)
-                            .background(Color.white.opacity(0.07))
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 5)
+                            .background(Color.white.opacity(0.06))
                             .clipShape(Capsule())
+                            .overlay(Capsule().stroke(Color.white.opacity(0.1), lineWidth: 0.5))
                     }
                 }
             }
 
             Button { startRound() } label: {
-                Text("STARTA  (\(TimeEngine.shortFormatted(betAmount)))")
-                    .font(.system(size: 16, weight: .bold, design: .monospaced))
-                    .foregroundColor(.black)
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(betAmount <= engine.balance ? Color.green : Color.gray)
-                    .clipShape(RoundedRectangle(cornerRadius: 14))
+                HStack(spacing: 10) {
+                    Image(systemName: "rocket.fill")
+                        .font(.system(size: 16))
+                    Text("STARTA  (\(TimeEngine.shortFormatted(betAmount)))")
+                        .font(.system(size: 16, weight: .black, design: .monospaced))
+                }
+                .foregroundColor(betAmount <= engine.balance ? .black : .white.opacity(0.4))
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 18)
+                .background(
+                    betAmount <= engine.balance
+                        ? LinearGradient(
+                            colors: [Color(red: 0.2, green: 1.0, blue: 0.4), Color(red: 0.1, green: 0.7, blue: 0.25)],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                          )
+                        : LinearGradient(colors: [Color(white: 0.2), Color(white: 0.15)], startPoint: .leading, endPoint: .trailing)
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 16))
+                .shadow(
+                    color: betAmount <= engine.balance ? Color(red: 0.2, green: 1.0, blue: 0.4).opacity(0.4) : .clear,
+                    radius: 12, y: 4
+                )
             }
             .disabled(betAmount > engine.balance)
         }
     }
 
+    // Stor, pulserande röd CASH OUT-knapp
     private var cashOutButton: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 10) {
             if hasCashedOut {
-                VStack(spacing: 4) {
+                VStack(spacing: 6) {
+                    Image(systemName: "checkmark.seal.fill")
+                        .font(.system(size: 24))
+                        .foregroundColor(.green)
                     Text("CASHAD UT!")
-                        .font(.system(size: 14, weight: .bold, design: .monospaced))
+                        .font(.system(size: 14, weight: .black, design: .monospaced))
                         .foregroundColor(.yellow)
                     Text("@ \(String(format: "%.2fx", cashedOutMultiplier))")
-                        .font(.system(size: 20, weight: .black, design: .monospaced))
-                        .foregroundColor(.green)
+                        .font(.system(size: 24, weight: .black, design: .monospaced))
+                        .foregroundColor(Color(red: 0.2, green: 1.0, blue: 0.4))
+                        .shadow(color: Color(red: 0.2, green: 1.0, blue: 0.4).opacity(0.5), radius: 8)
                 }
-                .padding(16)
-                .background(Color.green.opacity(0.1))
-                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .padding(18)
+                .background(Color.green.opacity(0.08))
+                .clipShape(RoundedRectangle(cornerRadius: 16))
+                .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.green.opacity(0.3), lineWidth: 1))
+                .shadow(color: .green.opacity(0.2), radius: 12)
             } else {
                 Button { cashOut() } label: {
-                    VStack(spacing: 4) {
+                    VStack(spacing: 6) {
                         Text("CASH OUT")
-                            .font(.system(size: 18, weight: .black, design: .monospaced))
+                            .font(.system(size: 22, weight: .black, design: .monospaced))
                         Text("+\(TimeEngine.shortFormatted(betAmount * multiplier))")
-                            .font(.system(size: 13, design: .monospaced))
+                            .font(.system(size: 14, weight: .bold, design: .monospaced))
                     }
-                    .foregroundColor(.black)
+                    .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
-                    .padding()
+                    .padding(.vertical, 20)
                     .background(
-                        LinearGradient(colors: [Color.yellow, Color.orange], startPoint: .leading, endPoint: .trailing)
+                        LinearGradient(
+                            colors: [Color(red: 0.85, green: 0.1, blue: 0.1), Color(red: 0.6, green: 0.05, blue: 0.05)],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
                     )
-                    .clipShape(RoundedRectangle(cornerRadius: 14))
+                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16)
+                            .stroke(Color.red.opacity(0.5), lineWidth: 1.5)
+                    )
+                    // Pulserande glöd-effekt
+                    .shadow(color: .red.opacity(cashOutPulse ? 0.7 : 0.3), radius: cashOutPulse ? 20 : 10, y: 4)
+                    .scaleEffect(cashOutPulse ? 1.02 : 1.0)
+                    .animation(.easeInOut(duration: 0.7).repeatForever(autoreverses: true), value: cashOutPulse)
                 }
+                .buttonStyle(LTPressEffect(scale: 0.96))
+                .onAppear { cashOutPulse = true }
+                .onDisappear { cashOutPulse = false }
             }
         }
     }
 
-    // MARK: Computed color
-    var multiplierColor: Color {
-        if phase == .crashed { return .red }
-        if multiplier < 2.0 { return .green }
-        if multiplier < 5.0 { return .yellow }
-        return Color(red: 1, green: 0.5, blue: 0)
-    }
-
-    // MARK: - Game Logic
+    // MARK: - Spellogik
 
     func startRound() {
         guard TimeEngine.shared.deductTime(betAmount) else { return }
@@ -305,17 +448,19 @@ struct CrashView: View {
         cashedOutMultiplier = 0
         pathPoints = [(0, 1)]
         crashPoint = generateCrashPoint()
+        showExplosion = false
         phase = .countdown
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             phase = .running
+            cashOutPulse = true
             startTimer()
         }
     }
 
     func generateCrashPoint() -> Double {
-        // Exponential distribution with house edge ~5%
-        // P(crash > x) = 0.95/x for x >= 1
+        // Exponentialfördelning med ~5% husfördel
+        // P(crash > x) = 0.95/x för x >= 1
         let r = Double.random(in: 0..<1)
         if r < 0.05 { return 1.0 }
         return max(1.0, 0.95 / r)
@@ -325,13 +470,9 @@ struct CrashView: View {
         gameTimer?.invalidate()
         gameTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { _ in
             DispatchQueue.main.async {
-                // Guard: only process ticks while game is still running
                 guard phase == .running else { return }
-
                 elapsed += 0.1
-                // Multiplier grows exponentially
                 multiplier = pow(1.06, elapsed)
-
                 pathPoints.append((elapsed, multiplier))
 
                 if multiplier >= crashPoint {
@@ -350,6 +491,7 @@ struct CrashView: View {
         guard phase == .running, !hasCashedOut else { return }
         hasCashedOut = true
         cashedOutMultiplier = multiplier
+        cashOutPulse = false
 
         let gross = betAmount * cashedOutMultiplier
         let taxRate = gameState.currentZone.taxRate
@@ -357,7 +499,10 @@ struct CrashView: View {
         TimeEngine.shared.addTime(net)
         GameState.shared.recordEarning(net - betAmount)
         MissionsManager.incrementProgress("casino_total_wins")
-        TransactionLedger.shared.record(label: "Crash — cash out \(String(format: "%.2fx", cashedOutMultiplier))", amount: net - betAmount)
+        TransactionLedger.shared.record(
+            label: "Crash — cash out \(String(format: "%.2fx", cashedOutMultiplier))",
+            amount: net - betAmount
+        )
 
         showConfetti = true
         DispatchQueue.main.asyncAfter(deadline: .now() + 3) { showConfetti = false }
@@ -365,8 +510,25 @@ struct CrashView: View {
 
     func triggerCrash() {
         stopTimer()
+        cashOutPulse = false
         phase = .crashed
         history.append(crashPoint)
+
+        // Explosionsanimation — skalar upp och tonar ut
+        if !hasCashedOut {
+            showExplosion = true
+            withAnimation(.easeOut(duration: 0.4)) {
+                explosionScale = 1.8
+                explosionOpacity = 0.9
+            }
+            withAnimation(.easeIn(duration: 0.5).delay(0.4)) {
+                explosionOpacity = 0
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                showExplosion = false
+                explosionScale = 0.1
+            }
+        }
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
             if hasCashedOut {
@@ -388,14 +550,18 @@ struct CrashView: View {
         elapsed = 0
         hasCashedOut = false
         pathPoints = [(0, 1)]
+        showExplosion = false
+        explosionScale = 0.1
+        explosionOpacity = 0
+        cashOutPulse = false
     }
 
     var statusMessage: String {
         switch phase {
-        case .waiting: return ""
+        case .waiting:   return ""
         case .countdown: return "Väntar..."
-        case .running: return hasCashedOut ? "Cashad ut — väntar på krasch" : "Kör..."
-        case .crashed: return "Krasch!"
+        case .running:   return hasCashedOut ? "Cashad ut — väntar på krasch" : "Kör..."
+        case .crashed:   return "Krasch!"
         }
     }
 }
