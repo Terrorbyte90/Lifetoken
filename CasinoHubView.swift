@@ -11,8 +11,7 @@ struct CasinoVideoCard: View {
         ZStack {
             Group {
                 if let p = player {
-                    VideoPlayer(player: p)
-                        .disabled(true)
+                    LoopingVideoPlayer(player: p)
                 } else {
                     Color.black
                 }
@@ -150,29 +149,11 @@ struct CasinoHubView: View {
             ).ignoresSafeArea()
 
             VStack(spacing: 0) {
-                Spacer()
-
-                // Silhuett av vakt
-                ZStack {
-                    Circle()
-                        .fill(Color(red: 0.12, green: 0.05, blue: 0.04))
-                        .frame(width: 100, height: 100)
-                        .overlay(
-                            Circle().stroke(
-                                LinearGradient(
-                                    colors: [Color.yellow.opacity(0.4), Color.yellow.opacity(0.1)],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                ),
-                                lineWidth: 1.5
-                            )
-                        )
-                        .shadow(color: .yellow.opacity(0.15), radius: 20)
-                    Image(systemName: "person.crop.circle.badge.xmark")
-                        .font(.system(size: 44))
-                        .foregroundColor(Color(red: 0.9, green: 0.75, blue: 0.1))
-                }
-                .padding(.bottom, 18)
+                CasinoVideoCard()
+                    .frame(height: 220)
+                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 20)
 
                 Text("DÖRRVAKT")
                     .font(.system(size: 11, weight: .black, design: .monospaced))
