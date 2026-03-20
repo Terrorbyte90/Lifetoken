@@ -229,9 +229,14 @@ struct WorkView: View {
     @State private var selectedJob: JobType? = nil
     @State private var showConfirm: Bool = false
     @State private var tickTimer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
-    @State private var showMiniJobsFromWork = false
     @State private var showJobCompleteToast: Bool = false
     @State private var jobCompleteMessage: String = ""
+
+    // Direktnavigering till aktiva jobb
+    @State private var showPipe   = false
+    @State private var showSort   = false
+    @State private var showBomb   = false
+    @State private var showTiming = false
 
     var availableJobs: [JobType] {
         workManager.availableJobs(for: gameState.currentZone)
@@ -260,6 +265,10 @@ struct WorkView: View {
             }
         }
         .onDisappear { tickTimer.upstream.connect().cancel() }
+        .fullScreenCover(isPresented: $showPipe)   { PipeGameView(difficulty: 0) }
+        .fullScreenCover(isPresented: $showSort)   { SortingGameView(difficulty: 0) }
+        .fullScreenCover(isPresented: $showBomb)   { BombDefuseView(difficulty: 0) }
+        .fullScreenCover(isPresented: $showTiming) { TimingGameView(difficulty: 0) }
         .sheet(isPresented: $showConfirm) {
             if let job = selectedJob {
                 JobConfirmSheet(job: job, zone: gameState.currentZone) {
@@ -289,7 +298,6 @@ struct WorkView: View {
                     .transition(.move(edge: .top).combined(with: .opacity))
             }
         }
-        .sheet(isPresented: $showMiniJobsFromWork) { NavigationStack { MiniJobsView() } }
     }
 
     // MARK: Header
@@ -319,6 +327,12 @@ struct WorkView: View {
                     Text(income.jobTitle)
                         .font(.system(size: 16, weight: .bold, design: .monospaced))
                         .foregroundColor(.white)
+                    Text("Din hälsa ger dig inkomst, desto bättre du mår, desto mer tjänar du, men räcker det..?")
+                        .font(.system(size: 10, design: .monospaced))
+                        .foregroundColor(.white.opacity(0.35))
+                        .italic()
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal)
                 }
                 Spacer()
                 VStack(alignment: .trailing, spacing: 2) {
@@ -394,11 +408,10 @@ struct WorkView: View {
 
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 10) {
-                        miniJobChip(icon: "pipe.and.drop.fill",    name: "Rörmockaren",    desc: "Fixa rörläggning")
-                        miniJobChip(icon: "terminal.fill",          name: "Kodknäckaren",   desc: "Knäck koden")
-                        miniJobChip(icon: "arrow.up.arrow.down",    name: "Sorteringsverket", desc: "Sortera gods")
-                        miniJobChip(icon: "bolt.circle.fill",       name: "Sprängexperten", desc: "Defusera bomben")
-                        miniJobChip(icon: "timer",                  name: "Tidskalibratorn", desc: "Kalibreringen")
+                        miniJobChip(icon: "pipe.and.drop.fill",    name: "Rörmockaren",      desc: "Fixa rörläggning") { showPipe = true }
+                        miniJobChip(icon: "arrow.up.arrow.down",   name: "Sorteringsverket", desc: "Sortera gods")     { showSort = true }
+                        miniJobChip(icon: "bolt.circle.fill",      name: "Sprängexperten",   desc: "Defusera bomben")  { showBomb = true }
+                        miniJobChip(icon: "timer",                 name: "Tidskalibratorn",  desc: "Kalibreringen")    { showTiming = true }
                     }
                     .padding(.horizontal)
                 }
@@ -485,8 +498,8 @@ struct WorkView: View {
         .padding(.horizontal)
     }
 
-    private func miniJobChip(icon: String, name: String, desc: String) -> some View {
-        Button { showMiniJobsFromWork = true } label: {
+    private func miniJobChip(icon: String, name: String, desc: String, action: @escaping () -> Void) -> some View {
+        Button { action() } label: {
             VStack(spacing: 6) {
                 ZStack {
                     Circle()

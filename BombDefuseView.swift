@@ -52,9 +52,17 @@ struct BombDefuseView: View {
     @State private var timer     = Timer.publish(every: 1,    on: .main, in: .common).autoconnect()
     @State private var clueTimer = Timer.publish(every: 0.05, on: .main, in: .common).autoconnect()
 
+    // Spänningsfärg för nedräkningstimer
+    private func timerColor(left: Int, limit: Int) -> Color {
+        let fraction = Double(left) / Double(max(limit, 1))
+        if fraction > 0.5 { return .green }
+        if fraction > 0.25 { return .yellow }
+        return .red
+    }
+
     var body: some View {
         ZStack {
-            // Dark circuit board background
+            // Mörk militär/tech bakgrund
             Color(red: 0.03, green: 0.04, blue: 0.03).ignoresSafeArea()
             circuitPattern.ignoresSafeArea()
 
@@ -238,32 +246,48 @@ struct BombDefuseView: View {
 
     private var playScreen: some View {
         VStack(spacing: 0) {
-            // Countdown
+            // Nedräkningstimer med spänningsfärger grön → gul → röd
             HStack {
                 Spacer()
                 ZStack {
-                    Circle().stroke(Color.red.opacity(0.2), lineWidth: 4).frame(width: 64, height: 64)
+                    // Yttre glöd
+                    Circle()
+                        .stroke(timerColor(left: timeLeft, limit: timeLimit).opacity(0.15), lineWidth: 12)
+                        .frame(width: 80, height: 80)
+                        .shadow(color: timerColor(left: timeLeft, limit: timeLimit).opacity(0.3), radius: 8)
+                    // Bakgrundscirkel
+                    Circle()
+                        .stroke(Color.white.opacity(0.07), lineWidth: 4)
+                        .frame(width: 72, height: 72)
+                    // Förloppsring
                     Circle()
                         .trim(from: 0, to: CGFloat(timeLeft) / CGFloat(timeLimit))
-                        .stroke(timeLeft < 5 ? Color.red : Color.yellow,
-                                style: StrokeStyle(lineWidth: 4, lineCap: .round))
-                        .frame(width: 64, height: 64)
+                        .stroke(
+                            timerColor(left: timeLeft, limit: timeLimit),
+                            style: StrokeStyle(lineWidth: 4, lineCap: .round)
+                        )
+                        .frame(width: 72, height: 72)
                         .rotationEffect(.degrees(-90))
                         .animation(.linear(duration: 1), value: timeLeft)
+                        .shadow(color: timerColor(left: timeLeft, limit: timeLimit).opacity(0.6), radius: 4)
+                    // Siffra
                     Text("\(timeLeft)")
-                        .font(.system(size: 22, weight: .black, design: .monospaced))
-                        .foregroundColor(timeLeft < 5 ? .red : .white)
+                        .font(.system(size: 26, weight: .black, design: .monospaced))
+                        .foregroundColor(timerColor(left: timeLeft, limit: timeLimit))
+                        .shadow(color: timerColor(left: timeLeft, limit: timeLimit).opacity(0.5), radius: 4)
+                        .scaleEffect(timeLeft <= 3 ? 1.2 : 1.0)
+                        .animation(.easeInOut(duration: 0.3).repeatForever(autoreverses: true), value: timeLeft <= 3)
                 }
                 Spacer()
             }
             .padding(.top, 60)
-            .padding(.bottom, 16)
+            .padding(.bottom, 20)
 
             Text("KLIPP EN TRÅD")
-                .font(.system(size: 12, weight: .bold, design: .monospaced))
-                .foregroundColor(Color(white:0.35))
-                .tracking(4)
-                .padding(.bottom, 32)
+                .font(.system(size: 12, weight: .black, design: .monospaced))
+                .foregroundColor(Color(white: 0.28))
+                .tracking(6)
+                .padding(.bottom, 28)
 
             // Wires
             GeometryReader { g in
@@ -302,35 +326,48 @@ struct BombDefuseView: View {
                 .padding(.horizontal, 32)
 
             if !isSelected {
-                // Full wire with undulation
+                // Neon-glöd ytterst
+                WireShape(index: index)
+                    .stroke(col.opacity(0.25), style: StrokeStyle(lineWidth: 18, lineCap: .round))
+                    .frame(height: 50)
+                    .padding(.horizontal, 24)
+                    .blur(radius: 4)
+
+                // Trådens huvudlager
                 WireShape(index: index)
                     .stroke(col, style: StrokeStyle(lineWidth: 9, lineCap: .round))
                     .frame(height: 50)
                     .padding(.horizontal, 24)
-                    .shadow(color: col.opacity(isFlashing ? 1.0 : 0.5), radius: isFlashing ? 16 : 6)
+                    .shadow(color: col.opacity(isFlashing ? 1.0 : 0.6), radius: isFlashing ? 18 : 6)
 
-                // Inner highlight
+                // Inre ljushighlight
                 WireShape(index: index)
-                    .stroke(Color.white.opacity(0.25), style: StrokeStyle(lineWidth: 3, lineCap: .round))
+                    .stroke(Color.white.opacity(0.28), style: StrokeStyle(lineWidth: 3, lineCap: .round))
                     .frame(height: 50)
                     .padding(.horizontal, 24)
 
-                // Flash overlay when being cut
+                // Flash-lager vid klippning
                 if isFlashing {
                     WireShape(index: index)
-                        .stroke(Color.white.opacity(0.9), style: StrokeStyle(lineWidth: 5, lineCap: .round))
+                        .stroke(Color.white.opacity(0.95), style: StrokeStyle(lineWidth: 5, lineCap: .round))
                         .frame(height: 50)
                         .padding(.horizontal, 24)
                         .transition(.opacity)
                 }
 
-                // End connectors
+                // Ändkontakter
                 HStack {
-                    Circle().fill(Color(white:0.3)).frame(width: 14, height: 14)
-                        .overlay(Circle().stroke(Color(white:0.5), lineWidth: 2))
+                    Circle()
+                        .fill(Color(white: 0.25))
+                        .frame(width: 14, height: 14)
+                        .overlay(Circle().stroke(col.opacity(0.5), lineWidth: 2))
+                        .shadow(color: col.opacity(0.3), radius: 3)
                     Spacer()
-                    Circle().fill(Color(white:0.3)).frame(width: 14, height: 14)
-                        .overlay(Circle().stroke(Color(white:0.5), lineWidth: 2))
+                    Circle()
+                        .fill(Color(white: 0.25))
+                        .frame(width: 14, height: 14)
+                        .overlay(Circle().stroke(col.opacity(0.5), lineWidth: 2))
+                        .shadow(color: col.opacity(0.3), radius: 3)
                 }
                 .padding(.horizontal, 18)
 
@@ -382,55 +419,7 @@ struct BombDefuseView: View {
     // MARK: - Result Screen
 
     private func resultScreen(won: Bool, early: Bool, earned: TimeInterval) -> some View {
-        VStack(spacing: 28) {
-            Spacer()
-
-            ZStack {
-                Circle()
-                    .fill(won ? Color.green.opacity(0.12) : Color.red.opacity(0.12))
-                    .frame(width: 120, height: 120)
-                Image(systemName: won ? "checkmark.circle.fill" : "xmark.octagon.fill")
-                    .font(.system(size: 56))
-                    .foregroundColor(won ? .green : .red)
-            }
-
-            VStack(spacing: 8) {
-                Text(won ? (early ? "KLIPPT I TID — BONUS" : "AVVÄRJT") : "FEL TRÅD")
-                    .font(.system(size: 20, weight: .black, design: .monospaced))
-                    .foregroundColor(won ? .green : .red)
-                    .tracking(2)
-
-                if won {
-                    Text("Rätt tråd klippt\(early ? " med mer än 3 sekunder kvar" : "").")
-                        .font(.system(size: 12, design: .monospaced))
-                        .foregroundColor(Color(white:0.45))
-                } else {
-                    Text("Bomben gick av. Betalning uteblev.")
-                        .font(.system(size: 12, design: .monospaced))
-                        .foregroundColor(Color(white:0.45))
-                }
-            }
-
-            if won && earned > 0 {
-                Text("+\(TimeEngine.shortFormatted(earned))")
-                    .font(.system(size: 32, weight: .black, design: .monospaced))
-                    .foregroundColor(.green)
-            } else if !won {
-                Text("−\(reward.penalty) min")
-                    .font(.system(size: 28, weight: .black, design: .monospaced))
-                    .foregroundColor(.red)
-            }
-
-            Button("Stäng") { dismiss() }
-                .font(.system(size: 14, weight: .black, design: .monospaced))
-                .foregroundColor(.black)
-                .padding(.horizontal, 40)
-                .padding(.vertical, 14)
-                .background(won ? Color.green : Color.red)
-                .clipShape(Capsule())
-
-            Spacer()
-        }
+        ResultFlashView(won: won, early: early, earned: earned, penalty: reward.penalty) { dismiss() }
     }
 
     // MARK: - Logic
@@ -566,6 +555,108 @@ struct BombDefuseView: View {
         .background(col.opacity(0.08))
         .clipShape(RoundedRectangle(cornerRadius: 8))
         .overlay(RoundedRectangle(cornerRadius: 8).stroke(col.opacity(0.2), lineWidth: 1))
+    }
+}
+
+// MARK: - Result Flash View
+
+private struct ResultFlashView: View {
+    let won: Bool
+    let early: Bool
+    let earned: TimeInterval
+    let penalty: Int
+    let onDismiss: () -> Void
+
+    @State private var flashOpacity: Double = 0
+    @State private var flashScale: CGFloat = 0.8
+    @State private var ringScale: CGFloat = 0.5
+    @State private var ringOpacity: Double = 0.8
+
+    private var resultColor: Color { won ? .green : .red }
+
+    var body: some View {
+        ZStack {
+            // Flash-bakgrund
+            resultColor
+                .opacity(flashOpacity)
+                .ignoresSafeArea()
+
+            // Expansionsring — grön blixt eller röd explosion
+            Circle()
+                .stroke(resultColor.opacity(ringOpacity), lineWidth: 3)
+                .frame(width: 300 * ringScale, height: 300 * ringScale)
+
+            VStack(spacing: 28) {
+                Spacer()
+
+                // Ikon med glöd
+                ZStack {
+                    Circle()
+                        .fill(resultColor.opacity(0.10))
+                        .frame(width: 130, height: 130)
+                    Circle()
+                        .stroke(resultColor.opacity(0.35), lineWidth: 2)
+                        .frame(width: 130, height: 130)
+                    Image(systemName: won ? "checkmark.seal.fill" : "xmark.octagon.fill")
+                        .font(.system(size: 60))
+                        .foregroundColor(resultColor)
+                        .shadow(color: resultColor.opacity(0.7), radius: 12)
+                }
+                .scaleEffect(flashScale)
+
+                VStack(spacing: 8) {
+                    Text(won ? (early ? "KLIPPT I TID — BONUS" : "AVVÄRJT") : "FEL TRÅD")
+                        .font(.system(size: 20, weight: .black, design: .monospaced))
+                        .foregroundColor(resultColor)
+                        .tracking(2)
+                        .shadow(color: resultColor.opacity(0.4), radius: 6)
+
+                    if won {
+                        Text("Rätt tråd klippt\(early ? " med mer än 3s kvar" : "").")
+                            .font(.system(size: 12, design: .monospaced))
+                            .foregroundColor(Color(white: 0.45))
+                    } else {
+                        Text("Bomben detonerade. Ingen lön.")
+                            .font(.system(size: 12, design: .monospaced))
+                            .foregroundColor(Color(white: 0.45))
+                    }
+                }
+
+                if won && earned > 0 {
+                    Text("+\(TimeEngine.shortFormatted(earned))")
+                        .font(.system(size: 34, weight: .black, design: .monospaced))
+                        .foregroundColor(.green)
+                        .shadow(color: .green.opacity(0.5), radius: 8)
+                } else if !won {
+                    Text("−\(penalty) min")
+                        .font(.system(size: 30, weight: .black, design: .monospaced))
+                        .foregroundColor(.red)
+                        .shadow(color: .red.opacity(0.5), radius: 8)
+                }
+
+                Button(action: onDismiss) {
+                    Text("STÄNG")
+                        .font(.system(size: 14, weight: .black, design: .monospaced))
+                        .foregroundColor(.black)
+                        .padding(.horizontal, 44)
+                        .padding(.vertical, 14)
+                        .background(resultColor)
+                        .clipShape(Capsule())
+                        .shadow(color: resultColor.opacity(0.4), radius: 8)
+                }
+
+                Spacer()
+            }
+        }
+        .onAppear {
+            // Flash-animation vid resultat
+            withAnimation(.easeOut(duration: 0.15)) { flashOpacity = won ? 0.12 : 0.18 }
+            withAnimation(.easeOut(duration: 0.15).delay(0.15)) { flashOpacity = 0 }
+            // Ikon-scale in
+            withAnimation(.spring(response: 0.4, dampingFraction: 0.6)) { flashScale = 1.0 }
+            // Ring-expansion
+            withAnimation(.easeOut(duration: 0.5)) { ringScale = 1.0; ringOpacity = 0 }
+        }
     }
 }
 

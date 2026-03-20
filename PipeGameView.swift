@@ -200,7 +200,7 @@ struct PipeGameView: View {
 
     var body: some View {
         ZStack {
-            Color(red:0.05,green:0.06,blue:0.08).ignoresSafeArea()
+            Color(red: 0.08, green: 0.08, blue: 0.10).ignoresSafeArea()
             metalGrating.ignoresSafeArea()
 
             switch phase {
@@ -225,14 +225,19 @@ struct PipeGameView: View {
 
     private var metalGrating: some View {
         Canvas { ctx, size in
-            for y in stride(from: 0.0, to: size.height, by: 8) {
-                ctx.fill(Path(CGRect(x:0, y:y, width:size.width, height:1)),
-                         with: .color(Color(white:0.05)))
+            // Horisontella ränder — industriell metalltextur
+            for y in stride(from: 0.0, to: size.height, by: 6) {
+                ctx.fill(Path(CGRect(x: 0, y: y, width: size.width, height: 1)),
+                         with: .color(Color(white: 0.055)))
             }
-            for x in stride(from: 0.0, to: size.width, by: 80) {
-                ctx.fill(Path(CGRect(x:x, y:0, width:2, height:size.height)),
-                         with: .color(Color(white:0.04)))
+            // Vertikala pelarsektioner
+            for x in stride(from: 0.0, to: size.width, by: 64) {
+                ctx.fill(Path(CGRect(x: x, y: 0, width: 1, height: size.height)),
+                         with: .color(Color(white: 0.045)))
             }
+            // Subtil vignette-kant längst ner
+            let gradRect = CGRect(x: 0, y: size.height * 0.75, width: size.width, height: size.height * 0.25)
+            ctx.fill(Path(gradRect), with: .color(Color.black.opacity(0.15)))
         }
     }
 
@@ -608,118 +613,166 @@ private struct PipeCellView: View {
     let cell: PCell
     let size: CGFloat
     let isFlashing: Bool
-    @State private var flowOffset: CGFloat = 0
 
+    // Rörfärg beroende på status
     private var pipeColor: Color {
         if cell.isSource { return Color(red: 0.1, green: 1.0, blue: 0.5) }
         if cell.isDrain  { return Color(red: 0.1, green: 0.8, blue: 1.0) }
-        if cell.isWet    { return Color(red: 0.0, green: 0.7, blue: 1.0) }
-        return Color(red: 0.4, green: 0.42, blue: 0.48)
+        if cell.isWet    { return .cyan }
+        return Color(red: 0.35, green: 0.37, blue: 0.42)
     }
 
-    private var bgColor: Color {
-        if isFlashing        { return Color(red: 0.2, green: 0.2, blue: 0.24) }
-        if cell.isSource     { return Color(red: 0.02, green: 0.12, blue: 0.08) }
-        if cell.isDrain      { return Color(red: 0.02, green: 0.08, blue: 0.14) }
-        if cell.isWet        { return Color(red: 0.02, green: 0.06, blue: 0.12) }
-        return Color(red: 0.06, green: 0.07, blue: 0.09)
+    // Vattenflödesfärg för gradient
+    private var waterGradient: LinearGradient {
+        LinearGradient(
+            colors: [Color.cyan.opacity(0.9), Color.blue.opacity(0.8)],
+            startPoint: .leading, endPoint: .trailing
+        )
     }
 
     var body: some View {
         ZStack {
-            // Background
-            RoundedRectangle(cornerRadius: size * 0.12)
-                .fill(bgColor)
-                .frame(width: size - 3, height: size - 3)
-                .shadow(color: cell.isWet ? Color(red: 0.0, green: 0.5, blue: 1.0).opacity(0.4) : .clear, radius: 4)
+            // Bakgrundscell — metallisk gradient
+            RoundedRectangle(cornerRadius: 3)
+                .fill(LinearGradient(
+                    colors: isFlashing
+                        ? [Color(white: 0.30), Color(white: 0.20)]
+                        : [Color(white: 0.25), Color(white: 0.15)],
+                    startPoint: .top, endPoint: .bottom
+                ))
+                .frame(width: size - 2, height: size - 2)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 3)
+                        .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                )
+                // Vattenflödesöverlagring
+                .overlay(
+                    RoundedRectangle(cornerRadius: 3)
+                        .fill(waterGradient)
+                        .opacity(cell.isWet ? 0.18 : 0)
+                )
+                .shadow(color: cell.isWet ? Color.cyan.opacity(0.4) : .clear, radius: 3)
 
-            // Pipe canvas
+            // Rörgeometri via Canvas
             Canvas { ctx, sz in
                 let half  = sz.width / 2
                 let reach = sz.width * 0.5
-                let thick = sz.width * 0.24
+                let thick = sz.width * 0.28
 
                 func rect(_ dir: PDir) -> CGRect {
                     switch dir {
-                    case .top:    return CGRect(x: half - thick/2, y: 0,          width: thick,  height: half + thick/2)
+                    case .top:    return CGRect(x: half - thick/2, y: 0,             width: thick, height: half + thick/2)
                     case .bottom: return CGRect(x: half - thick/2, y: half - thick/2, width: thick, height: reach)
-                    case .left:   return CGRect(x: 0,          y: half - thick/2, width: half + thick/2, height: thick)
+                    case .left:   return CGRect(x: 0,              y: half - thick/2, width: half + thick/2, height: thick)
                     case .right:  return CGRect(x: half - thick/2, y: half - thick/2, width: reach, height: thick)
                     }
                 }
 
-                // Pipe body
-                let baseCol: GraphicsContext.Shading = .color(pipeColor.opacity(cell.isWet ? 1.0 : 0.75))
+                // Metalliskt rörskikt
+                let metalShading: GraphicsContext.Shading = .linearGradient(
+                    Gradient(colors: [
+                        pipeColor.opacity(cell.isWet ? 0.55 : 0.65),
+                        pipeColor.opacity(cell.isWet ? 0.40 : 0.50)
+                    ]),
+                    startPoint: CGPoint(x: 0, y: 0),
+                    endPoint:   CGPoint(x: sz.width, y: sz.height)
+                )
+
                 for dir in cell.openings {
-                    ctx.fill(Path(roundedRect: rect(dir), cornerRadius: 2), with: baseCol)
+                    ctx.fill(Path(roundedRect: rect(dir), cornerRadius: 2), with: metalShading)
                 }
 
-                // Center hub
-                let hub = CGRect(x: half - thick * 0.65, y: half - thick * 0.65, width: thick * 1.3, height: thick * 1.3)
-                ctx.fill(Path(roundedRect: hub, cornerRadius: 3), with: baseCol)
+                // Centrumhub
+                let hub = CGRect(x: half - thick * 0.7, y: half - thick * 0.7, width: thick * 1.4, height: thick * 1.4)
+                ctx.fill(Path(roundedRect: hub, cornerRadius: 3), with: metalShading)
 
-                // Wet glow
+                // Vattenflöde — cyan glow inuti rören
                 if cell.isWet {
-                    let glow: GraphicsContext.Shading = .color(Color(red: 0.3, green: 0.8, blue: 1.0).opacity(0.35))
+                    let waterShading: GraphicsContext.Shading = .color(Color.cyan.opacity(0.60))
+                    let innerThick = thick * 0.55
+                    let innerHub   = CGRect(x: half - innerThick * 0.7, y: half - innerThick * 0.7,
+                                           width: innerThick * 1.4, height: innerThick * 1.4)
                     for dir in cell.openings {
-                        ctx.fill(Path(roundedRect: rect(dir), cornerRadius: 2), with: glow)
+                        let r = rect(dir)
+                        let inset = CGRect(x: r.midX - innerThick/2, y: r.minY,
+                                          width: innerThick, height: r.height)
+                        ctx.fill(Path(roundedRect: inset, cornerRadius: 2), with: waterShading)
                     }
-                    ctx.fill(Path(roundedRect: hub, cornerRadius: 3), with: glow)
+                    ctx.fill(Path(roundedRect: innerHub, cornerRadius: 2), with: waterShading)
                 }
 
-                // Metallic highlight stripe
-                let highlightCol: GraphicsContext.Shading = .color(Color.white.opacity(0.08))
+                // Metallisk highlight-rand (topp-vänster kant)
+                let highlightShading: GraphicsContext.Shading = .color(Color.white.opacity(0.13))
                 for dir in cell.openings {
                     let r = rect(dir)
-                    let thinR = CGRect(x: r.minX + 1, y: r.minY + 1, width: r.width * 0.35, height: r.height * 0.35)
-                    ctx.fill(Path(roundedRect: thinR, cornerRadius: 1), with: highlightCol)
+                    let thinR = CGRect(x: r.minX + 1, y: r.minY + 1, width: r.width * 0.28, height: r.height * 0.28)
+                    ctx.fill(Path(roundedRect: thinR, cornerRadius: 1), with: highlightShading)
                 }
             }
-            .frame(width: size - 3, height: size - 3)
+            .frame(width: size - 2, height: size - 2)
 
-            // Flow droplet animation on wet pipes
+            // Droprörelseanimation på våta rör
             if cell.isWet && !cell.isSource && !cell.isDrain {
                 let dir = cell.openings.first ?? .right
-                FlowDroplet(direction: dir, size: size, color: Color(red: 0.5, green: 0.9, blue: 1.0))
+                FlowDroplet(direction: dir, size: size, color: Color.cyan)
             }
 
-            // Source/drain markers
+            // Källmarkör
             if cell.isSource {
                 ZStack {
                     Circle()
-                        .fill(Color(red: 0.1, green: 1.0, blue: 0.5).opacity(0.25))
-                        .frame(width: size * 0.55, height: size * 0.55)
+                        .fill(Color(red: 0.1, green: 1.0, blue: 0.5).opacity(0.22))
+                        .frame(width: size * 0.52, height: size * 0.52)
                     Image(systemName: "drop.fill")
                         .font(.system(size: size * 0.22))
                         .foregroundColor(Color(red: 0.1, green: 1.0, blue: 0.5))
-                }
-            }
-            if cell.isDrain {
-                ZStack {
-                    Circle()
-                        .fill(Color(red: 0.1, green: 0.8, blue: 1.0).opacity(0.25))
-                        .frame(width: size * 0.55, height: size * 0.55)
-                    Image(systemName: "arrow.down.to.line")
-                        .font(.system(size: size * 0.22))
-                        .foregroundColor(Color(red: 0.1, green: 0.8, blue: 1.0))
+                        .shadow(color: Color(red: 0.1, green: 1.0, blue: 0.5).opacity(0.6), radius: 3)
                 }
             }
 
-            // Leaking water drips on open ends facing grid boundary (non-connected ends)
+            // Avloppsmarkör
+            if cell.isDrain {
+                ZStack {
+                    Circle()
+                        .fill(Color.cyan.opacity(0.22))
+                        .frame(width: size * 0.52, height: size * 0.52)
+                    Image(systemName: "arrow.down.to.line")
+                        .font(.system(size: size * 0.22))
+                        .foregroundColor(Color.cyan)
+                        .shadow(color: Color.cyan.opacity(0.6), radius: 3)
+                }
+            }
+
+            // Läckage-droppe på icke-kopplade ändar
             if !cell.isWet && !cell.openings.isEmpty {
-                // Show a small drip indicator on the bottom opening if not connected
                 ForEach(Array(cell.openings), id: \.rawValue) { dir in
                     if dir == .bottom {
-                        Image(systemName: "drop")
-                            .font(.system(size: size * 0.12))
-                            .foregroundColor(Color(red: 0.4, green: 0.6, blue: 0.8).opacity(0.3))
-                            .offset(y: size * 0.32)
+                        LeakDrop(size: size)
                     }
                 }
             }
         }
-        .scaleEffect(isFlashing ? 0.88 : 1.0)
-        .animation(isFlashing ? .easeOut(duration: 0.12) : nil, value: isFlashing)
+        .scaleEffect(isFlashing ? 0.86 : 1.0)
+        .animation(isFlashing ? .easeOut(duration: 0.10) : .default, value: isFlashing)
+    }
+}
+
+// MARK: - Leakage Drop
+
+private struct LeakDrop: View {
+    let size: CGFloat
+    @State private var dropY: CGFloat = 0
+
+    var body: some View {
+        Circle()
+            .fill(Color(red: 0.3, green: 0.55, blue: 0.75).opacity(0.35))
+            .frame(width: size * 0.09, height: size * 0.09)
+            .offset(y: size * 0.28 + dropY)
+            .onAppear {
+                withAnimation(.easeIn(duration: 0.7).repeatForever(autoreverses: false)) {
+                    dropY = size * 0.12
+                }
+            }
     }
 }
 
