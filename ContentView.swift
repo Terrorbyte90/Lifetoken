@@ -1,5 +1,62 @@
 import SwiftUI
 
+// MARK: - ZoneChatMessage
+
+struct ZoneChatMessage: Identifiable, Codable {
+    let id: String
+    let username: String
+    let text: String
+    let timestamp: Date
+    let zone: String
+}
+
+// MARK: - ZoneChatManager
+
+class ZoneChatManager: ObservableObject {
+    static let shared = ZoneChatManager()
+    @Published var messages: [ZoneChatMessage] = []
+    private let key = "zone_chat_v1"
+    private var refreshTimer: Timer?
+
+    private init() { loadMessages(); startRefresh() }
+
+    func loadMessages() {
+        let zone = GameState.shared.currentZone.name
+        guard let data = UserDefaults.standard.data(forKey: key),
+              let all = try? JSONDecoder().decode([ZoneChatMessage].self, from: data)
+        else { messages = []; return }
+        messages = Array(all.filter { $0.zone == zone }.suffix(50).reversed())
+    }
+
+    func send(_ text: String) {
+        let trimmed = text.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return }
+        let zone = GameState.shared.currentZone.name
+        let msg = ZoneChatMessage(
+            id: UUID().uuidString,
+            username: UserDefaults.standard.string(forKey: "username") ?? "Spelare",
+            text: trimmed, timestamp: Date(), zone: zone
+        )
+        var all: [ZoneChatMessage] = []
+        if let data = UserDefaults.standard.data(forKey: key),
+           let existing = try? JSONDecoder().decode([ZoneChatMessage].self, from: data) {
+            all = existing
+        }
+        all.append(msg)
+        if all.count > 200 { all = Array(all.suffix(200)) }
+        if let data = try? JSONEncoder().encode(all) {
+            UserDefaults.standard.set(data, forKey: key)
+        }
+        loadMessages()
+    }
+
+    private func startRefresh() {
+        refreshTimer = Timer.scheduledTimer(withTimeInterval: 15, repeats: true) { [weak self] _ in
+            self?.loadMessages()
+        }
+    }
+}
+
 // MARK: - DashboardView
 
 struct DashboardView: View {
@@ -9,6 +66,7 @@ struct DashboardView: View {
     @ObservedObject private var inflation     = InflationManager.shared
     @ObservedObject private var server        = ServerSync.shared
     @ObservedObject private var board         = BoardManager.shared
+    @ObservedObject private var zoneChat      = ZoneChatManager.shared
 
     @State private var showOnboarding  = !UserDefaults.standard.bool(forKey: "hasLaunched")
     @State private var showTimeMarket  = false
@@ -21,7 +79,14 @@ struct DashboardView: View {
     @State private var showBoard       = false
     @State private var showNewsFeed    = false
     @State private var showMiniJobs    = false
+    @State private var showGazette     = false
     @State private var pulseAnim: Bool = false
+
+    // Zonchatt
+    @State private var chatInput = ""
+
+    // Topplista
+    @State private var topListIndex = 0
 
     private let microTexts = [
         "Du arbetar för att leva. Inte tvärtom.",
@@ -46,14 +111,13 @@ struct DashboardView: View {
                     clockSection
                     if engine.balance > 0 && engine.balance < 86400 { lowBalanceBanner }
                     if inflation.isWarning { inflationBanner }
-                    payrollRow
-                    statsStrip
-                    eliteTicker
-                    BoardWidget().padding(.horizontal)
+                    zoneInfoCard
+                    salaryCard
+                    toplistaSection
+                    zoneChatCard
+                    missionsCard
+                    pvpSection
                     NewsFeedWidget(maxItems: 3).padding(.horizontal)
-                    navSectionLabel
-                    navGrid
-                    activeBoostsSection
                     microTextBar
                     Spacer(minLength: LTSpacing.scrollBottom)
                 }
@@ -77,6 +141,7 @@ struct DashboardView: View {
         .sheet(isPresented: $showNewsFeed)             { NavigationStack { NewsFeedView() } }
         .sheet(isPresented: $showBoard)                { NavigationStack { BoardDetailView() } }
         .sheet(isPresented: $showMiniJobs)             { NavigationStack { MiniJobsView() } }
+        .sheet(isPresented: $showGazette)              { NavigationStack { GazetteView() } }
         .alert("Streak Bonus!", isPresented: $gameState.showStreakBonus) {
             Button("Tack!", role: .cancel) {}
         } message: { Text(gameState.streakBonusMessage) }
@@ -271,268 +336,311 @@ struct DashboardView: View {
         .accessibilityLabel("Livsbalans: \(clockLabel.lowercased()). \(TimeEngine.formatted(engine.balance)) återstår.")
     }
 
-    // MARK: - Payroll Row
+    // MARK: - Zone Info Card
 
-    private var payrollRow: some View {
-        HStack(spacing: LTSpacing.sm + 2) {
-            payCard(
-                icon: "heart.fill",
-                iconColor: Color(red: 0.2, green: 0.9, blue: 0.45),
-                title: "HÄLSOINKOMST",
-                value: TimeEngine.shortFormatted(incomeManager.projectedDailyIncome),
-                sub: "projicerat efter skatt"
-            )
-            payCard(
-                icon: "clock.badge.checkmark.fill",
-                iconColor: Color(red: 0.95, green: 0.82, blue: 0.2),
-                title: "UTBETALNING",
-                value: countdownToMidnight(),
-                sub: "tills 00:00"
-            )
-        }
-        .padding(.horizontal)
-    }
-
-    private func payCard(
-        icon: String,
-        iconColor: Color,
-        title: String,
-        value: String,
-        sub: String
-    ) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            // Header row
-            HStack(spacing: 6) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 7)
-                        .fill(iconColor.opacity(0.18))
-                        .frame(width: 26, height: 26)
-                    Image(systemName: icon)
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundColor(iconColor)
+    private var zoneInfoCard: some View {
+        let zone = gameState.currentZone
+        return VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Image(systemName: zone.zoneIcon)
+                    .foregroundColor(zone.color)
+                Text(zone.name.uppercased())
+                    .font(.system(size: 12, weight: .black, design: .monospaced))
+                    .foregroundColor(zone.color)
+                    .tracking(2)
+                Spacer()
+                Button { showZoneMap = true } label: {
+                    Text("VISA ZONER →")
+                        .font(.system(size: 9, design: .monospaced))
+                        .foregroundColor(.white.opacity(0.4))
                 }
-                Text(title)
-                    .font(.system(size: 9, weight: .bold, design: .monospaced))
-                    .foregroundColor(.white.opacity(0.60))
-                    .tracking(1)
-                Spacer(minLength: 0)
             }
-            // Value
-            Text(value)
-                .font(.system(size: 20, weight: .black, design: .monospaced))
-                .foregroundColor(iconColor)
-                .lineLimit(1)
-                .minimumScaleFactor(0.65)
-            // Subtitle
-            Text(sub)
-                .font(.system(size: 10, design: .monospaced))
-                .foregroundColor(.white.opacity(0.50))
+            if !zone.shortLore.isEmpty {
+                Text(zone.shortLore)
+                    .font(.system(size: 11, design: .monospaced))
+                    .foregroundColor(.white.opacity(0.55))
+                    .italic()
+                    .lineLimit(2)
+            }
+            HStack(spacing: 16) {
+                Label("\(server.zoneMembers.count) spelare", systemImage: "person.2.fill")
+                    .font(.system(size: 10, design: .monospaced))
+                    .foregroundColor(.white.opacity(0.45))
+                Label("\(Int(zone.taxRate * 100))% skatt", systemImage: "percent")
+                    .font(.system(size: 10, design: .monospaced))
+                    .foregroundColor(.orange.opacity(0.7))
+                Label(String(format: "%.1f%% infl/dag", zone.inflationRatePerDay * 100), systemImage: "arrow.up.right")
+                    .font(.system(size: 10, design: .monospaced))
+                    .foregroundColor(.red.opacity(0.7))
+            }
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 14)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            LinearGradient(
-                colors: [iconColor.opacity(0.13), iconColor.opacity(0.04)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 16))
-        .overlay(
-            RoundedRectangle(cornerRadius: 16)
-                .stroke(iconColor.opacity(0.35), lineWidth: 1)
-        )
+        .padding(14)
+        .background(zone.color.opacity(0.07))
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(zone.color.opacity(0.25), lineWidth: 1))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .padding(.horizontal)
+        .onTapGesture { showZoneMap = true }
     }
 
-    // MARK: - Stats Strip
+    // MARK: - Salary Card
 
-    private var statsStrip: some View {
-        HStack(spacing: 8) {
-            statChip(
-                icon: "percent",
-                label: "SKATT",
-                value: "\(Int(gameState.currentZone.taxRate * 100))%",
-                color: .yellow
-            )
-            statChip(
-                icon: "figure.walk",
-                label: "STEG",
-                value: "\(incomeManager.dailySteps)",
-                color: .green
-            )
-            statChip(
-                icon: "antenna.radiowaves.left.and.right",
-                label: "SERVER",
-                value: server.isOnline ? "LIVE" : "OFF",
-                color: server.isOnline ? Color(red: 0.2, green: 0.9, blue: 0.2) : .red
-            )
-            statChip(
-                icon: "person.2.fill",
-                label: "ONLINE",
-                value: "\(max(1, server.onlineCount))",
-                color: .cyan
-            )
+    private var salaryCard: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("LÖN")
+                        .font(.system(size: 11, weight: .black, design: .monospaced))
+                        .foregroundColor(.white.opacity(0.35))
+                        .tracking(3)
+                    Text("Din hälsa ger dig lön, bättre hälsa, mer lön")
+                        .font(.system(size: 9, design: .monospaced))
+                        .foregroundColor(.white.opacity(0.3))
+                        .italic()
+                }
+                Spacer()
+            }
+            HStack {
+                VStack(alignment: .leading, spacing: 3) {
+                    Label("HÄLSOINKOMST", systemImage: "heart.fill")
+                        .font(.system(size: 8, design: .monospaced))
+                        .foregroundColor(.green.opacity(0.6))
+                    Text(TimeEngine.formatted(incomeManager.projectedDailyIncome))
+                        .font(.system(size: 20, weight: .black, design: .monospaced))
+                        .foregroundColor(.green)
+                }
+                Spacer()
+                VStack(alignment: .trailing, spacing: 3) {
+                    Text("NÄSTA UTBETALNING")
+                        .font(.system(size: 8, design: .monospaced))
+                        .foregroundColor(.white.opacity(0.3))
+                    Text(countdownToMidnight())
+                        .font(.system(size: 14, weight: .bold, design: .monospaced))
+                        .foregroundColor(.white.opacity(0.65))
+                }
+            }
         }
+        .padding(14)
+        .background(Color(red: 0.03, green: 0.10, blue: 0.03))
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.green.opacity(0.18), lineWidth: 1))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
         .padding(.horizontal)
     }
 
-    private func statChip(icon: String, label: String, value: String, color: Color) -> some View {
-        VStack(spacing: LTSpacing.xs + 2) {
-            Image(systemName: icon)
-                .font(.system(size: 14))
-                .foregroundColor(color)
-                .shadow(color: color.opacity(0.5), radius: 4)
-            Text(value)
-                .font(.system(size: 13, weight: .black, design: .monospaced))
-                .foregroundColor(.white)
-                .lineLimit(1)
-                .minimumScaleFactor(0.6)
-                .contentTransition(.numericText())
-                .animation(LTAnimation.fadeFast, value: value)
-            Text(label)
-                .font(.system(size: 8, weight: .bold, design: .monospaced))
-                .foregroundColor(color.opacity(0.75))
-                .tracking(0.5)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 13)
-        .background(
-            LinearGradient(
-                colors: [color.opacity(0.14), color.opacity(0.05)],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-        )
-        .clipShape(RoundedRectangle(cornerRadius: LTRadius.xs + 5))
-        .overlay(RoundedRectangle(cornerRadius: LTRadius.xs + 5).stroke(color.opacity(0.35), lineWidth: 1))
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(label): \(value)")
-    }
+    // MARK: - Topplista
 
-    // MARK: - Nav Section Label
-
-    private var navSectionLabel: some View {
-        HStack(spacing: 6) {
-            Rectangle()
-                .fill(Color.white.opacity(0.07))
-                .frame(width: 28, height: 1)
-            Text("NAVIGERING")
-                .font(.system(size: 9, weight: .bold, design: .monospaced))
-                .foregroundColor(.white.opacity(0.22))
-                .tracking(3)
-            Rectangle()
-                .fill(Color.white.opacity(0.07))
-                .frame(height: 1)
-        }
-        .padding(.horizontal)
-    }
-
-    // MARK: - Navigation Grid (2-column NavCard layout)
-
-    private var navGrid: some View {
-        LazyVGrid(
-            columns: [GridItem(.flexible()), GridItem(.flexible())],
-            spacing: LTSpacing.sm + 2
-        ) {
-            NavCard(icon: "cart.fill",
-                    title: "Butik",
-                    sub: "Köp tid & items",
-                    color: .cyan)                                    { showTimeMarket = true }
-            NavCard(icon: "map.fill",
-                    title: "Zoner",
-                    sub: "Migrera & utforska",
-                    color: .green)                                   { showZoneMap = true }
-            NavCard(icon: "target",
-                    title: "Uppdrag",
-                    sub: "Tjäna extra tid",
-                    color: .yellow)                                  { showMissions = true }
-            NavCard(icon: "building.columns.fill",
-                    title: "Time Bank",
-                    sub: "Räntor & lån",
-                    color: .blue)                                    { showBank = true }
-            NavCard(icon: "figure.run",
-                    title: "Stegduell",
-                    sub: "Satsa på steg",
-                    color: Color(red: 0.1, green: 0.9, blue: 0.5))  { showStepBet = true }
-            NavCard(icon: "moon.stars.fill",
-                    title: "Nattmarknaden",
-                    sub: "Hemliga affärer",
-                    color: Color(red: 0.5, green: 0.3, blue: 0.9))  { showNightMarket = true }
-            NavCard(icon: "bolt.fill",
-                    title: "Rånet",
-                    sub: "PvP — hög risk",
-                    color: Color(red: 0.9, green: 0.3, blue: 0.1))  { showPvPRaid = true }
-            NavCard(icon: "crown.fill",
-                    title: "Styrelsen",
-                    sub: "Eliten styr",
-                    color: Color(red: 0.9, green: 0.7, blue: 0.1))  { showBoard = true }
-            NavCard(icon: "newspaper.fill",
-                    title: "Nyheter",
-                    sub: "Senaste händelser",
-                    color: Color(red: 0.4, green: 0.7, blue: 0.9))  { showNewsFeed = true }
-            NavCard(icon: "wrench.and.screwdriver.fill",
-                    title: "Arbete",
-                    sub: "Mini-jobb & uppdrag",
-                    color: Color(red: 0.2, green: 0.8, blue: 0.5))  { showMiniJobs = true }
-        }
-        .padding(.horizontal)
-    }
-
-    // MARK: - Elite Ticker
-
-    private let elitePerks = [
-        "Topp 3 rikaste spelare får unika fördelar",
-        "★ Plats 1: Skatteimmunitet — betalar 0% skatt",
-        "★ Plats 2: Tidsskydd — kan ej rånas",
-        "★ Plats 3: Dubbel hälsoinkomst varje dag"
+    private let topListCycleTexts = [
+        "Tre mäktigaste spelarna kontrollerar lifetokens ekonomi",
+        "Mäktigaste spelarna lever på din och alla andras tid",
+        "Klättra förbi dem och ta deras plats om du kan"
     ]
-    @State private var eliteTickerIndex = 0
-    @State private var eliteTickerTimer = Timer.publish(every: 4, on: .main, in: .common).autoconnect()
 
-    private var eliteTicker: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "crown.fill")
-                .font(.system(size: 9))
-                .foregroundColor(Color(red: 1.0, green: 0.8, blue: 0.1))
-                .shadow(color: Color.yellow.opacity(0.6), radius: 3)
-            Text(elitePerks[eliteTickerIndex])
-                .font(.system(size: 10, weight: .semibold, design: .monospaced))
-                .foregroundColor(eliteTickerIndex == 0
-                    ? Color(red: 1.0, green: 0.85, blue: 0.3)
-                    : Color.white.opacity(0.75))
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
-                .transition(.asymmetric(
-                    insertion: .move(edge: .trailing).combined(with: .opacity),
-                    removal:   .move(edge: .leading).combined(with: .opacity)
-                ))
-                .id(eliteTickerIndex)
-            Spacer()
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 7)
-        .background(
-            LinearGradient(
-                colors: [
-                    Color(red: 0.18, green: 0.14, blue: 0.02),
-                    Color(red: 0.08, green: 0.06, blue: 0.01)
-                ],
-                startPoint: .leading,
-                endPoint: .trailing
-            )
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 8))
-        .overlay(
-            RoundedRectangle(cornerRadius: 8)
-                .stroke(Color(red: 1.0, green: 0.8, blue: 0.1).opacity(0.3), lineWidth: 1)
-        )
-        .padding(.horizontal)
-        .onReceive(eliteTickerTimer) { _ in
-            withAnimation(LTAnimation.fadeFast) {
-                eliteTickerIndex = (eliteTickerIndex + 1) % elitePerks.count
+    private let topPlayers: [(name: String, advantage: String)] = [
+        ("Viktor_H",  "+15% av allas inkomst"),
+        ("Malin_88",  "+8% av allas inkomst"),
+        ("ZeroKing",  "+4% av allas inkomst")
+    ]
+
+    private var toplistaSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(topListCycleTexts[topListIndex])
+                .font(.system(size: 10, design: .monospaced))
+                .foregroundColor(.white.opacity(0.35))
+                .italic()
+                .frame(maxWidth: .infinity, alignment: .center)
+                .animation(.easeInOut(duration: 0.4), value: topListIndex)
+
+            HStack {
+                Text("TOPPLISTA")
+                    .font(.system(size: 11, weight: .black, design: .monospaced))
+                    .foregroundColor(.white.opacity(0.35))
+                    .tracking(3)
+                Spacer()
+            }
+
+            ForEach(Array(topPlayers.enumerated()), id: \.offset) { i, player in
+                HStack(spacing: 10) {
+                    Text("#\(i + 1)")
+                        .font(.system(size: 14, weight: .black, design: .monospaced))
+                        .foregroundColor(i == 0 ? .yellow : i == 1 ? Color(white: 0.75) : Color(red: 0.8, green: 0.5, blue: 0.2))
+                        .frame(width: 30)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(player.name)
+                            .font(.system(size: 12, weight: .bold, design: .monospaced))
+                            .foregroundColor(.white)
+                        Text(player.advantage)
+                            .font(.system(size: 9, design: .monospaced))
+                            .foregroundColor(.green.opacity(0.65))
+                    }
+                    Spacer()
+                    Text("??:??:??")
+                        .font(.system(size: 11, weight: .bold, design: .monospaced))
+                        .foregroundColor(.white.opacity(0.5))
+                        .onReceive(Timer.publish(every: 60, on: .main, in: .common).autoconnect()) { _ in }
+                }
+                .padding(.vertical, 6)
+                .padding(.horizontal, 10)
+                .background(Color.white.opacity(0.04))
+                .clipShape(RoundedRectangle(cornerRadius: 8))
             }
         }
+        .padding(14)
+        .background(Color.white.opacity(0.025))
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.yellow.opacity(0.12), lineWidth: 1))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .padding(.horizontal)
+        .onReceive(Timer.publish(every: 5, on: .main, in: .common).autoconnect()) { _ in
+            withAnimation { topListIndex = (topListIndex + 1) % topListCycleTexts.count }
+        }
+    }
+
+    // MARK: - Zone Chat Card
+
+    private var zoneChatCard: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 6) {
+                Image(systemName: "bubble.left.and.bubble.right.fill")
+                    .foregroundColor(.cyan.opacity(0.55))
+                    .font(.system(size: 12))
+                Text("ZONCHATT — \(gameState.currentZone.name.uppercased())")
+                    .font(.system(size: 10, weight: .black, design: .monospaced))
+                    .foregroundColor(.white.opacity(0.35))
+                    .tracking(2)
+            }
+
+            if zoneChat.messages.isEmpty {
+                Text("Ingen har skrivit ännu. Var den första.")
+                    .font(.system(size: 10, design: .monospaced))
+                    .foregroundColor(.white.opacity(0.2))
+                    .italic()
+                    .padding(.vertical, 4)
+            } else {
+                ForEach(zoneChat.messages.prefix(5)) { msg in
+                    HStack(alignment: .top, spacing: 5) {
+                        Text(msg.username + ":")
+                            .font(.system(size: 9, weight: .bold, design: .monospaced))
+                            .foregroundColor(.cyan.opacity(0.75))
+                            .lineLimit(1)
+                        Text(msg.text)
+                            .font(.system(size: 10, design: .monospaced))
+                            .foregroundColor(.white.opacity(0.65))
+                            .lineLimit(2)
+                    }
+                }
+            }
+
+            HStack(spacing: 8) {
+                TextField("Skriv...", text: $chatInput)
+                    .font(.system(size: 11, design: .monospaced))
+                    .foregroundColor(.white)
+                    .textFieldStyle(.plain)
+                    .submitLabel(.send)
+                    .onSubmit { zoneChat.send(chatInput); chatInput = "" }
+                Button("→") { zoneChat.send(chatInput); chatInput = "" }
+                    .font(.system(size: 14, weight: .black))
+                    .foregroundColor(.cyan)
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 7)
+            .background(Color.white.opacity(0.06))
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+        }
+        .padding(14)
+        .background(Color(red: 0.02, green: 0.07, blue: 0.10))
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.cyan.opacity(0.12), lineWidth: 1))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .padding(.horizontal)
+    }
+
+    // MARK: - Missions Card
+
+    private var missionsCard: some View {
+        Button { showMissions = true } label: {
+            HStack(spacing: 14) {
+                ZStack {
+                    Circle().fill(Color.purple.opacity(0.15)).frame(width: 44, height: 44)
+                    Image(systemName: "checklist")
+                        .font(.system(size: 20))
+                        .foregroundColor(.purple.opacity(0.8))
+                }
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("UPPDRAG")
+                        .font(.system(size: 11, weight: .black, design: .monospaced))
+                        .foregroundColor(.white.opacity(0.45))
+                        .tracking(2)
+                    Text("Tryck för att visa aktiva uppdrag")
+                        .font(.system(size: 10, design: .monospaced))
+                        .foregroundColor(.white.opacity(0.5))
+                }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .foregroundColor(.white.opacity(0.25))
+            }
+            .padding(14)
+            .background(Color.purple.opacity(0.07))
+            .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.purple.opacity(0.18), lineWidth: 1))
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+        }
+        .buttonStyle(.plain)
+        .padding(.horizontal)
+    }
+
+    // MARK: - PvP Section
+
+    private var pvpSection: some View {
+        VStack(spacing: 10) {
+            Text("Livet är orättvist i Lifetoken, var orättvis tillbaks..")
+                .font(.system(size: 10, design: .monospaced))
+                .foregroundColor(.white.opacity(0.3))
+                .italic()
+                .frame(maxWidth: .infinity, alignment: .center)
+
+            HStack(spacing: 10) {
+                Button { showStepBet = true } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "figure.walk")
+                            .font(.system(size: 18))
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("STEG-DUELL")
+                                .font(.system(size: 11, weight: .black, design: .monospaced))
+                            Text("Utmana en spelare")
+                                .font(.system(size: 9, design: .monospaced))
+                                .opacity(0.7)
+                        }
+                        Spacer()
+                    }
+                    .foregroundColor(.orange)
+                    .padding(14)
+                    .frame(maxWidth: .infinity)
+                    .background(Color.orange.opacity(0.07))
+                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.orange.opacity(0.22), lineWidth: 1))
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                }
+                .buttonStyle(.plain)
+
+                Button { showPvPRaid = true } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "bolt.fill")
+                            .font(.system(size: 18))
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("RÅN")
+                                .font(.system(size: 11, weight: .black, design: .monospaced))
+                            Text("Råna en spelare")
+                                .font(.system(size: 9, design: .monospaced))
+                                .opacity(0.7)
+                        }
+                        Spacer()
+                    }
+                    .foregroundColor(.red)
+                    .padding(14)
+                    .frame(maxWidth: .infinity)
+                    .background(Color.red.opacity(0.07))
+                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.red.opacity(0.22), lineWidth: 1))
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal)
     }
 
     // MARK: - Banners
@@ -594,50 +702,6 @@ struct DashboardView: View {
         .padding(.horizontal)
         .accessibilityLabel("Varning: Kritisk tidsnivå. Du har mindre än en dag kvar.")
         .accessibilityAddTraits(.isStaticText)
-    }
-
-    // MARK: - Active Boosts
-
-    @ViewBuilder
-    private var activeBoostsSection: some View {
-        let boosts = BoostManager.shared.getActiveBoosts()
-        if !boosts.isEmpty {
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(spacing: 5) {
-                    Image(systemName: "bolt.fill")
-                        .font(.system(size: 8))
-                        .foregroundColor(.green)
-                    Text("AKTIVA BOOSTS")
-                        .font(.system(size: 9, weight: .bold, design: .monospaced))
-                        .foregroundColor(.green.opacity(0.70))
-                        .tracking(2)
-                }
-                .padding(.horizontal, 14)
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        ForEach(boosts, id: \.self) { boost in
-                            HStack(spacing: 5) {
-                                Circle().fill(Color.green).frame(width: 4, height: 4)
-                                Text(boost)
-                                    .font(.system(size: 11, design: .monospaced))
-                                    .foregroundColor(.white)
-                            }
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 5)
-                            .background(Color.green.opacity(0.12))
-                            .clipShape(Capsule())
-                            .overlay(Capsule().stroke(Color.green.opacity(0.28), lineWidth: 1))
-                        }
-                    }
-                    .padding(.horizontal, 14)
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.vertical, 10)
-            .background(.ultraThinMaterial)
-            .clipShape(RoundedRectangle(cornerRadius: 12))
-            .padding(.horizontal)
-        }
     }
 
     // MARK: - Micro Text Bar
