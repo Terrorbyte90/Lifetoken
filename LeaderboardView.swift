@@ -47,7 +47,11 @@ struct LeaderboardView: View {
     }
 
     private func leaderboardRow(_ entry: LeaderboardEntry) -> some View {
-        HStack(spacing: LTSpacing.md) {
+        // Dölj saldon för andra spelare — visa bara eget saldo
+        let myUsername = UserDefaults.standard.string(forKey: "username") ?? ""
+        let balanceText = entry.username == myUsername ? formatBalance(entry.balance) : "???"
+
+        return HStack(spacing: LTSpacing.md) {
             Text("#\(entry.rank)")
                 .font(.system(size: 13, weight: .black, design: .monospaced))
                 .foregroundStyle(entry.rank <= 3 ? LTPalette.gold : .secondary)
@@ -64,9 +68,9 @@ struct LeaderboardView: View {
 
             Spacer()
 
-            Text(formatBalance(entry.balance))
+            Text(balanceText)
                 .font(.system(size: 13, design: .monospaced))
-                .foregroundStyle(LTPalette.neonGreen)
+                .foregroundStyle(entry.username == myUsername ? LTPalette.neonGreen : Color.white.opacity(0.3))
         }
         .padding(.vertical, LTSpacing.sm)
         .padding(.horizontal, LTSpacing.md)

@@ -11,7 +11,7 @@ struct NPCPlayer: Identifiable {
     let bio: String
     var balance: TimeInterval
     var loanInterestRate: Double    // monthly interest rate
-    var reliability: Double         // 0-1, chance they repay on time
+    var reliability: Double         // 0-1, chans att de betalar i tid
     var lastSeen: String
 
     static let all: [NPCPlayer] = [
@@ -69,7 +69,7 @@ struct LoanRecord: Codable, Identifiable {
     let dailyRate: Double
     let startDate: Date
     let dueDays: Int
-    let lentToNPC: Bool   // true = you lent to NPC, false = you borrowed from NPC
+    let lentToNPC: Bool   // true = du lånade ut till NPC, false = du lånade från NPC
 
     var daysElapsed: Double { Date().timeIntervalSince(startDate) / 86400 }
     var interest: TimeInterval { principal * dailyRate * daysElapsed }
@@ -157,11 +157,11 @@ class SocialManager: ObservableObject, @unchecked Sendable {
     func sendMessage(_ text: String) {
         let msg = ZoneMessage(id: UUID(), senderName: GameState.shared.username, text: text, date: Date(), isFromSelf: true)
         chatMessages.append(msg)
-        // Mirror via server
+        // Spegla via server
         Task {
             try? await ServerSync.shared.sendMessage(toUserId: "zone_broadcast", message: text)
         }
-        // Simulate NPC reply occasionally
+        // Simulera NPC-svar ibland — intern hjälpfunktion, används ej i UI
         if Double.random(in: 0...1) < 0.4 {
             DispatchQueue.main.asyncAfter(deadline: .now() + Double.random(in: 2...6)) {
                 let npcs = NPCPlayer.all.filter { $0.zone == GameState.shared.currentZone.name }
@@ -190,7 +190,7 @@ class SocialManager: ObservableObject, @unchecked Sendable {
                 }
             } catch {
                 DispatchQueue.main.async {
-                    TimeEngine.shared.addTime(amount) // refund
+                    TimeEngine.shared.addTime(amount) // återbetala
                     self.alertMessage = "Överföringen misslyckades. Tid återbetalad."
                     self.showAlert = true
                 }
@@ -230,26 +230,25 @@ struct SocialView: View {
     @ObservedObject private var engine = TimeEngine.shared
     @ObservedObject private var gameState = GameState.shared
     @ObservedObject private var serverSync = ServerSync.shared
+    @ObservedObject private var stepBetManager = StepBetManager.shared
+    @ObservedObject private var raidManager = PvPRaidManager.shared
 
     @State private var selectedTab: SocialTab = .spelare
-    @State private var selectedNPC: NPCPlayer? = nil
-    @State private var showLendSheet: Bool = false
-    @State private var lendAmount: TimeInterval = 3600
-    @State private var lendDays: Int = 7
     @State private var selectedServerUser: ServerUser? = nil
     @State private var showTransferSheet: Bool = false
     @State private var transferAmount: TimeInterval = 3600
     @State private var chatInput: String = ""
     @State private var showYatzy: Bool = false
+    @State private var showStepBet: Bool = false
+    @State private var showRaid: Bool = false
 
     private let hapticLight = UIImpactFeedbackGenerator(style: .light)
 
+    // Flikar: Fraktion och Lån borttagna
     enum SocialTab: String, CaseIterable {
-        case spelare  = "Spelare"
-        case yatzy    = "Yatzy"
-        case chat     = "Zon-chatt"
-        case lan      = "Lån"
-        case fraktion = "Fraktion"
+        case spelare   = "Spelare"
+        case yatzy     = "Yatzy"
+        case chat      = "Zon-chatt"
         case topplista = "Topplista"
     }
 
@@ -270,17 +269,7 @@ struct SocialView: View {
                 case .spelare:   playerSection
                 case .yatzy:     yatzySection
                 case .chat:      chatSection
-                case .lan:       loanSection
-                case .fraktion:  FactionView()
                 case .topplista: LeaderboardView()
-                }
-            }
-        }
-        .sheet(isPresented: $showLendSheet) {
-            if let npc = selectedNPC {
-                LendSheetView(npc: npc, lendAmount: $lendAmount, lendDays: $lendDays) {
-                    _ = social.lendToNPC(npc, amount: lendAmount, days: lendDays)
-                    showLendSheet = false
                 }
             }
         }
@@ -291,6 +280,12 @@ struct SocialView: View {
                     showTransferSheet = false
                 }
             }
+        }
+        .sheet(isPresented: $showStepBet) {
+            StepBetView()
+        }
+        .sheet(isPresented: $showRaid) {
+            PvPRaidView()
         }
         .alert("Transaktion", isPresented: $social.showAlert) {
             Button("OK") {}
@@ -306,7 +301,7 @@ struct SocialView: View {
 
     private var headerSection: some View {
         VStack(spacing: LTSpacing.xs) {
-            Text("SOCIAL EKONOMI")
+            Text("SOCIAL")
                 .font(LTFont.displayTitle(22))
                 .foregroundColor(.white)
                 .padding(.top, 60)
@@ -367,7 +362,14 @@ struct SocialView: View {
     private var playerSection: some View {
         ScrollView(showsIndicators: false) {
             VStack(spacing: 16) {
-                // Online players from server (same zone)
+
+                // Aktiva stegdueller
+                stepDuelSection
+
+                // Aktiva/senaste rån
+                raidStatusSection
+
+                // Online-spelare i zonen (från server)
                 let onlineInZone = serverSync.zoneMembers.filter { $0.zone == gameState.currentZone.name }
                 if !onlineInZone.isEmpty {
                     VStack(alignment: .leading, spacing: 10) {
@@ -381,22 +383,7 @@ struct SocialView: View {
                     }
                 }
 
-                // NPC players in current zone
-                let zoneNPCs = social.npcsInZone(gameState.currentZone)
-                if !zoneNPCs.isEmpty {
-                    VStack(alignment: .leading, spacing: 10) {
-                        SectionHeader(title: "NPC I \(gameState.currentZone.name.uppercased())", color: .cyan)
-                        ForEach(zoneNPCs) { npc in
-                            NPCCard(npc: npc) {
-                                selectedNPC = npc
-                                lendAmount = min(3600, engine.balance * 0.1)
-                                showLendSheet = true
-                            }
-                        }
-                    }
-                }
-
-                // Cross-zone players (locked)
+                // Spelare i andra zoner (låsta)
                 let otherPlayers = serverSync.zoneMembers.filter { $0.zone != gameState.currentZone.name }
                 if !otherPlayers.isEmpty {
                     VStack(alignment: .leading, spacing: 10) {
@@ -407,7 +394,7 @@ struct SocialView: View {
                     }
                 }
 
-                if onlineInZone.isEmpty && zoneNPCs.isEmpty {
+                if onlineInZone.isEmpty {
                     VStack(spacing: 12) {
                         Image(systemName: "person.2.slash")
                             .font(.system(size: 40))
@@ -417,13 +404,151 @@ struct SocialView: View {
                             .foregroundColor(.white.opacity(0.3))
                     }
                     .frame(maxWidth: .infinity)
-                    .padding(.top, 60)
+                    .padding(.top, 40)
                 }
 
                 Spacer(minLength: 80)
             }
             .padding()
         }
+    }
+
+    // MARK: - Steg-Duell Status Section
+
+    private var stepDuelSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                SectionHeader(title: "STEG-DUELL", color: LTPalette.neonGreen)
+                Spacer()
+                Button {
+                    hapticLight.impactOccurred()
+                    showStepBet = true
+                } label: {
+                    Text("SE ALLA →")
+                        .font(LTFont.label(11))
+                        .foregroundColor(LTPalette.neonGreen)
+                }
+                .buttonStyle(LTPressEffect(scale: 0.96))
+                .accessibilityLabel("Se alla stegdueller")
+            }
+
+            if stepBetManager.activeBets.isEmpty && stepBetManager.pendingBets.isEmpty {
+                // Tomt tillstånd med uppmaning att skapa duell
+                Button {
+                    hapticLight.impactOccurred()
+                    showStepBet = true
+                } label: {
+                    HStack(spacing: LTSpacing.sm) {
+                        Image(systemName: "figure.walk")
+                            .font(.system(size: 14))
+                            .foregroundColor(LTPalette.neonGreen)
+                            .accessibilityHidden(true)
+                        Text("Utmana en spelare på steg")
+                            .font(LTFont.body(12))
+                            .foregroundColor(.white.opacity(0.5))
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 11))
+                            .foregroundColor(.white.opacity(0.3))
+                    }
+                    .padding(LTSpacing.md)
+                    .background(Color.white.opacity(0.04))
+                    .clipShape(RoundedRectangle(cornerRadius: LTRadius.sm))
+                }
+                .buttonStyle(LTPressEffect())
+                .accessibilityLabel("Utmana en spelare på steg")
+            } else {
+                // Visa aktiva dueller (max 2 för översikt)
+                ForEach(stepBetManager.activeBets.prefix(2)) { bet in
+                    StepBetStatusRow(bet: bet)
+                }
+                // Väntande utmaningar
+                if !stepBetManager.pendingBets.isEmpty {
+                    HStack(spacing: LTSpacing.sm) {
+                        Image(systemName: "clock.badge.exclamationmark")
+                            .font(.system(size: 13))
+                            .foregroundColor(.orange)
+                            .accessibilityHidden(true)
+                        Text("\(stepBetManager.pendingBets.count) väntande utmaning\(stepBetManager.pendingBets.count > 1 ? "ar" : "")")
+                            .font(LTFont.body(12))
+                            .foregroundColor(.orange)
+                        Spacer()
+                    }
+                    .padding(.horizontal, LTSpacing.xs)
+                }
+            }
+        }
+        .padding(LTSpacing.md)
+        .background(LTPalette.neonGreen.opacity(0.05))
+        .clipShape(RoundedRectangle(cornerRadius: LTRadius.sm))
+        .overlay(
+            RoundedRectangle(cornerRadius: LTRadius.sm)
+                .stroke(LTPalette.neonGreen.opacity(0.15), lineWidth: 1)
+        )
+    }
+
+    // MARK: - Rån Status Section
+
+    private var raidStatusSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                SectionHeader(title: "RÅN", color: LTPalette.danger)
+                Spacer()
+                Button {
+                    hapticLight.impactOccurred()
+                    showRaid = true
+                } label: {
+                    Text("SE ALLA →")
+                        .font(LTFont.label(11))
+                        .foregroundColor(LTPalette.danger)
+                }
+                .buttonStyle(LTPressEffect(scale: 0.96))
+                .accessibilityLabel("Se alla rån")
+            }
+
+            if raidManager.activeRaid == nil && raidManager.history.isEmpty {
+                // Tomt tillstånd med uppmaning att starta rån
+                Button {
+                    hapticLight.impactOccurred()
+                    showRaid = true
+                } label: {
+                    HStack(spacing: LTSpacing.sm) {
+                        Image(systemName: "bolt.fill")
+                            .font(.system(size: 14))
+                            .foregroundColor(LTPalette.danger)
+                            .accessibilityHidden(true)
+                        Text("Starta ett rån mot en spelare")
+                            .font(LTFont.body(12))
+                            .foregroundColor(.white.opacity(0.5))
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 11))
+                            .foregroundColor(.white.opacity(0.3))
+                    }
+                    .padding(LTSpacing.md)
+                    .background(Color.white.opacity(0.04))
+                    .clipShape(RoundedRectangle(cornerRadius: LTRadius.sm))
+                }
+                .buttonStyle(LTPressEffect())
+                .accessibilityLabel("Starta ett rån")
+            } else {
+                // Pågående rån
+                if let active = raidManager.activeRaid {
+                    RaidStatusRow(record: active, isActive: true)
+                }
+                // Senaste rån (max 2)
+                ForEach(raidManager.history.prefix(2)) { record in
+                    RaidStatusRow(record: record, isActive: false)
+                }
+            }
+        }
+        .padding(LTSpacing.md)
+        .background(LTPalette.danger.opacity(0.05))
+        .clipShape(RoundedRectangle(cornerRadius: LTRadius.sm))
+        .overlay(
+            RoundedRectangle(cornerRadius: LTRadius.sm)
+                .stroke(LTPalette.danger.opacity(0.15), lineWidth: 1)
+        )
     }
 
     // MARK: - Yatzy Section
@@ -444,7 +569,7 @@ struct SocialView: View {
                 }
                 .padding(.top, 20)
 
-                // Info box
+                // Infobox
                 VStack(alignment: .leading, spacing: 12) {
                     yatzyInfoRow(icon: "timer", text: "Välj en insats i sekunder innan spelet startar")
                     yatzyInfoRow(icon: "trophy.fill", text: "Vinnaren får sin insats + motståndarens insats")
@@ -458,7 +583,7 @@ struct SocialView: View {
                 .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.orange.opacity(0.3), lineWidth: 1))
                 .padding(.horizontal)
 
-                // Balance info
+                // Saldoinfo
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("DITT SALDO")
@@ -483,7 +608,7 @@ struct SocialView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 12))
                 .padding(.horizontal)
 
-                // Play button
+                // Spelknapp
                 Button {
                     hapticLight.impactOccurred()
                     showYatzy = true
@@ -550,7 +675,7 @@ struct SocialView: View {
 
             Divider().background(Color.white.opacity(0.1))
 
-            // Input field
+            // Inmatningsfält
             HStack(spacing: 10) {
                 TextField("Skriv ett meddelande...", text: $chatInput)
                     .font(.system(size: 13, design: .monospaced))
@@ -583,54 +708,110 @@ struct SocialView: View {
         social.sendMessage(trimmed)
         chatInput = ""
     }
+}
 
-    // MARK: - Loan Section
+// MARK: - Steg-Duell Status Row
 
-    private var loanSection: some View {
-        ScrollView(showsIndicators: false) {
-            VStack(spacing: 16) {
-                // Info banner
-                HStack(spacing: 10) {
-                    Image(systemName: "info.circle")
-                        .foregroundColor(.cyan)
-                    Text("Alla överföringar kostar 10% nätverksskatt utöver zonens skatt.")
-                        .font(.system(size: 11, design: .monospaced))
-                        .foregroundColor(.white.opacity(0.6))
+struct StepBetStatusRow: View {
+    let bet: StepBet
+
+    @ObservedObject private var gameState = GameState.shared
+
+    var body: some View {
+        let myName = gameState.username
+        let opponent = bet.challengerName == myName ? bet.opponentName : bet.challengerName
+        let mySteps = bet.challengerName == myName ? bet.challengerSteps : bet.opponentSteps
+        let theirSteps = bet.challengerName == myName ? bet.opponentSteps : bet.challengerSteps
+        let leading = mySteps >= theirSteps
+
+        HStack(spacing: LTSpacing.md) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text("vs \(opponent)")
+                    .font(LTFont.heading(12))
+                    .foregroundColor(.white)
+                HStack(spacing: LTSpacing.xs) {
+                    Text("\(mySteps) steg")
+                        .font(LTFont.body(11))
+                        .foregroundColor(leading ? LTPalette.neonGreen : LTPalette.danger)
+                    Text("–")
+                        .font(LTFont.body(11))
+                        .foregroundColor(.white.opacity(0.3))
+                    Text("\(theirSteps) steg")
+                        .font(LTFont.body(11))
+                        .foregroundColor(.white.opacity(0.5))
                 }
-                .padding()
-                .background(Color.cyan.opacity(0.07))
-                .clipShape(RoundedRectangle(cornerRadius: 10))
-
-                // Active loans
-                if !social.activeLoans.isEmpty {
-                    VStack(alignment: .leading, spacing: 10) {
-                        SectionHeader(title: "AKTIVA LÅN", color: .yellow)
-                        ForEach(social.activeLoans) { loan in
-                            let npc = NPCPlayer.all.first(where: { $0.name == loan.npcName })
-                            LoanCard(loan: loan) {
-                                if let n = npc { social.collectFromNPC(loan, npc: n) }
-                            }
-                        }
-                    }
-                }
-
-                // NPC lenders (nearby zones only)
-                let nearbyNPCs = social.npcsNearby(gameState.currentZone)
-                VStack(alignment: .leading, spacing: 10) {
-                    SectionHeader(title: "UTLÅNING TILL NPC", color: .white)
-                    ForEach(nearbyNPCs) { npc in
-                        NPCCard(npc: npc) {
-                            selectedNPC = npc
-                            lendAmount = min(3600, engine.balance * 0.1)
-                            showLendSheet = true
-                        }
-                    }
-                }
-
-                Spacer(minLength: 80)
             }
-            .padding()
+            Spacer()
+            VStack(alignment: .trailing, spacing: 3) {
+                Text(TimeEngine.shortFormatted(bet.stake))
+                    .font(LTFont.label(11))
+                    .foregroundColor(LTPalette.gold)
+                Text("Deadline \(bet.formattedDeadline)")
+                    .font(LTFont.caption(9))
+                    .foregroundColor(.white.opacity(0.35))
+            }
         }
+        .padding(LTSpacing.sm + 2)
+        .background(Color.white.opacity(0.04))
+        .clipShape(RoundedRectangle(cornerRadius: LTRadius.xs))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Stegduell mot \(opponent): \(mySteps) mot \(theirSteps) steg, insats \(TimeEngine.shortFormatted(bet.stake))")
+    }
+}
+
+// MARK: - Rån Status Row
+
+struct RaidStatusRow: View {
+    let record: RaidRecord
+    let isActive: Bool
+
+    @ObservedObject private var gameState = GameState.shared
+
+    var body: some View {
+        let isAttacker = record.attackerName == gameState.username
+        let opponent = isAttacker ? record.defenderName : record.attackerName
+        let statusColor: Color = {
+            if isActive { return .orange }
+            switch record.status {
+            case .won:      return LTPalette.neonGreen
+            case .lost:     return LTPalette.danger
+            case .declined: return .gray
+            default:        return .orange
+            }
+        }()
+        let statusLabel: String = {
+            if isActive { return "PÅGÅR" }
+            switch record.status {
+            case .won:      return "VANN"
+            case .lost:     return "FÖRLORADE"
+            case .declined: return "AVBÖJT"
+            default:        return "VÄNTAR"
+            }
+        }()
+
+        HStack(spacing: LTSpacing.md) {
+            Image(systemName: isAttacker ? "bolt.fill" : "shield.fill")
+                .font(.system(size: 14))
+                .foregroundColor(statusColor)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(isAttacker ? "Du rånade \(opponent)" : "\(opponent) rånade dig")
+                    .font(LTFont.heading(12))
+                    .foregroundColor(.white)
+                Text("\(TimeEngine.shortFormatted(record.stake)) · \(record.formattedTime)")
+                    .font(LTFont.body(10))
+                    .foregroundColor(.white.opacity(0.4))
+            }
+            Spacer()
+            Text(statusLabel)
+                .font(LTFont.label(10))
+                .foregroundColor(statusColor)
+        }
+        .padding(LTSpacing.sm + 2)
+        .background(isActive ? statusColor.opacity(0.08) : Color.white.opacity(0.04))
+        .clipShape(RoundedRectangle(cornerRadius: LTRadius.xs))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(isAttacker ? "Du rånade \(opponent)" : "\(opponent) rånade dig"): \(statusLabel), insats \(TimeEngine.shortFormatted(record.stake))")
     }
 }
 
@@ -656,6 +837,9 @@ struct OnlineUserCard: View {
 
     private let haptic = UIImpactFeedbackGenerator(style: .medium)
 
+    // Dölj andras saldo — visa bara eget
+    private var myUsername: String { UserDefaults.standard.string(forKey: "username") ?? "" }
+
     var body: some View {
         HStack(spacing: LTSpacing.md) {
             Text(user.avatar.isEmpty ? "👤" : user.avatar)
@@ -675,8 +859,11 @@ struct OnlineUserCard: View {
                         .font(LTFont.body(10))
                         .foregroundColor(.green.opacity(0.8))
                 }
+                // Visa saldo endast för den egna spelaren
                 if let balance = user.timeBalance {
-                    Text("~\(TimeEngine.shortFormatted(balance))")
+                    Text(user.username == myUsername
+                         ? "~\(TimeEngine.shortFormatted(balance))"
+                         : "???")
                         .font(LTFont.body(10))
                         .foregroundColor(.white.opacity(0.4))
                         .contentTransition(.numericText())
@@ -708,11 +895,11 @@ struct OnlineUserCard: View {
         .padding(LTSpacing.md)
         .ltAccentCard(color: .green, radius: LTRadius.sm)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(user.username), online i \(user.zone)\(user.timeBalance != nil ? ", saldo ~\(TimeEngine.shortFormatted(user.timeBalance!))" : "")")
+        .accessibilityLabel("\(user.username), online i \(user.zone)")
     }
 }
 
-// MARK: - Cross Zone User Card (locked)
+// MARK: - Cross Zone User Card (låst)
 
 struct CrossZoneUserCard: View {
     let user: ServerUser
@@ -749,7 +936,7 @@ struct CrossZoneUserCard: View {
     }
 }
 
-// MARK: - NPC Card
+// MARK: - NPC Card (används av SocialManager internt)
 
 struct NPCCard: View {
     let npc: NPCPlayer
@@ -811,7 +998,7 @@ struct NPCCard: View {
     }
 }
 
-// MARK: - Loan Card
+// MARK: - Loan Card (används av SocialManager internt)
 
 struct LoanCard: View {
     let loan: LoanRecord
