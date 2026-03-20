@@ -163,7 +163,16 @@ struct MultiplayerYatzyView: View {
             useRandomOpponent: useRandomOpponent,
             selectedOpponentName: selectedOnlineOpponent?.username
         )
-        if !ok { showInsufficientFundsAlert = true }
+        if !ok {
+            showInsufficientFundsAlert = true
+        } else if gameMode == .onlineOneVsOne || gameMode == .onlineThreePlayer {
+            let opponentName = selectedOnlineOpponent?.username ?? (useRandomOpponent ? "slumpmässig spelare" : "motståndare")
+            NotificationManager.shared.sendYatzyChallenge(
+                from: player1Name,
+                stake: TimeEngine.shortFormatted(betAmount)
+            )
+            _ = opponentName  // used above for future server-push
+        }
     }
 }
 

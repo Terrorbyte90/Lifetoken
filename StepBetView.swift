@@ -124,6 +124,12 @@ class StepBetManager: ObservableObject {
             await ServerSync.shared.createStepBet(bet: bet)
         }
 
+        NotificationManager.shared.sendStepDuelChallenge(
+            from: playerName,
+            to: opponentName,
+            stake: TimeEngine.shortFormatted(stake),
+            deadline: nextDeadlineDate(hour: deadline.hour).formatted(date: .omitted, time: .shortened)
+        )
         completion(true, "Duell skickad till \(opponentName).")
     }
 
