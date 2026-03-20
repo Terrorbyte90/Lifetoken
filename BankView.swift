@@ -124,6 +124,46 @@ class BankManager: ObservableObject {
         save()
     }
 
+    // MARK: - Privatlån: godkännandelogik
+
+    /// Kontrollerar om ansökan kan beviljas baserat på hälsoinkomst och pålitlighetsroll.
+    func canApplyForLoan(
+        amount: TimeInterval,
+        reliability: Double,
+        maxMultiplier: Double
+    ) -> (approved: Bool, reason: String) {
+        let dailyIncome = IncomeManager.shared.projectedDailyIncome
+        let maxAmount = dailyIncome * maxMultiplier
+        guard amount <= maxAmount else {
+            return (false, "Du har inte tjänat tillräckligt för att låna så mycket.")
+        }
+        let roll = Double.random(in: 0...1)
+        if roll > reliability {
+            return (false, "Avslaget.")
+        }
+        return (true, "Godkänt.")
+    }
+
+    /// Beviljar ett privatlån med angiven ränta (daglig) om spelaren inte redan har ett lån.
+    func takePrivateLoan(amount: TimeInterval, dailyRate: Double, lenderName: String) -> Bool {
+        guard activeLoan == nil else {
+            alertMessage = "Du har redan ett aktivt lån."
+            showAlert = true
+            return false
+        }
+        TimeEngine.shared.addTime(amount)
+        activeLoan = PlayerLoan(
+            id: UUID(),
+            principal: amount,
+            dailyRate: dailyRate,
+            startDate: Date(),
+            dueDays: 30
+        )
+        save()
+        TransactionLedger.shared.record(label: "Privatlån från \(lenderName)", amount: amount)
+        return true
+    }
+
     private let loanKey = "player_loan"
 
     init() {
@@ -142,6 +182,59 @@ class BankManager: ObservableObject {
     }
 }
 
+// MARK: - Privatlångivare
+
+struct PrivateLender: Identifiable {
+    let id: UUID
+    let name: String
+    let tagline: String
+    let reliability: Double         // 0–1
+    let dailyRate: Double           // t.ex. 0.08 = 8%/dag
+    let maxMultiplier: Double       // max = dagsinkomst * multiplier
+    let accentColor: Color
+    let icon: String
+
+    var maxLoanAmount: TimeInterval {
+        IncomeManager.shared.projectedDailyIncome * maxMultiplier
+    }
+}
+
+extension PrivateLender {
+    // Tre fasta långivare tillgängliga i alla zoner
+    static let all: [PrivateLender] = [
+        PrivateLender(
+            id: UUID(),
+            name: "Sebastian R.",
+            tagline: "Rik kille. Hög ränta, hög garanti.",
+            reliability: 0.95,
+            dailyRate: 0.08,
+            maxMultiplier: 30,
+            accentColor: Color(red: 1.0, green: 0.82, blue: 0.18),
+            icon: "crown.fill"
+        ),
+        PrivateLender(
+            id: UUID(),
+            name: "Marcus T.",
+            tagline: "Vanlig kille. Normala villkor.",
+            reliability: 0.65,
+            dailyRate: 0.05,
+            maxMultiplier: 15,
+            accentColor: Color(red: 0.25, green: 0.55, blue: 1.0),
+            icon: "person.fill"
+        ),
+        PrivateLender(
+            id: UUID(),
+            name: "K-G",
+            tagline: "Skum typ. Ingen ränta. Stor risk.",
+            reliability: 0.15,
+            dailyRate: 0.02,
+            maxMultiplier: 5,
+            accentColor: Color(red: 0.68, green: 0.22, blue: 0.95),
+            icon: "eye.slash.fill"
+        )
+    ]
+}
+
 // MARK: - BankView
 
 struct BankView: View {
@@ -151,14 +244,22 @@ struct BankView: View {
     @ObservedObject private var bankManager = BankManager.shared
     @ObservedObject private var investMgr   = InvestmentManager.shared
     @ObservedObject private var social      = SocialManager.shared
+    @ObservedObject private var incomeMgr   = IncomeManager.shared
 
     @State private var selectedTab: BankTab = .tidskonto
     @State private var loanAmount:   TimeInterval = 3600
     @State private var investAmount: TimeInterval = 3600
     @State private var maturityDays: Int = 7
-    @State private var showLoanConfirm    = false
-    @State private var showInvestConfirm  = false
+    @State private var showLoanConfirm       = false
+    @State private var showInvestConfirm     = false
     @State private var transactionHistory: [BankTransaction] = []
+
+    // Privatlån-state
+    @State private var selectedLender: PrivateLender? = nil
+    @State private var privateLoanAmount: TimeInterval = 3600
+    @State private var showPrivateLoanSheet  = false
+    @State private var privateLoanResult     = ""
+    @State private var showPrivateLoanResult = false
 
     private let hapticLight  = UIImpactFeedbackGenerator(style: .light)
     private let hapticMedium = UIImpactFeedbackGenerator(style: .medium)
@@ -167,7 +268,7 @@ struct BankView: View {
     enum BankTab: String, CaseIterable {
         case tidslaan    = "Tidslån"
         case tidskonto   = "Tidskonto"
-        case npcUtlaning = "NPC-utlåning"
+        case privatlan   = "Privatlån"
         case historik    = "Historik"
     }
 
@@ -182,18 +283,24 @@ struct BankView: View {
 
     var body: some View {
         ZStack {
+            // Premiumdark bakgrund
+            Color(red: 0.04, green: 0.04, blue: 0.08).ignoresSafeArea()
+
             LinearGradient(
                 colors: [
-                    Color(red: 0.03, green: 0.05, blue: 0.09),
-                    Color(red: 0.01, green: 0.02, blue: 0.04),
+                    Color(red: 0.03, green: 0.05, blue: 0.12),
+                    Color(red: 0.02, green: 0.02, blue: 0.06),
                     Color.black
                 ],
                 startPoint: .top, endPoint: .bottom
             ).ignoresSafeArea()
 
+            // Rutnätsöverlagring
             Canvas { ctx, size in
                 for y in stride(from: 0.0, to: size.height, by: 48) {
-                    var p = Path(); p.move(to: .init(x: 0, y: y)); p.addLine(to: .init(x: size.width, y: y))
+                    var p = Path()
+                    p.move(to: .init(x: 0, y: y))
+                    p.addLine(to: .init(x: size.width, y: y))
                     ctx.stroke(p, with: .color(Color.blue.opacity(0.03)), lineWidth: 1)
                 }
             }.ignoresSafeArea()
@@ -208,7 +315,7 @@ struct BankView: View {
                         switch selectedTab {
                         case .tidslaan:    tidslaanSection
                         case .tidskonto:   tidskontoSection
-                        case .npcUtlaning: npcUtlaningSection
+                        case .privatlan:   privatlanSection
                         case .historik:    historikSection
                         }
                         Spacer(minLength: LTSpacing.scrollBottom)
@@ -217,7 +324,7 @@ struct BankView: View {
                 }
             }
         }
-        .alert("Tidbanken", isPresented: $bankManager.showAlert) {
+        .alert("Tidsbanken", isPresented: $bankManager.showAlert) {
             Button("OK") {}
         } message: { Text(bankManager.alertMessage) }
         .alert("Bekräfta Lån", isPresented: $showLoanConfirm) {
@@ -246,6 +353,14 @@ struct BankView: View {
         .alert("Transaktion", isPresented: $social.showAlert) {
             Button("OK") {}
         } message: { Text(social.alertMessage) }
+        .alert("Privatlåneansökan", isPresented: $showPrivateLoanResult) {
+            Button("OK") {}
+        } message: { Text(privateLoanResult) }
+        .sheet(isPresented: $showPrivateLoanSheet) {
+            if let lender = selectedLender {
+                privateLoanSheet(lender: lender)
+            }
+        }
         .onChange(of: engine.balance) { _, _ in
             if investAmount > investUpperBound {
                 investAmount = max(3600, (investUpperBound / 3600).rounded(.down) * 3600)
@@ -280,7 +395,7 @@ struct BankView: View {
 
                 Spacer()
                 VStack(spacing: 2) {
-                    Text("TIDBANKEN")
+                    Text("TIDSBANKEN")
                         .font(LTFont.heading(17))
                         .foregroundColor(.white)
                         .tracking(3)
@@ -344,7 +459,7 @@ struct BankView: View {
         switch tab {
         case .tidslaan:    return .cyan
         case .tidskonto:   return .green
-        case .npcUtlaning: return .orange
+        case .privatlan:   return Color(red: 1.0, green: 0.82, blue: 0.18)
         case .historik:    return .purple
         }
     }
@@ -653,114 +768,354 @@ struct BankView: View {
         }
     }
 
-    // MARK: - NPC-utlåning Section
+    // MARK: - Privatlån Section
 
-    private var npcUtlaningSection: some View {
+    private var privatlanSection: some View {
         VStack(spacing: LTSpacing.md) {
+            // Inkomstinfo — visar basen för maxlåneberäkning
             HStack(spacing: LTSpacing.sm) {
-                Image(systemName: "info.circle.fill")
-                    .foregroundColor(.orange)
-                    .font(.system(size: 13))
-                Text("Lån till NPC:er ger ränteintäkter. Risk: NPC betalar inte tillbaka.")
-                    .font(LTFont.body(11))
-                    .foregroundColor(.white.opacity(0.6))
+                Image(systemName: "heart.fill")
+                    .foregroundColor(Color(red: 1.0, green: 0.35, blue: 0.35))
+                    .font(.system(size: 12))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("HÄLSOINKOMST IDAG")
+                        .font(LTFont.label(9))
+                        .foregroundColor(.white.opacity(0.4))
+                        .tracking(2)
+                    Text(TimeEngine.shortFormatted(incomeMgr.projectedDailyIncome))
+                        .font(LTFont.value(18))
+                        .foregroundColor(.white)
+                        .contentTransition(.numericText())
+                        .animation(LTAnimation.springFast, value: incomeMgr.projectedDailyIncome)
+                }
+                Spacer()
+                Text("Max lånebelopp\nbaseras på detta")
+                    .font(LTFont.body(9))
+                    .foregroundColor(.white.opacity(0.3))
+                    .multilineTextAlignment(.trailing)
             }
             .padding(LTSpacing.md)
-            .ltAccentCard(color: .orange, radius: LTRadius.sm)
+            .background(
+                RoundedRectangle(cornerRadius: LTRadius.sm)
+                    .fill(Color(red: 0.10, green: 0.06, blue: 0.06))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: LTRadius.sm)
+                            .stroke(Color(red: 1.0, green: 0.35, blue: 0.35).opacity(0.25), lineWidth: 1)
+                    )
+            )
 
-            if !social.activeLoans.isEmpty {
-                VStack(alignment: .leading, spacing: LTSpacing.sm) {
-                    Text("DINA AKTIVA LÅN")
-                        .font(LTFont.label(10))
-                        .foregroundColor(.yellow)
-                        .tracking(2)
-
-                    ForEach(social.activeLoans.filter { $0.lentToNPC }) { loan in
-                        let npc = NPCPlayer.all.first(where: { $0.name == loan.npcName })
-                        LoanCard(loan: loan) {
-                            if let n = npc {
-                                hapticMedium.impactOccurred()
-                                social.collectFromNPC(loan, npc: n)
-                            }
-                        }
-                    }
-                }
+            // Aktivt lån visas längst upp om det finns ett
+            if let loan = bankManager.activeLoan {
+                activeLoanCard(loan: loan)
             }
 
-            Text("TILLGÄNGLIGA NPC:ER")
+            Text("PRIVATLÅNGIVARE")
                 .font(LTFont.label(10))
                 .foregroundColor(.white.opacity(0.35))
                 .tracking(2)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
-            let zoneNPCs = NPCPlayer.all.filter { $0.zone == gameState.currentZone.name }
-            if zoneNPCs.isEmpty {
-                VStack(spacing: LTSpacing.sm) {
-                    Image(systemName: "person.slash.fill")
-                        .font(.system(size: 28))
-                        .foregroundColor(.white.opacity(0.2))
-                    Text("Inga NPC:er i \(gameState.currentZone.name)")
-                        .font(LTFont.body(12))
-                        .foregroundColor(.white.opacity(0.3))
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, LTSpacing.xxxl - 2)
-            } else {
-                ForEach(zoneNPCs) { npc in
-                    npcLendCard(npc: npc)
-                }
+            ForEach(PrivateLender.all) { lender in
+                privatLenderCard(lender: lender)
             }
         }
     }
 
-    private func npcLendCard(npc: NPCPlayer) -> some View {
-        HStack(spacing: LTSpacing.md) {
-            Text(npc.avatar)
-                .font(.system(size: 28))
-                .frame(width: 44, height: 44)
-                .background(Color.white.opacity(0.05))
-                .clipShape(Circle())
+    private func privatLenderCard(lender: PrivateLender) -> some View {
+        let dailyIncome = incomeMgr.projectedDailyIncome
+        let maxAmount   = dailyIncome * lender.maxMultiplier
+        let reliPct     = Int(lender.reliability * 100)
+        let ratePct     = lender.dailyRate * 100
+
+        return VStack(spacing: 0) {
+            // Kortets övre del — personinfo och badges
+            HStack(spacing: LTSpacing.md) {
+                ZStack {
+                    Circle()
+                        .fill(lender.accentColor.opacity(0.14))
+                        .frame(width: 52, height: 52)
+                        .blur(radius: 6)
+                    Circle()
+                        .fill(
+                            LinearGradient(
+                                colors: [lender.accentColor.opacity(0.18), Color.black.opacity(0.6)],
+                                startPoint: .topLeading, endPoint: .bottomTrailing
+                            )
+                        )
+                        .frame(width: 48, height: 48)
+                        .overlay(Circle().stroke(lender.accentColor.opacity(0.4), lineWidth: 1))
+                    Image(systemName: lender.icon)
+                        .font(.system(size: 20))
+                        .foregroundColor(lender.accentColor)
+                }
                 .accessibilityHidden(true)
 
-            VStack(alignment: .leading, spacing: 3) {
-                HStack {
-                    Text(npc.name)
-                        .font(LTFont.heading(13))
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(lender.name)
+                        .font(LTFont.heading(15))
                         .foregroundColor(.white)
-                    Spacer()
-                    Text(String(format: "%.0f%%/mån", npc.loanInterestRate * 100))
-                        .font(LTFont.label(10))
-                        .foregroundColor(.yellow)
+
+                    Text(lender.tagline)
+                        .font(LTFont.body(10))
+                        .foregroundColor(.white.opacity(0.45))
+                        .lineLimit(1)
+
+                    // Pålitlighetsbadge
+                    HStack(spacing: 5) {
+                        Text("PÅLITLIGHET: \(reliPct)%")
+                            .font(LTFont.label(9))
+                            .foregroundColor(reliabilityColor(lender.reliability))
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .background(reliabilityColor(lender.reliability).opacity(0.12))
+                            .clipShape(Capsule())
+                            .overlay(Capsule().stroke(reliabilityColor(lender.reliability).opacity(0.35), lineWidth: 1))
+                    }
                 }
-                Text(npc.bio)
-                    .font(LTFont.body(10))
-                    .foregroundColor(.white.opacity(0.5))
-                    .lineLimit(1)
-                HStack(spacing: LTSpacing.xs) {
-                    Circle().fill(npc.reliability > 0.8 ? Color.green : Color.orange)
-                        .frame(width: 5, height: 5)
-                    Text(String(format: "Pålitlighet: %.0f%%", npc.reliability * 100))
-                        .font(LTFont.body(9))
-                        .foregroundColor(npc.reliability > 0.8 ? .green : .orange)
+
+                Spacer()
+            }
+            .padding(LTSpacing.lg)
+
+            // Låndetaljer
+            VStack(spacing: LTSpacing.sm) {
+                Divider().background(lender.accentColor.opacity(0.12))
+
+                HStack(spacing: 0) {
+                    lenderStatCell(
+                        label: "RÄNTA/DAG",
+                        value: String(format: "%.0f%%", ratePct),
+                        color: lender.accentColor
+                    )
+                    Rectangle()
+                        .fill(Color.white.opacity(0.06))
+                        .frame(width: 1)
+                    lenderStatCell(
+                        label: "MAX BELOPP",
+                        value: maxAmount > 0 ? TimeEngine.shortFormatted(maxAmount) : "—",
+                        color: .white
+                    )
+                    Rectangle()
+                        .fill(Color.white.opacity(0.06))
+                        .frame(width: 1)
+                    lenderStatCell(
+                        label: "MULTIPLIKATOR",
+                        value: "\(Int(lender.maxMultiplier))x lön",
+                        color: .white.opacity(0.6)
+                    )
                 }
+                .padding(.bottom, LTSpacing.sm)
             }
 
-            Button("LÅN") {
+            // Ansökningsknapp
+            Button {
                 hapticMedium.impactOccurred()
-                _ = social.lendToNPC(npc, amount: 3600, days: 7)
+                selectedLender = lender
+                privateLoanAmount = min(3600, maxAmount)
+                showPrivateLoanSheet = true
+            } label: {
+                HStack(spacing: LTSpacing.xs + 2) {
+                    Image(systemName: "doc.text.fill")
+                        .font(.system(size: 11))
+                    Text(bankManager.activeLoan != nil ? "LÅN AKTIVT" : "ANSÖK OM LÅN")
+                        .font(LTFont.heading(12))
+                        .tracking(1)
+                }
+                .foregroundColor(bankManager.activeLoan != nil ? .white.opacity(0.3) : .black)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 13)
+                .background(
+                    bankManager.activeLoan != nil
+                        ? Color.white.opacity(0.07)
+                        : lender.accentColor
+                )
             }
-            .font(LTFont.heading(11))
-            .foregroundColor(.black)
-            .padding(.horizontal, LTSpacing.md)
-            .padding(.vertical, LTSpacing.sm)
-            .background(Color.orange)
-            .clipShape(RoundedRectangle(cornerRadius: LTRadius.xs))
+            .disabled(bankManager.activeLoan != nil)
             .buttonStyle(LTPressEffect())
-            .accessibilityLabel("Ge lån till \(npc.name)")
-            .accessibilityHint("Ränta \(Int(npc.loanInterestRate * 100))% per månad, pålitlighet \(Int(npc.reliability * 100))%")
+            .accessibilityLabel("Ansök om lån från \(lender.name)")
+            .accessibilityHint(bankManager.activeLoan != nil ? "Du har redan ett aktivt lån" : "Öppnar låneformulär")
         }
-        .padding(LTSpacing.md)
-        .ltCard(radius: LTRadius.sm)
+        .background(
+            RoundedRectangle(cornerRadius: LTRadius.lg)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            lender.accentColor.opacity(0.06),
+                            Color(red: 0.04, green: 0.04, blue: 0.08)
+                        ],
+                        startPoint: .topLeading, endPoint: .bottomTrailing
+                    )
+                )
+        )
+        .clipShape(RoundedRectangle(cornerRadius: LTRadius.lg))
+        .overlay(
+            RoundedRectangle(cornerRadius: LTRadius.lg)
+                .stroke(
+                    LinearGradient(
+                        colors: [lender.accentColor.opacity(0.45), lender.accentColor.opacity(0.10)],
+                        startPoint: .topLeading, endPoint: .bottomTrailing
+                    ),
+                    lineWidth: 1
+                )
+        )
+        .shadow(color: lender.accentColor.opacity(0.10), radius: 14, x: 0, y: 6)
+    }
+
+    private func lenderStatCell(label: String, value: String, color: Color) -> some View {
+        VStack(spacing: 3) {
+            Text(label)
+                .font(LTFont.caption(8))
+                .foregroundColor(.white.opacity(0.35))
+                .tracking(1)
+            Text(value)
+                .font(LTFont.heading(12))
+                .foregroundColor(color)
+                .contentTransition(.numericText())
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, LTSpacing.sm)
+    }
+
+    /// Returnerar färg baserat på pålitlighetsnivå
+    private func reliabilityColor(_ reliability: Double) -> Color {
+        if reliability >= 0.8 { return Color(red: 0.2, green: 0.85, blue: 0.4) }
+        if reliability >= 0.5 { return Color(red: 1.0, green: 0.75, blue: 0.15) }
+        return Color(red: 0.9, green: 0.25, blue: 0.25)
+    }
+
+    // MARK: - Privatlån Sheet
+
+    private func privateLoanSheet(lender: PrivateLender) -> some View {
+        let dailyIncome = incomeMgr.projectedDailyIncome
+        let maxAmount   = dailyIncome * lender.maxMultiplier
+        let sliderMax   = max(3601, maxAmount)
+
+        return NavigationStack {
+            ZStack {
+                Color(red: 0.04, green: 0.04, blue: 0.08).ignoresSafeArea()
+
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: LTSpacing.lg) {
+                        // Säljarinformation
+                        HStack(spacing: LTSpacing.md) {
+                            ZStack {
+                                Circle()
+                                    .fill(lender.accentColor.opacity(0.15))
+                                    .frame(width: 60, height: 60)
+                                Image(systemName: lender.icon)
+                                    .font(.system(size: 24))
+                                    .foregroundColor(lender.accentColor)
+                            }
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(lender.name)
+                                    .font(LTFont.heading(18))
+                                    .foregroundColor(.white)
+                                Text(lender.tagline)
+                                    .font(LTFont.body(11))
+                                    .foregroundColor(.white.opacity(0.5))
+                            }
+                            Spacer()
+                        }
+                        .padding(LTSpacing.lg)
+                        .background(
+                            RoundedRectangle(cornerRadius: LTRadius.md)
+                                .fill(lender.accentColor.opacity(0.07))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: LTRadius.md)
+                                        .stroke(lender.accentColor.opacity(0.25), lineWidth: 1)
+                                )
+                        )
+
+                        // Lånebeloppsväljare
+                        VStack(spacing: LTSpacing.sm) {
+                            HStack {
+                                Text("Lånebelopp")
+                                    .font(LTFont.body(12))
+                                    .foregroundColor(.white.opacity(0.5))
+                                Spacer()
+                                Text(TimeEngine.shortFormatted(privateLoanAmount))
+                                    .font(LTFont.value(20))
+                                    .foregroundColor(lender.accentColor)
+                                    .contentTransition(.numericText())
+                                    .animation(LTAnimation.springFast, value: privateLoanAmount)
+                            }
+
+                            Slider(
+                                value: $privateLoanAmount,
+                                in: 3600...sliderMax,
+                                step: 3600
+                            )
+                            .tint(lender.accentColor)
+                        }
+                        .padding(LTSpacing.lg)
+                        .ltCard(radius: LTRadius.md)
+
+                        // Villkorsöversikt
+                        VStack(spacing: LTSpacing.sm) {
+                            bankRow("Ränta per dag",
+                                    String(format: "%.0f%%", lender.dailyRate * 100),
+                                    lender.accentColor)
+                            bankRow("Total kostnad (30d)",
+                                    TimeEngine.shortFormatted(privateLoanAmount * (1 + lender.dailyRate * 30)),
+                                    .orange)
+                            bankRow("Pålitlighet",
+                                    String(format: "%.0f%%", lender.reliability * 100),
+                                    reliabilityColor(lender.reliability))
+                            bankRow("Max tillåtet",
+                                    maxAmount > 0 ? TimeEngine.shortFormatted(maxAmount) : "Inget",
+                                    .white.opacity(0.6))
+                        }
+                        .padding(LTSpacing.lg)
+                        .ltCard(radius: LTRadius.md)
+
+                        // Ansökningsknapp
+                        Button {
+                            hapticNotif.notificationOccurred(.success)
+                            let result = bankManager.canApplyForLoan(
+                                amount: privateLoanAmount,
+                                reliability: lender.reliability,
+                                maxMultiplier: lender.maxMultiplier
+                            )
+                            if result.approved {
+                                _ = bankManager.takePrivateLoan(
+                                    amount: privateLoanAmount,
+                                    dailyRate: lender.dailyRate,
+                                    lenderName: lender.name
+                                )
+                                privateLoanResult = "\(lender.name) godkände din ansökan.\n+\(TimeEngine.shortFormatted(privateLoanAmount)) har krediterats."
+                            } else {
+                                privateLoanResult = "\(lender.name): \(result.reason)"
+                            }
+                            showPrivateLoanSheet = false
+                            showPrivateLoanResult = true
+                        } label: {
+                            Text("SKICKA ANSÖKAN")
+                                .font(LTFont.heading(14))
+                                .foregroundColor(.black)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 15)
+                                .background(lender.accentColor)
+                                .clipShape(RoundedRectangle(cornerRadius: LTRadius.sm))
+                        }
+                        .buttonStyle(LTPressEffect())
+                        .accessibilityLabel("Skicka låneansökan till \(lender.name)")
+                    }
+                    .padding(.horizontal, LTSpacing.horizontal)
+                    .padding(.top, LTSpacing.lg)
+                    .padding(.bottom, LTSpacing.scrollBottom)
+                }
+            }
+            .navigationTitle("Låneansökan")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Avbryt") { showPrivateLoanSheet = false }
+                        .font(LTFont.body(14))
+                        .foregroundColor(lender.accentColor)
+                }
+            }
+            .preferredColorScheme(.dark)
+        }
     }
 
     // MARK: - Historik Section
