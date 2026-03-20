@@ -145,9 +145,7 @@ struct DashboardView: View {
         .alert("Streak Bonus!", isPresented: $gameState.showStreakBonus) {
             Button("Tack!", role: .cancel) {}
         } message: { Text(gameState.streakBonusMessage) }
-        .alert("Fusk Detekterat", isPresented: $engine.cheatingDetected) {
-            Button("OK") {}
-        } message: { Text("Din enhetstid stämmer inte med servertiden. Ogiltig tid har dragits av.") }
+        // Anti-cheat handled silently by server
         .alert("🌅 Daglig Hälsoinkomst", isPresented: $incomeManager.showDailySummary) {
             Button("Tack!", role: .cancel) {}
         } message: { Text(incomeManager.summaryMessage) }
@@ -927,6 +925,10 @@ struct MainTabView: View {
         }
         .animation(.easeInOut(duration: 0.5), value: TimeEngine.shared.cryoSleepActive)
         .modifier(ZoneUpgradeFlash())
+        // Dödsläge — visas som fullskärmstäckning när spelaren är borta
+        .fullScreenCover(isPresented: .constant(TimeEngine.shared.isDead)) {
+            DeathView()
+        }
     }
 }
 
