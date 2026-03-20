@@ -68,9 +68,9 @@ struct SortingGameView: View {
 
     var body: some View {
         ZStack {
-            // Factory background
-            Color(red:0.06,green:0.05,blue:0.04).ignoresSafeArea()
-            factoryBg.ignoresSafeArea()
+            // Premium svart bakgrund
+            Color.black.ignoresSafeArea()
+            premiumBg.ignoresSafeArea()
 
             switch phase {
             case .ready:                    readyScreen
@@ -88,25 +88,28 @@ struct SortingGameView: View {
         }
     }
 
-    // MARK: - Factory Background
+    // MARK: - Premium Background
 
-    private var factoryBg: some View {
+    private var premiumBg: some View {
         Canvas { ctx, size in
-            // Conveyor belt pattern at bottom
-            let beltY = size.height * 0.75
-            for x in stride(from: 0.0, to: size.width, by: 24) {
+            // Subtilt rutnät — premium dark grid
+            let gridStep: CGFloat = 36
+            for x in stride(from: 0.0, to: size.width, by: gridStep) {
                 var p = Path()
-                p.move(to: CGPoint(x: x, y: beltY))
-                p.addLine(to: CGPoint(x: x + 12, y: beltY + 8))
-                ctx.stroke(p, with: .color(Color(white:0.12)), lineWidth: 2)
+                p.move(to: CGPoint(x: x, y: 0))
+                p.addLine(to: CGPoint(x: x, y: size.height))
+                ctx.stroke(p, with: .color(Color.white.opacity(0.028)), lineWidth: 1)
             }
-            // Metal grating lines
-            for y in stride(from: 0.0, to: beltY, by: 60) {
+            for y in stride(from: 0.0, to: size.height, by: gridStep) {
                 var p = Path()
                 p.move(to: CGPoint(x: 0, y: y))
                 p.addLine(to: CGPoint(x: size.width, y: y))
-                ctx.stroke(p, with: .color(Color(white:0.06)), lineWidth: 1)
+                ctx.stroke(p, with: .color(Color.white.opacity(0.028)), lineWidth: 1)
             }
+            // Golvrand vid behållarna
+            let floorY = size.height * 0.86
+            ctx.fill(Path(CGRect(x: 0, y: floorY, width: size.width, height: 2)),
+                     with: .color(Color.white.opacity(0.06)))
         }
     }
 
@@ -201,60 +204,99 @@ struct SortingGameView: View {
 
             ZStack(alignment: .top) {
                 // ── Stats bar ──────────────────────────
-                HStack {
-                    Text("✓ \(score)")
-                        .font(.system(size: 16, weight: .black, design: .monospaced))
-                        .foregroundColor(Color(red:0.2,green:0.9,blue:0.2))
-                    Text("✗ \(mistakes)")
-                        .font(.system(size: 16, weight: .black, design: .monospaced))
-                        .foregroundColor(.red)
-                    Spacer()
-                    if combo > 1 {
-                        Text("x\(combo) KOMBO")
-                            .font(.system(size: 13, weight: .black, design: .monospaced))
-                            .foregroundColor(.yellow)
-                            .padding(.horizontal, 8).padding(.vertical, 3)
-                            .background(Color.yellow.opacity(0.15))
-                            .clipShape(Capsule())
+                HStack(spacing: 12) {
+                    // Poäng
+                    HStack(spacing: 6) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 11))
+                            .foregroundColor(.green)
+                        Text("\(score)")
+                            .font(.system(size: 20, weight: .black, design: .monospaced))
+                            .foregroundColor(.green)
+                            .shadow(color: .green.opacity(0.5), radius: 4)
+                    }
+                    // Fel
+                    HStack(spacing: 6) {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 11))
+                            .foregroundColor(.red)
+                        Text("\(mistakes)")
+                            .font(.system(size: 20, weight: .black, design: .monospaced))
+                            .foregroundColor(.red)
                     }
                     Spacer()
+                    // Kombo-badge
+                    if combo > 1 {
+                        HStack(spacing: 4) {
+                            Image(systemName: "flame.fill")
+                                .font(.system(size: 10))
+                                .foregroundColor(.orange)
+                            Text("×\(combo)")
+                                .font(.system(size: 13, weight: .black, design: .monospaced))
+                                .foregroundColor(.yellow)
+                        }
+                        .padding(.horizontal, 10).padding(.vertical, 4)
+                        .background(Color.yellow.opacity(0.12))
+                        .clipShape(Capsule())
+                        .overlay(Capsule().stroke(Color.yellow.opacity(0.3), lineWidth: 1))
+                        .shadow(color: .yellow.opacity(0.3), radius: 4)
+                    }
+                    Spacer()
+                    // Timer
                     Text("\(timeLeft)s")
-                        .font(.system(size: 16, weight: .black, design: .monospaced))
-                        .foregroundColor(timeLeft < 10 ? .red : .white)
+                        .font(.system(size: 22, weight: .black, design: .monospaced))
+                        .foregroundColor(timeLeft < 10 ? .red : Color(white: 0.85))
+                        .shadow(color: timeLeft < 10 ? .red.opacity(0.5) : .clear, radius: 4)
                 }
-                .padding(.horizontal, 16)
+                .padding(.horizontal, 18)
                 .padding(.top, 54)
                 .zIndex(10)
 
-                // ── Falling objects ──────────────────
+                // ── Fallande objekt — glödande kapslar ──────────────────
                 ForEach(objects.filter { !$0.isDone }) { obj in
                     let x = obj.xFraction * w
                     let y = obj.yOffset * (h - binH)
                     let col = categories[obj.categoryIndex].color
 
                     ZStack {
-                        Circle()
-                            .fill(col.opacity(0.2))
-                            .frame(width: 52, height: 52)
-                        Circle()
-                            .stroke(col.opacity(0.6), lineWidth: 2)
-                            .frame(width: 52, height: 52)
+                        // Yttre glöd
+                        Capsule()
+                            .fill(col.opacity(0.12))
+                            .frame(width: 58, height: 44)
+                            .shadow(color: col.opacity(0.6), radius: 8)
+                        // Kapselform
+                        Capsule()
+                            .fill(LinearGradient(
+                                colors: [col.opacity(0.35), col.opacity(0.15)],
+                                startPoint: .top, endPoint: .bottom
+                            ))
+                            .frame(width: 54, height: 40)
+                        Capsule()
+                            .stroke(col.opacity(0.7), lineWidth: 1.5)
+                            .frame(width: 54, height: 40)
+                        // Symbol
                         Text(obj.symbol)
-                            .font(.system(size: 26))
+                            .font(.system(size: 22))
                     }
-                    .shadow(color: col.opacity(0.4), radius: 8)
+                    .shadow(color: col.opacity(0.5), radius: 6)
                     .position(x: x, y: y)
+                    .animation(.spring(response: 0.3, dampingFraction: 0.7), value: obj.yOffset)
                 }
 
-                // ── Combo label ──────────────────────
+                // ── Kombo-label med snap-animation ──────────────────────
                 if showCombo {
                     Text(comboLabel)
-                        .font(.system(size: 28, weight: .black, design: .monospaced))
+                        .font(.system(size: 30, weight: .black, design: .monospaced))
                         .foregroundColor(.yellow)
-                        .shadow(color: .yellow.opacity(0.5), radius: 8)
-                        .transition(.opacity.combined(with: .scale))
-                        .position(x: w/2, y: h * 0.4)
+                        .shadow(color: .yellow.opacity(0.7), radius: 10)
+                        .shadow(color: .orange.opacity(0.4), radius: 18)
+                        .transition(.asymmetric(
+                            insertion: .scale(scale: 1.4).combined(with: .opacity),
+                            removal: .scale(scale: 0.8).combined(with: .opacity)
+                        ))
+                        .position(x: w/2, y: h * 0.38)
                         .zIndex(20)
+                        .animation(.spring(response: 0.3, dampingFraction: 0.5), value: showCombo)
                 }
 
                 // ── Bins ───────────────────────────
@@ -273,22 +315,35 @@ struct SortingGameView: View {
 
     private func binView(index: Int, w: CGFloat, h: CGFloat) -> some View {
         let cat = categories[index]
-        return Button(action: { sortObject(into: index) }) {
-            VStack(spacing: 4) {
+        return Button(action: {
+            let impact = UIImpactFeedbackGenerator(style: .medium)
+            impact.impactOccurred()
+            sortObject(into: index)
+        }) {
+            VStack(spacing: 5) {
                 Image(systemName: cat.icon)
-                    .font(.system(size: 18))
+                    .font(.system(size: 20))
                     .foregroundColor(cat.color)
+                    .shadow(color: cat.color.opacity(0.6), radius: 4)
                 Text(cat.name)
-                    .font(.system(size: 8, weight: .bold, design: .monospaced))
-                    .foregroundColor(cat.color.opacity(0.8))
+                    .font(.system(size: 8, weight: .black, design: .monospaced))
+                    .foregroundColor(cat.color.opacity(0.9))
                     .lineLimit(1)
                     .minimumScaleFactor(0.5)
+                    .tracking(1)
             }
             .frame(width: w, height: h)
-            .background(cat.color.opacity(0.1))
-            .overlay(
-                Rectangle().stroke(cat.color.opacity(0.3), lineWidth: 1)
+            .background(
+                LinearGradient(
+                    colors: [cat.color.opacity(0.18), cat.color.opacity(0.08)],
+                    startPoint: .top, endPoint: .bottom
+                )
             )
+            .overlay(
+                Rectangle()
+                    .stroke(cat.color.opacity(0.4), lineWidth: 1)
+            )
+            .shadow(color: cat.color.opacity(0.2), radius: 6)
         }
     }
 

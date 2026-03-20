@@ -38,6 +38,13 @@ struct TimingGameView: View {
     @State private var timeLeft:     Int    = 90
     @State private var speedVariation: Double = 0
 
+    // Pulserande träffzon-animation
+    @State private var isPulsing: Bool = false
+    // Ring-expansion-effekt vid tryck
+    @State private var tapRingScale: CGFloat = 0.5
+    @State private var tapRingOpacity: Double = 0
+    @State private var tapRingColor: Color = .cyan
+
     // Timers
     @State private var renderTimer   = Timer.publish(every: 1/60.0, on: .main, in: .common).autoconnect()
     @State private var countdown     = Timer.publish(every: 1,      on: .main, in: .common).autoconnect()
@@ -135,37 +142,58 @@ struct TimingGameView: View {
 
     private var playingScreen: some View {
         VStack(spacing: 0) {
-            // Top bar
+            // Topbar med förbättrad typografi
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("RUNDA \(currentRound + 1) / \(totalRounds)")
-                        .font(.system(size: 11, weight: .bold, design: .monospaced))
-                        .foregroundColor(Color(white: 0.5))
-                    Text("TRYCKT PÅ RÄTT ÖGONBLICK")
-                        .font(.system(size: 9, design: .monospaced))
-                        .foregroundColor(Color(white: 0.25))
+                        .font(.system(size: 12, weight: .black, design: .monospaced))
+                        .foregroundColor(.cyan.opacity(0.8))
+                        .tracking(2)
+                    Text("TRYCK NÄR NÅLEN TRÄFFAR ZONEN")
+                        .font(.system(size: 8, design: .monospaced))
+                        .foregroundColor(Color(white: 0.22))
                         .tracking(2)
                 }
                 Spacer()
+                // Multiplikator-visning
+                if currentRound > 0 {
+                    VStack(spacing: 0) {
+                        Text("×\(currentRound)")
+                            .font(.system(size: 18, weight: .black, design: .monospaced))
+                            .foregroundColor(.cyan.opacity(0.7))
+                        Text("MULT")
+                            .font(.system(size: 7, weight: .bold, design: .monospaced))
+                            .foregroundColor(Color(white: 0.3))
+                            .tracking(2)
+                    }
+                    .padding(.trailing, 12)
+                }
+                // Nedräkningstimer med spänningsfärg
                 Text("\(timeLeft)s")
-                    .font(.system(size: 22, weight: .black, design: .monospaced))
-                    .foregroundColor(timeLeft < 10 ? .red : .yellow)
+                    .font(.system(size: 24, weight: .black, design: .monospaced))
+                    .foregroundColor(timeLeft < 10 ? .red : timeLeft < 20 ? .yellow : Color(white: 0.85))
+                    .shadow(color: timeLeft < 10 ? .red.opacity(0.6) : .clear, radius: 5)
             }
             .padding(.horizontal, 28)
             .padding(.top, 60)
-            .padding(.bottom, 20)
-
-            // Label
-            ZStack {
-                Text(showLabel ? lastLabel : " ")
-                    .font(.system(size: 22, weight: .black, design: .monospaced))
-                    .foregroundColor(lastColor)
-                    .opacity(showLabel ? 1 : 0)
-                    .scaleEffect(showLabel ? 1 : 0.8)
-                    .animation(.spring(response: 0.25), value: showLabel)
-            }
-            .frame(height: 36)
             .padding(.bottom, 16)
+
+            // Träfflabel — PERFEKT / BRA / NÄRA / MISS
+            ZStack {
+                if showLabel {
+                    Text(lastLabel)
+                        .font(.system(size: 26, weight: .black, design: .monospaced))
+                        .foregroundColor(lastColor)
+                        .shadow(color: lastColor.opacity(0.7), radius: 8)
+                        .transition(.asymmetric(
+                            insertion: .scale(scale: 1.3).combined(with: .opacity),
+                            removal: .scale(scale: 0.9).combined(with: .opacity)
+                        ))
+                }
+            }
+            .frame(height: 40)
+            .animation(.spring(response: 0.25, dampingFraction: 0.55), value: showLabel)
+            .padding(.bottom, 12)
 
             // Dial
             GeometryReader { g in
@@ -173,17 +201,21 @@ struct TimingGameView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
 
-            // Round pips
+            // Runda-prickar
             HStack(spacing: 10) {
                 ForEach(0..<totalRounds, id: \.self) { i in
                     Circle()
                         .fill(pipColor(for: i))
                         .frame(width: 9, height: 9)
-                        .scaleEffect(i == currentRound ? 1.3 : 1)
+                        .scaleEffect(i == currentRound ? 1.4 : 1.0)
+                        .shadow(color: pipColor(for: i).opacity(i == currentRound ? 0.6 : 0), radius: 3)
                         .animation(.spring(), value: currentRound)
                 }
             }
             .padding(.bottom, 40)
+        }
+        .onAppear {
+            isPulsing = true
         }
     }
 
@@ -210,33 +242,41 @@ struct TimingGameView: View {
                     .rotationEffect(.degrees(Double(i) * 6))
             }
 
-            // ── Target zone arc (glowing cyan)
-            // Trim center: (targetDeg/360 + 0.75) % 1.0 maps 0° → 0.75 (12 o'clock, no rotation)
+            // ── Target zone arc (glowing cyan med pulserande effekt)
             let center = ((targetDeg / 360.0) + 0.75).truncatingRemainder(dividingBy: 1.0)
             let halfW  = zoneWidth / 2.0 / 360.0
             let startA = center - halfW
             let endA   = center + halfW
 
-            // Glow
+            // Pulserande yttre glöd
             Circle()
                 .trim(from: startA, to: endA)
-                .stroke(Color.cyan.opacity(0.15), style: StrokeStyle(lineWidth: 22, lineCap: .round))
+                .stroke(Color.cyan.opacity(isPulsing ? 0.22 : 0.08),
+                        style: StrokeStyle(lineWidth: 26, lineCap: .round))
                 .frame(width: size - 8, height: size - 8)
+                .scaleEffect(isPulsing ? 1.04 : 1.0)
+                .animation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true), value: isPulsing)
 
             // Solid arc
             Circle()
                 .trim(from: startA, to: endA)
                 .stroke(
-                    LinearGradient(colors: [.cyan.opacity(0.4), .cyan, .cyan.opacity(0.4)],
+                    LinearGradient(colors: [.cyan.opacity(0.5), .cyan, .cyan.opacity(0.5)],
                                    startPoint: .leading, endPoint: .trailing),
-                    style: StrokeStyle(lineWidth: 10, lineCap: .round)
+                    style: StrokeStyle(lineWidth: 11, lineCap: .round)
                 )
                 .frame(width: size - 8, height: size - 8)
+                .shadow(color: .cyan.opacity(0.4), radius: 4)
 
-            // ── Flash ring on tap
+            // ── Ring-expansion vid tryck (hit animation)
+            Circle()
+                .stroke(tapRingColor.opacity(tapRingOpacity), lineWidth: 2)
+                .frame(width: (size - 4) * tapRingScale, height: (size - 4) * tapRingScale)
+
+            // ── Flash ring vid träff/miss
             if flashRing {
                 Circle()
-                    .stroke(flashSuccess ? Color.cyan : Color.red, lineWidth: 3)
+                    .stroke(flashSuccess ? Color.cyan : Color.red, lineWidth: 2.5)
                     .frame(width: size - 4, height: size - 4)
                     .opacity(flashRing ? 1 : 0)
                     .animation(.easeOut(duration: 0.4), value: flashRing)
@@ -359,13 +399,15 @@ struct TimingGameView: View {
     // MARK: - Logic
 
     private func startGame() {
-        timeLeft  = timeLimits[difficulty]
-        gameStart = Date()
+        timeLeft     = timeLimits[difficulty]
+        gameStart    = Date()
         currentRound = 0
-        deviations = []
-        showLabel = false
-        needleAngle = Double.random(in: 0...360)
-        phase = .playing
+        deviations   = []
+        showLabel    = false
+        isPulsing    = false
+        needleAngle  = Double.random(in: 0...360)
+        phase        = .playing
+        // isPulsing sätts till true i .onAppear på playingScreen
     }
 
     private func updateNeedle() {
@@ -408,6 +450,16 @@ struct TimingGameView: View {
         lastLabel = label; lastColor = col
         flashSuccess = isHit
         withAnimation { showLabel = true; flashRing = true }
+
+        // Ring-expansion effekt
+        tapRingColor   = col
+        tapRingScale   = 0.5
+        tapRingOpacity = 0.9
+        withAnimation(.easeOut(duration: 0.55)) {
+            tapRingScale   = 1.05
+            tapRingOpacity = 0
+        }
+
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
             withAnimation { showLabel = false; flashRing = false }
         }
