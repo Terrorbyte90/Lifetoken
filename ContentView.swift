@@ -21,7 +21,6 @@ struct DashboardView: View {
     @State private var showBoard       = false
     @State private var showNewsFeed    = false
     @State private var showMiniJobs    = false
-    @State private var showGazette     = false
     @State private var pulseAnim: Bool = false
 
     private let microTexts = [
@@ -68,17 +67,16 @@ struct DashboardView: View {
         .fullScreenCover(isPresented: $showOnboarding) {
             OnboardingView(showOnboarding: $showOnboarding)
         }
-        .sheet(isPresented: $showTimeMarket)  { TimeMarketView() }
-        .sheet(isPresented: $showZoneMap)     { ZoneVisual() }
-        .sheet(isPresented: $showMissions)    { MissionsView() }
-        .sheet(isPresented: $showBank)        { BankView() }
-        .sheet(isPresented: $showStepBet)     { StepBetView() }
-        .sheet(isPresented: $showNightMarket) { NightMarketView() }
-        .sheet(isPresented: $showPvPRaid)     { PvPRaidView() }
-        .sheet(isPresented: $showNewsFeed)    { NavigationStack { NewsFeedView() } }
-        .sheet(isPresented: $showBoard)       { NavigationStack { BoardDetailView() } }
-        .sheet(isPresented: $showMiniJobs)    { NavigationStack { MiniJobsView() } }
-        .sheet(isPresented: $showGazette)     { NavigationStack { GazetteView() } }
+        .sheet(isPresented: $showTimeMarket)          { TimeMarketView() }
+        .fullScreenCover(isPresented: $showZoneMap)     { ZoneVisual() }
+        .fullScreenCover(isPresented: $showMissions)    { MissionsView() }
+        .fullScreenCover(isPresented: $showBank)        { BankView() }
+        .sheet(isPresented: $showStepBet)              { StepBetView() }
+        .fullScreenCover(isPresented: $showNightMarket) { NightMarketView() }
+        .sheet(isPresented: $showPvPRaid)              { PvPRaidView() }
+        .sheet(isPresented: $showNewsFeed)             { NavigationStack { NewsFeedView() } }
+        .sheet(isPresented: $showBoard)                { NavigationStack { BoardDetailView() } }
+        .sheet(isPresented: $showMiniJobs)             { NavigationStack { MiniJobsView() } }
         .alert("Streak Bonus!", isPresented: $gameState.showStreakBonus) {
             Button("Tack!", role: .cancel) {}
         } message: { Text(gameState.streakBonusMessage) }
@@ -477,10 +475,6 @@ struct DashboardView: View {
                     title: "Arbete",
                     sub: "Mini-jobb & uppdrag",
                     color: Color(red: 0.2, green: 0.8, blue: 0.5))  { showMiniJobs = true }
-            NavCard(icon: "doc.text.fill",
-                    title: "Gazette",
-                    sub: "Din personliga tidning",
-                    color: LTPalette.neonGreen)                      { showGazette = true }
         }
         .padding(.horizontal)
     }

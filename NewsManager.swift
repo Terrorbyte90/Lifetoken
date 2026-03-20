@@ -25,6 +25,7 @@ struct NewsItem: Identifiable, Codable {
         case playerJoin     = "REKRYTERING"
         case miniJob        = "AKTIVT JOBB"
         case general        = "SYSTEM"
+        case playerDeath    = "DÖDSFALL"
     }
 
     enum NewsPriority: Int, Codable {
@@ -47,6 +48,7 @@ struct NewsItem: Identifiable, Codable {
         case .playerJoin:   return Color(red: 0.3, green: 0.9, blue: 0.5)
         case .miniJob:      return Color(red: 0.2, green: 0.7, blue: 0.9)
         case .general:      return Color(red: 0.5, green: 0.5, blue: 0.5)
+        case .playerDeath:  return Color(red: 0.7, green: 0.05, blue: 0.05)
         }
     }
 
@@ -240,6 +242,23 @@ class NewsManager: ObservableObject {
         }
     }
 
+    func addPlayerDeathEvent(username: String) {
+        let deathMessages = [
+            "\(username) har förlorat allt. Klockan stannade. Det gör den alltid.",
+            "En spelare försvann i natt. \(username) finns inte längre i systemet.",
+            "\(username) är borta. Ingen sörjer i Lifetoken.",
+            "Systemet raderade \(username). Det var bara en tidsfråga.",
+            "\(username) gick in i evigheten mot sin vilja."
+        ]
+        let message = deathMessages.randomElement()!
+        addItem(
+            headline: "SPELAREN \(username.uppercased()) ÄR BORTA",
+            body: message,
+            category: .playerDeath,
+            priority: .breaking
+        )
+    }
+
     // MARK: - Helpers
 
     private func currentTimeString() -> String {
@@ -293,12 +312,21 @@ struct NewsFeedView: View {
     }
 
     private func newsRow(_ item: NewsItem) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
+        // Dödsfall visas med röd bakgrund och röd text; milstolpar i guld
+        let isDeath      = item.category == .playerDeath
+        let isMilestone  = item.category == .rankChange || item.category == .revolution
+
+        return VStack(alignment: .leading, spacing: 6) {
             HStack {
                 Text(item.category.rawValue)
                     .font(.system(size: 9, weight: .bold, design: .monospaced))
                     .foregroundColor(item.categoryColor)
                     .tracking(2)
+                if isDeath {
+                    Image(systemName: "xmark.octagon.fill")
+                        .font(.system(size: 9))
+                        .foregroundColor(Color(red: 0.7, green: 0.05, blue: 0.05))
+                }
                 Spacer()
                 Text("\(item.formattedDate) \(item.formattedTime)")
                     .font(.system(size: 9, design: .monospaced))
@@ -306,15 +334,28 @@ struct NewsFeedView: View {
             }
             Text(item.headline)
                 .font(.system(size: 13, weight: .bold, design: .monospaced))
-                .foregroundColor(.white)
+                .foregroundColor(
+                    isDeath     ? Color(red: 0.85, green: 0.1, blue: 0.1) :
+                    isMilestone ? Color(red: 0.95, green: 0.82, blue: 0.2) :
+                    .white
+                )
                 .lineLimit(2)
             Text(item.body)
                 .font(.system(size: 11, design: .monospaced))
-                .foregroundColor(Color(red: 0.6, green: 0.6, blue: 0.6))
+                .foregroundColor(
+                    isDeath     ? Color(red: 0.65, green: 0.15, blue: 0.15) :
+                    isMilestone ? Color(red: 0.75, green: 0.65, blue: 0.2) :
+                    Color(red: 0.6, green: 0.6, blue: 0.6)
+                )
                 .lineSpacing(3)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
+        .background(
+            isDeath
+                ? Color(red: 0.12, green: 0.02, blue: 0.02)
+                : Color.clear
+        )
     }
 }
 
@@ -344,12 +385,20 @@ struct NewsFeedWidget: View {
             Divider().background(Color(red: 0.15, green: 0.15, blue: 0.2))
 
             ForEach(newsManager.items.prefix(maxItems)) { item in
+                let isDeath     = item.category == .playerDeath
+                let isMilestone = item.category == .rankChange || item.category == .revolution
+
                 VStack(alignment: .leading, spacing: 4) {
                     HStack {
                         Text(item.category.rawValue)
                             .font(.system(size: 8, weight: .bold, design: .monospaced))
                             .foregroundColor(item.categoryColor)
                             .tracking(2)
+                        if isDeath {
+                            Image(systemName: "xmark.octagon.fill")
+                                .font(.system(size: 8))
+                                .foregroundColor(Color(red: 0.7, green: 0.05, blue: 0.05))
+                        }
                         Spacer()
                         Text(item.formattedTime)
                             .font(.system(size: 9, design: .monospaced))
@@ -357,15 +406,28 @@ struct NewsFeedWidget: View {
                     }
                     Text(item.headline)
                         .font(.system(size: 11, weight: .bold, design: .monospaced))
-                        .foregroundColor(.white)
+                        .foregroundColor(
+                            isDeath     ? Color(red: 0.85, green: 0.1, blue: 0.1) :
+                            isMilestone ? Color(red: 0.95, green: 0.82, blue: 0.2) :
+                            .white
+                        )
                         .lineLimit(1)
                     Text(item.body)
                         .font(.system(size: 10, design: .monospaced))
-                        .foregroundColor(Color(red: 0.55, green: 0.55, blue: 0.55))
+                        .foregroundColor(
+                            isDeath     ? Color(red: 0.65, green: 0.15, blue: 0.15) :
+                            isMilestone ? Color(red: 0.75, green: 0.65, blue: 0.2) :
+                            Color(red: 0.55, green: 0.55, blue: 0.55)
+                        )
                         .lineLimit(2)
                 }
                 .padding(.horizontal, 14)
                 .padding(.vertical, 8)
+                .background(
+                    isDeath
+                        ? Color(red: 0.12, green: 0.02, blue: 0.02)
+                        : Color.clear
+                )
 
                 if item.id != newsManager.items.prefix(maxItems).last?.id {
                     Divider().background(Color(red: 0.1, green: 0.1, blue: 0.14))
