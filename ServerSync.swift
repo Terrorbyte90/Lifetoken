@@ -23,6 +23,7 @@ struct SyncResponse: Codable {
     let serverTime: Double
     let adjustedBalance: Double?
     let antiCheatFlag: Bool?
+    let adminOverride: Bool?  // Endast true när admin manuellt har satt balansen
 }
 
 class ServerSync: ObservableObject, @unchecked Sendable {
@@ -114,7 +115,7 @@ class ServerSync: ObservableObject, @unchecked Sendable {
 
     func startPeriodicSync() {
         syncTimer?.invalidate()
-        syncTimer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
+        syncTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
             Task {
                 await self?.syncBalance(TimeEngine.shared.balance)
                 await self?.fetchZoneMembers()
@@ -204,12 +205,14 @@ class ServerSync: ObservableObject, @unchecked Sendable {
             DispatchQueue.main.async {
                 self.isOnline = true
                 self.lastSyncDate = Date()
-                // Server is authoritative: always apply adjustedBalance if present
-                if let adj = resp.adjustedBalance,
-                   !TimeEngine.shared.skipServerCorrection {
+                // Applicera bara server-balansen om admin explicit har ändrat den
+                if let adj = resp.adjustedBalance, resp.adminOverride == true {
                     TimeEngine.shared.balance = adj
                 }
-                TimeEngine.shared.skipServerCorrection = false
+                // Fusk-kontroll
+                if resp.antiCheatFlag == true {
+                    TimeEngine.shared.cheatingDetected = true
+                }
             }
         } catch {
             DispatchQueue.main.async { self.isOnline = false }
