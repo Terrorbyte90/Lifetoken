@@ -1,10 +1,95 @@
 import SwiftUI
+import AVKit
 
 // MARK: - DeathView
-// Visas som fullScreenCover när spelarens saldo nått noll.
-// Spelaren är låst i 24 timmar innan de kan återuppstå.
+// Fas 1: Gameover.mp4 spelas fullskärm
+// Fas 2: 24-timmars spärrad skärm
 
 struct DeathView: View {
+    @ObservedObject private var engine = TimeEngine.shared
+    @State private var showLockedScreen = false
+    @State private var gameOverPlayer: AVPlayer? = nil
+
+    var body: some View {
+        ZStack {
+            Color.black.ignoresSafeArea()
+
+            if showLockedScreen {
+                LockedScreen()
+                    .transition(.opacity)
+            } else {
+                GameOverVideoView(player: gameOverPlayer) {
+                    withAnimation(.easeIn(duration: 0.8)) { showLockedScreen = true }
+                }
+                .ignoresSafeArea()
+            }
+        }
+        .onAppear { setupGameOverVideo() }
+        .onDisappear { gameOverPlayer?.pause(); gameOverPlayer = nil }
+    }
+
+    private func setupGameOverVideo() {
+        guard let url = Bundle.main.url(forResource: "Gameover", withExtension: "mp4") else {
+            // Ingen video hittad — hoppa direkt till spärrad skärm
+            showLockedScreen = true
+            return
+        }
+        let p = AVPlayer(url: url)
+        p.actionAtItemEnd = .pause
+        NotificationCenter.default.addObserver(
+            forName: .AVPlayerItemDidPlayToEndTime,
+            object: p.currentItem,
+            queue: .main
+        ) { _ in
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                withAnimation(.easeIn(duration: 0.8)) { showLockedScreen = true }
+            }
+        }
+        p.play()
+        gameOverPlayer = p
+    }
+}
+
+// MARK: - Gameover Video (fullskärm)
+
+struct GameOverVideoView: View {
+    let player: AVPlayer?
+    let onFinished: () -> Void
+
+    var body: some View {
+        ZStack {
+            Color.black.ignoresSafeArea()
+
+            if let player {
+                VideoPlayer(player: player)
+                    .disabled(true)
+                    .ignoresSafeArea()
+                    .aspectRatio(contentMode: .fill)
+            }
+
+            // Knapp för att hoppa över videon
+            VStack {
+                Spacer()
+                Button {
+                    onFinished()
+                } label: {
+                    Text("HOPPA ÖVER")
+                        .font(.system(size: 11, weight: .medium, design: .monospaced))
+                        .foregroundColor(.white.opacity(0.3))
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 10)
+                        .background(Color.white.opacity(0.06))
+                        .clipShape(Capsule())
+                }
+                .padding(.bottom, 48)
+            }
+        }
+    }
+}
+
+// MARK: - Spärrad skärm (24h)
+
+struct LockedScreen: View {
     @ObservedObject private var engine = TimeEngine.shared
     @State private var timeRemaining: TimeInterval = 0
     @State private var countdown = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
@@ -18,14 +103,12 @@ struct DeathView: View {
         "Ditt saldo är nollat.\nDu är nu ingenting i systemet.",
         "Evigheten väntade.\nNu har den dig."
     ]
-
     @State private var message = ""
 
     var body: some View {
         ZStack {
             Color.black.ignoresSafeArea()
 
-            // Atmosfärisk röd glöd underifrån
             RadialGradient(
                 colors: [Color.red.opacity(0.12), .clear],
                 center: .bottom, startRadius: 0, endRadius: 400
@@ -46,7 +129,7 @@ struct DeathView: View {
             VStack(spacing: 0) {
                 Spacer()
 
-                // Dödsikon
+                // Ikon
                 ZStack {
                     Circle()
                         .stroke(Color.red.opacity(0.25), lineWidth: 1)
@@ -57,7 +140,6 @@ struct DeathView: View {
                 }
                 .padding(.bottom, 32)
 
-                // Rubrik
                 Text("DU ÄR BORTA")
                     .font(.system(size: 28, weight: .black, design: .monospaced))
                     .foregroundColor(.red.opacity(0.85))
@@ -66,7 +148,6 @@ struct DeathView: View {
                     .offset(x: glitchOffset)
                     .padding(.bottom, 16)
 
-                // Dystopiskt meddelande
                 Text(message)
                     .font(.system(size: 14, design: .monospaced))
                     .foregroundColor(.white.opacity(0.45))
@@ -75,16 +156,15 @@ struct DeathView: View {
                     .padding(.horizontal, 40)
                     .padding(.bottom, 48)
 
-                // Avdelare
                 Rectangle()
                     .fill(Color.red.opacity(0.15))
                     .frame(height: 1)
                     .padding(.horizontal, 40)
                     .padding(.bottom, 32)
 
-                // Nedräkning till återuppståndelse
+                // Nedräkning
                 VStack(spacing: 8) {
-                    Text("ÅTERUPPSTÅR OM")
+                    Text("KONTOT ÄR SPÄRRAT")
                         .font(.system(size: 10, weight: .bold, design: .monospaced))
                         .foregroundColor(.white.opacity(0.25))
                         .tracking(3)
@@ -94,18 +174,17 @@ struct DeathView: View {
                         .foregroundColor(.white.opacity(0.6))
                         .monospacedDigit()
 
-                    Text("Ditt liv återställs om \(formattedCountdown)")
+                    Text("Du kan börja om om \(formattedCountdown)")
                         .font(.system(size: 11, design: .monospaced))
                         .foregroundColor(.white.opacity(0.2))
                         .italic()
                 }
                 .padding(.bottom, 48)
 
-                // Återuppstå-knapp — visas bara när timern är klar
                 if timeRemaining <= 0 {
                     Button {
                         engine.clearDeath()
-                        engine.balance = 3600  // 1 timme för en ny start
+                        engine.balance = 3600
                     } label: {
                         Text("ÅTERUPPSTÅ")
                             .font(.system(size: 14, weight: .black, design: .monospaced))
@@ -133,16 +212,12 @@ struct DeathView: View {
         }
     }
 
-    // MARK: - Formattering
-
     private var formattedCountdown: String {
         let h = Int(timeRemaining) / 3600
         let m = Int(timeRemaining) % 3600 / 60
         let s = Int(timeRemaining) % 60
         return String(format: "%02d:%02d:%02d", h, m, s)
     }
-
-    // MARK: - Glitch-effekt
 
     private func startGlitch() {
         Timer.scheduledTimer(withTimeInterval: 3, repeats: true) { _ in
