@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import Combine
 
 class GameState: ObservableObject {
     static let shared = GameState()
@@ -14,14 +15,22 @@ class GameState: ObservableObject {
 
     @Published var showStreakBonus: Bool = false
     @Published var streakBonusMessage: String = ""
+    private var cancellables: Set<AnyCancellable> = []
 
     private init() {
         username = UserDefaults.standard.string(forKey: "username") ?? ""
+        currentZone = ZoneManager.shared.currentZone
         loginStreakDays = UserDefaults.standard.integer(forKey: "loginStreak")
         totalEarnedAllTime = UserDefaults.standard.double(forKey: "totalEarned")
         if let d = UserDefaults.standard.object(forKey: "lastLoginDate") as? Date {
             lastLoginDate = d
         }
+        ZoneManager.shared.$currentZone
+            .receive(on: RunLoop.main)
+            .sink { [weak self] zone in
+                self?.currentZone = zone
+            }
+            .store(in: &cancellables)
         checkLoginStreak()
     }
 

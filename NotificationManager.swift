@@ -15,7 +15,8 @@ class NotificationManager {
     // MARK: - Time Low Warnings
 
     func scheduleTimeLowWarning(secondsRemaining: TimeInterval) {
-        UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
+        let warningIDs = ["warning_3600", "warning_10800", "warning_86400"]
+        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: warningIDs)
 
         let thresholds: [(TimeInterval, String, String)] = [
             (3600,  "⚠️ LIFETOKEN — Kritisk tidsnivå",

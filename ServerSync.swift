@@ -28,10 +28,28 @@ struct SyncResponse: Codable {
 
 class ServerSync: ObservableObject, @unchecked Sendable {
     static let shared = ServerSync()
-    private let baseURL    = "http://209.38.98.107:4000/api"
-    private let healthURL  = "http://209.38.98.107:4000/health"
+    private let serverOrigins = [
+        "https://209.38.98.107:4000",
+        "http://209.38.98.107:4000"
+    ]
+    private var preferredOriginIndex = 0
     private var syncTimer: Timer?
     private var reconnectTimer: Timer?
+
+    private func orderedOrigins() -> [String] {
+        guard preferredOriginIndex < serverOrigins.count else { return serverOrigins }
+        var ordered = [serverOrigins[preferredOriginIndex]]
+        ordered.append(contentsOf: serverOrigins.enumerated().compactMap { idx, origin in
+            idx == preferredOriginIndex ? nil : origin
+        })
+        return ordered
+    }
+
+    private func markPreferredOrigin(_ origin: String) {
+        if let idx = serverOrigins.firstIndex(of: origin) {
+            preferredOriginIndex = idx
+        }
+    }
 
     // MARK: - Password hash helper (deterministic per device+user)
     private func passwordHash(username: String, deviceId: String) -> String {
@@ -87,28 +105,30 @@ class ServerSync: ObservableObject, @unchecked Sendable {
     // MARK: - Health check (uses root /health, NOT /api/health)
 
     func checkHealth() async {
-        guard let url = URL(string: healthURL) else { return }
-        do {
-            let req = URLRequest(url: url, timeoutInterval: 10)
-            let (data, resp) = try await URLSession.shared.data(for: req)
-            let statusCode = (resp as? HTTPURLResponse)?.statusCode ?? 0
-            if statusCode == 200,
-               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-               json["status"] as? String == "ok" {
-                DispatchQueue.main.async { self.isOnline = true }
-                // Re-auth if we somehow have no token
-                let storedUsername = UserDefaults.standard.string(forKey: "username") ?? ""
-                if self.token == nil && !storedUsername.isEmpty {
-                    await self.loginOrRegister(username: storedUsername)
+        for origin in orderedOrigins() {
+            guard let url = URL(string: origin + "/health") else { continue }
+            do {
+                let req = URLRequest(url: url, timeoutInterval: 10)
+                let (data, resp) = try await URLSession.shared.data(for: req)
+                let statusCode = (resp as? HTTPURLResponse)?.statusCode ?? 0
+                if statusCode == 200,
+                   let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                   json["status"] as? String == "ok" {
+                    markPreferredOrigin(origin)
+                    DispatchQueue.main.async { self.isOnline = true }
+                    // Re-auth if we somehow have no token
+                    let storedUsername = UserDefaults.standard.string(forKey: "username") ?? ""
+                    if self.token == nil && !storedUsername.isEmpty {
+                        await self.loginOrRegister(username: storedUsername)
+                    }
+                    return
                 }
-            } else {
-                DispatchQueue.main.async { self.isOnline = false }
-                scheduleReconnect()
+            } catch {
+                continue
             }
-        } catch {
-            DispatchQueue.main.async { self.isOnline = false }
-            scheduleReconnect()
         }
+        DispatchQueue.main.async { self.isOnline = false }
+        scheduleReconnect()
     }
 
     // MARK: - Periodic sync
@@ -207,7 +227,7 @@ class ServerSync: ObservableObject, @unchecked Sendable {
                 self.lastSyncDate = Date()
                 // Applicera bara server-balansen om admin explicit har ändrat den
                 if let adj = resp.adjustedBalance, resp.adminOverride == true {
-                    TimeEngine.shared.balance = adj
+                    TimeEngine.shared.applyServerBalance(adj)
                 }
                 // Anti-cheat handled server-side silently
             }
@@ -227,7 +247,7 @@ class ServerSync: ObservableObject, @unchecked Sendable {
                let serverBalance = json["timeBalance"] as? Double {
                 DispatchQueue.main.async {
                     if !TimeEngine.shared.skipServerCorrection {
-                        TimeEngine.shared.balance = serverBalance
+                        TimeEngine.shared.applyServerBalance(serverBalance)
                     }
                 }
             }
@@ -358,22 +378,54 @@ class ServerSync: ObservableObject, @unchecked Sendable {
     // MARK: - HTTP helpers
 
     private func get(path: String, requireAuth: Bool) async throws -> Data {
-        guard let url = URL(string: baseURL + path) else { throw URLError(.badURL) }
-        var req = URLRequest(url: url, timeoutInterval: 10)
-        if requireAuth, let t = token { req.setValue("Bearer \(t)", forHTTPHeaderField: "Authorization") }
-        let (data, _) = try await URLSession.shared.data(for: req)
-        return data
+        var lastError: Error = URLError(.cannotConnectToHost)
+        for origin in orderedOrigins() {
+            guard let url = URL(string: origin + "/api" + path) else { continue }
+            var req = URLRequest(url: url, timeoutInterval: 10)
+            if requireAuth, let t = token {
+                req.setValue("Bearer \(t)", forHTTPHeaderField: "Authorization")
+            }
+            do {
+                let (data, response) = try await URLSession.shared.data(for: req)
+                let statusCode = (response as? HTTPURLResponse)?.statusCode ?? 0
+                if statusCode >= 500 {
+                    lastError = URLError(.badServerResponse)
+                    continue
+                }
+                markPreferredOrigin(origin)
+                return data
+            } catch {
+                lastError = error
+            }
+        }
+        throw lastError
     }
 
     private func post(path: String, body: [String: Any], requireAuth: Bool) async throws -> Data {
-        guard let url = URL(string: baseURL + path) else { throw URLError(.badURL) }
-        var req = URLRequest(url: url, timeoutInterval: 10)
-        req.httpMethod = "POST"
-        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        if requireAuth, let t = token { req.setValue("Bearer \(t)", forHTTPHeaderField: "Authorization") }
-        req.httpBody = try JSONSerialization.data(withJSONObject: body)
-        let (data, _) = try await URLSession.shared.data(for: req)
-        return data
+        var lastError: Error = URLError(.cannotConnectToHost)
+        for origin in orderedOrigins() {
+            guard let url = URL(string: origin + "/api" + path) else { continue }
+            var req = URLRequest(url: url, timeoutInterval: 10)
+            req.httpMethod = "POST"
+            req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            if requireAuth, let t = token {
+                req.setValue("Bearer \(t)", forHTTPHeaderField: "Authorization")
+            }
+            req.httpBody = try JSONSerialization.data(withJSONObject: body)
+            do {
+                let (data, response) = try await URLSession.shared.data(for: req)
+                let statusCode = (response as? HTTPURLResponse)?.statusCode ?? 0
+                if statusCode >= 500 {
+                    lastError = URLError(.badServerResponse)
+                    continue
+                }
+                markPreferredOrigin(origin)
+                return data
+            } catch {
+                lastError = error
+            }
+        }
+        throw lastError
     }
 
     // MARK: - Keychain

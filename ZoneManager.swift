@@ -32,6 +32,15 @@ public class ZoneManager: ObservableObject {
     /// Uses fallThresholdSeconds for downgrade (hysteresis) and unlockRequirementSeconds for upgrade.
     func evaluateZoneChange(currentTime: TimeInterval) {
         let current = currentZone
+        let highestUnlocked = ZoneProfile.currentZone(forTime: currentTime)
+
+        // Upgrade when balance reaches a higher zone's unlock threshold.
+        if highestUnlocked.index > current.index {
+            DispatchQueue.main.async {
+                self.applyZoneChange(to: highestUnlocked, trackProgress: true)
+            }
+            return
+        }
 
         // Check if we've fallen BELOW the current zone's fallThreshold → downgrade
         if currentTime < current.fallThresholdSeconds && current.index > 0 {
@@ -41,8 +50,7 @@ public class ZoneManager: ObservableObject {
             } ?? .askan
             if fallZone.index < current.index {
                 DispatchQueue.main.async {
-                    self.currentZone = fallZone
-                    UserDefaults.standard.set(fallZone.name, forKey: self.lastZoneKey)
+                    self.applyZoneChange(to: fallZone, trackProgress: false)
                 }
             }
         }
@@ -56,8 +64,7 @@ public class ZoneManager: ObservableObject {
         // For free zones (Grundskiftet), just migrate
         if zone.entryCostSeconds == 0 {
             DispatchQueue.main.async {
-                self.currentZone = zone
-                UserDefaults.standard.set(zone.name, forKey: self.lastZoneKey)
+                self.applyZoneChange(to: zone, trackProgress: true)
             }
             return (true, "Välkommen till \(zone.name)!")
         }
@@ -79,13 +86,21 @@ public class ZoneManager: ObservableObject {
         let success = TimeEngine.shared.deductTime(zone.entryCostSeconds)
         if success {
             DispatchQueue.main.async {
-                self.currentZone = zone
-                UserDefaults.standard.set(zone.name, forKey: self.lastZoneKey)
-                self.triggerZoneMissionProgress(for: zone)
+                self.applyZoneChange(to: zone, trackProgress: true)
             }
             return (true, "Välkommen till \(zone.name)! Kostnad: \(TimeEngine.shortFormatted(zone.entryCostSeconds))")
         }
         return (false, "Migrationen misslyckades. Försök igen.")
+    }
+
+    private func applyZoneChange(to zone: ZoneProfile, trackProgress: Bool) {
+        guard currentZone != zone else { return }
+        currentZone = zone
+        UserDefaults.standard.set(zone.name, forKey: lastZoneKey)
+        TimeEngine.shared.setDrainRate(zone.drainRate)
+        if trackProgress {
+            triggerZoneMissionProgress(for: zone)
+        }
     }
 
     private func triggerZoneMissionProgress(for zone: ZoneProfile) {

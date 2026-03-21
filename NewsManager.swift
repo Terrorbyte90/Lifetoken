@@ -250,7 +250,7 @@ class NewsManager: ObservableObject {
             "Systemet raderade \(username). Det var bara en tidsfråga.",
             "\(username) gick in i evigheten mot sin vilja."
         ]
-        let message = deathMessages.randomElement()!
+        let message = deathMessages.randomElement() ?? "\(username) är borta."
         addItem(
             headline: "SPELAREN \(username.uppercased()) ÄR BORTA",
             body: message,
