@@ -56,6 +56,10 @@ class TimeEngine: ObservableObject {
     private var ntpTimer: Timer?
     private var lastVerifiedTime: Date?
     private var currentDrainRate: TimeInterval = 1.0  // seconds drained per real second
+    private var onboardingDrainMultiplier: TimeInterval {
+        UserDefaults.standard.bool(forKey: "hasLaunched") ? 1.0 : 0.1
+    }
+    private var effectiveDrainRate: TimeInterval { currentDrainRate * onboardingDrainMultiplier }
 
     /// Prevents the next server sync from rolling back a manual balance reset
     var skipServerCorrection: Bool = false
@@ -145,12 +149,14 @@ class TimeEngine: ObservableObject {
         let elapsed = now.timeIntervalSince(lastSync)
         currentDrainRate = savedDrain
 
-        // Apply offline drain — clock never stops
-        let drained = elapsed * currentDrainRate
+        // Apply offline drain — clock never stops (onboarding uses reduced drain)
+        let drained = elapsed * effectiveDrainRate
         balance = max(0, savedBalance - drained)
         isTimedOut = balance <= 0
         // Synka hasDied med det persisterade dödsläget
         if isDead { hasDied = true }
+        ZoneManager.shared.evaluateZoneChange(currentTime: balance)
+        NotificationManager.shared.scheduleTimeLowWarning(secondsRemaining: balance)
     }
 
     // MARK: - Tick
@@ -162,9 +168,10 @@ class TimeEngine: ObservableObject {
             DispatchQueue.main.async {
                 // Tidsstopp pauses the drain
                 guard !BoostManager.shared.tidsstoppIsActive else { return }
-                let drain = self.currentDrainRate
+                let drain = self.effectiveDrainRate
                 self.balance = max(0, self.balance - drain)
                 self.isTimedOut = self.balance <= 0
+                ZoneManager.shared.evaluateZoneChange(currentTime: self.balance)
                 // Utlös dödsregistrering första gången saldot når noll
                 if self.balance <= 0 && !self.hasDied && !self.isDead {
                     self.hasDied = true
@@ -216,8 +223,9 @@ class TimeEngine: ObservableObject {
                         let realElapsed = serverTime.timeIntervalSince(storedSync)
                         let deviceElapsed = deviceTime.timeIntervalSince(storedSync)
                         if deviceElapsed < realElapsed {
-                            let stolen = (realElapsed - deviceElapsed) * self.currentDrainRate
+                            let stolen = (realElapsed - deviceElapsed) * self.effectiveDrainRate
                             self.balance = max(0, self.balance - stolen)
+                            ZoneManager.shared.evaluateZoneChange(currentTime: self.balance)
                         }
                     }
                 }
@@ -257,6 +265,8 @@ class TimeEngine: ObservableObject {
     func addTime(_ seconds: TimeInterval) {
         DispatchQueue.main.async {
             self.balance += seconds
+            self.isTimedOut = self.balance <= 0
+            ZoneManager.shared.evaluateZoneChange(currentTime: self.balance)
             self.saveToKeychain(balance: self.balance, timestamp: Date())
             NotificationManager.shared.scheduleTimeLowWarning(secondsRemaining: self.balance)
         }
@@ -271,9 +281,22 @@ class TimeEngine: ObservableObject {
             guard self.balance >= seconds else { return }
             self.balance = max(0, self.balance - seconds)
             self.isTimedOut = self.balance <= 0
+            ZoneManager.shared.evaluateZoneChange(currentTime: self.balance)
             self.saveToKeychain(balance: self.balance, timestamp: Date())
+            NotificationManager.shared.scheduleTimeLowWarning(secondsRemaining: self.balance)
         }
         return true
+    }
+
+    /// Applies a server-authoritative balance while preserving local invariants.
+    func applyServerBalance(_ seconds: TimeInterval) {
+        DispatchQueue.main.async {
+            self.balance = max(0, seconds)
+            self.isTimedOut = self.balance <= 0
+            ZoneManager.shared.evaluateZoneChange(currentTime: self.balance)
+            self.saveToKeychain(balance: self.balance, timestamp: Date())
+            NotificationManager.shared.scheduleTimeLowWarning(secondsRemaining: self.balance)
+        }
     }
 
     /// Set drain rate (zone-based, called by ZoneManager)
@@ -302,7 +325,9 @@ class TimeEngine: ObservableObject {
             self.isTimedOut = false
             self.cheatingDetected = false
             self.skipServerCorrection = true
+            ZoneManager.shared.evaluateZoneChange(currentTime: seconds)
             self.saveToKeychain(balance: seconds, timestamp: Date())
+            NotificationManager.shared.scheduleTimeLowWarning(secondsRemaining: seconds)
         }
         Task { await ServerSync.shared.syncBalance(seconds) }
     }

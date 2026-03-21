@@ -7,9 +7,10 @@ final class OnboardingEngine: ObservableObject {
 
     // Steps: 0, 0.5 (HealthKit), 1, 2, 3, 4, 5, 6
     @Published private(set) var currentStep: Double = 0
-    @Published private(set) var drainRateMultiplier: Double = 0.1
+    @Published private(set) var drainRateMultiplier: Double =
+        UserDefaults.standard.bool(forKey: "hasLaunched") ? 1.0 : 0.1
     @Published private(set) var healthKitAccessGranted: Bool = false
-    @Published private(set) var isComplete: Bool = false
+    @Published private(set) var isComplete: Bool = UserDefaults.standard.bool(forKey: "hasLaunched")
 
     private let stepSequence: [Double] = [0, 0.5, 1, 2, 3, 4, 5, 6]
     private var stepIndex: Int = 0
@@ -37,8 +38,7 @@ final class OnboardingEngine: ObservableObject {
     func completeOnboarding() {
         drainRateMultiplier = 1.0
         isComplete = true
-        // NOTE: TimeEngine.setDrainRate(_:) exists but is zone-based (absolute rate, not a multiplier).
-        // When zone-aware drain multiplier support is added to TimeEngine, call it here.
+        // TimeEngine reads hasLaunched and uses reduced drain before onboarding is complete.
         UserDefaults.standard.set(true, forKey: "hasLaunched")
     }
 }

@@ -65,7 +65,9 @@ final class FactionManager: ObservableObject {
     func currentWeekMission() -> FactionMission {
         let week = Calendar.current.component(.weekOfYear, from: Date.now)
         let template = missionTemplates[week % missionTemplates.count]
-        let weekStart = Calendar.current.date(from: Calendar.current.dateComponents([.yearForWeekOfYear, .weekOfYear], from: Date.now))!
+        let weekStart = Calendar.current.date(
+            from: Calendar.current.dateComponents([.yearForWeekOfYear, .weekOfYear], from: Date.now)
+        ) ?? Calendar.current.startOfDay(for: Date.now)
         return FactionMission(id: "mission_week_\(week)", title: template.0, targetType: template.1, currentProgress: 0, targetValue: template.2, weekStart: weekStart)
     }
 

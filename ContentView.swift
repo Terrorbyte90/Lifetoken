@@ -927,6 +927,7 @@ struct ShortcutButton: View {
 
 struct MainTabView: View {
     @AppStorage("selectedTab") private var selectedTab: Int = 0
+    @ObservedObject private var engine = TimeEngine.shared
 
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -951,15 +952,18 @@ struct MainTabView: View {
         .toolbarBackground(.ultraThinMaterial, for: .tabBar)
         .toolbarColorScheme(.dark, for: .tabBar)
         .overlay {
-            if TimeEngine.shared.cryoSleepActive {
+            if engine.cryoSleepActive {
                 CryoSleepOverlay()
                     .transition(.opacity)
             }
         }
-        .animation(.easeInOut(duration: 0.5), value: TimeEngine.shared.cryoSleepActive)
+        .animation(.easeInOut(duration: 0.5), value: engine.cryoSleepActive)
         .modifier(ZoneUpgradeFlash())
         // Dödsläge — visas som fullskärmstäckning när spelaren är borta
-        .fullScreenCover(isPresented: .constant(TimeEngine.shared.isDead)) {
+        .fullScreenCover(isPresented: Binding(
+            get: { engine.isDead },
+            set: { _ in }
+        )) {
             DeathView()
         }
     }
