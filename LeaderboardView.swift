@@ -88,13 +88,21 @@ struct LeaderboardView: View {
         isLoading = true
         defer { isLoading = false }
         let zone = GameState.shared.currentZone.name
-        let urlString = "http://209.38.98.107:4000/api/leaderboard?zone=\(zone)&limit=20"
-        guard let url = URL(string: urlString) else { return }
         do {
-            let (data, _) = try await URLSession.shared.data(from: url)
-            entries = try JSONDecoder().decode([LeaderboardEntry].self, from: data)
+            let users = try await ServerSync.shared.fetchZoneLeaderboard(zone: zone, limit: 20)
+            entries = users.enumerated().map { index, user in
+                LeaderboardEntry(
+                    id: user.id,
+                    username: user.username,
+                    zoneID: user.zone,
+                    balance: user.timeBalance ?? 0,
+                    rank: index + 1
+                )
+            }
             lastUpdated = .now
-            UserDefaults.standard.set(data, forKey: "cachedLeaderboard_\(zone)")
+            if let data = try? JSONEncoder().encode(entries) {
+                UserDefaults.standard.set(data, forKey: "cachedLeaderboard_\(zone)")
+            }
         } catch {
             if let cached = UserDefaults.standard.data(forKey: "cachedLeaderboard_\(zone)"),
                let decoded = try? JSONDecoder().decode([LeaderboardEntry].self, from: cached) {
