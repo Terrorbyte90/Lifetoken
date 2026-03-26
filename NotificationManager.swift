@@ -55,17 +55,20 @@ class NotificationManager {
 
     // MARK: - PvP Raid Notification
 
-    func sendRaidNotification(from attacker: String, amount: String, won: Bool) {
+    func sendRaidNotification(target: String, amount: String, won: Bool, backfired: Bool = false) {
         let content = UNMutableNotificationContent()
         if won {
-            content.title = "💥 Du blev rånad!"
-            content.body = "\(attacker) rånade dig på \(amount). Skaffa skydd — migrera till en säkrare zon."
+            content.title = "✅ Rån lyckades"
+            content.body = "Du tog \(amount) från \(target)."
+        } else if backfired {
+            content.title = "☠️ Backfire"
+            content.body = "\(target) vände rånet. Du förlorade mer än insatsen."
         } else {
-            content.title = "🛡️ Rånförsök misslyckat"
-            content.body = "\(attacker) försökte råna dig men misslyckades. Din tid är säker."
+            content.title = "🛡️ Rån misslyckades"
+            content.body = "\(target) försvarade sig. Du förlorade insatsen."
         }
         content.sound = .defaultCritical
-        content.userInfo = ["type": "pvp_raid", "attacker": attacker]
+        content.userInfo = ["type": "pvp_raid", "target": target]
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
         let req = UNNotificationRequest(identifier: "raid_\(Date().timeIntervalSince1970)", content: content, trigger: trigger)
         UNUserNotificationCenter.current().add(req, withCompletionHandler: nil)

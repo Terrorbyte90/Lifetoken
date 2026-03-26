@@ -84,11 +84,9 @@ class TimeEngine: ObservableObject {
         UserDefaults.standard.set(true, forKey: doneKey)
         // Reset to 10 days — runs once on first launch of this build
         let targetBalance: TimeInterval = 10 * 86400 // 864000 seconds
-        balance = targetBalance
-        isTimedOut = false
+        applyBalanceState(targetBalance)
         cheatingDetected = false
         skipServerCorrection = true
-        saveToKeychain(balance: targetBalance, timestamp: Date())
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
             Task { await ServerSync.shared.syncBalance(targetBalance) }
         }
@@ -115,6 +113,32 @@ class TimeEngine: ObservableObject {
             var addQuery = query
             addQuery[kSecValueData as String] = encoded
             SecItemAdd(addQuery as CFDictionary, nil)
+        }
+    }
+
+    @discardableResult
+    private func withMainThread<T>(_ work: () -> T) -> T {
+        if Thread.isMainThread { return work() }
+        var result: T!
+        DispatchQueue.main.sync {
+            result = work()
+        }
+        return result
+    }
+
+    private func applyBalanceState(_ newBalance: TimeInterval, persist: Bool = true, scheduleWarnings: Bool = true) {
+        balance = max(0, newBalance)
+        isTimedOut = balance <= 0
+        ZoneManager.shared.evaluateZoneChange(currentTime: balance)
+        if balance <= 0 && !hasDied && !isDead {
+            hasDied = true
+            recordDeath()
+        }
+        if persist {
+            saveToKeychain(balance: balance, timestamp: Date())
+        }
+        if scheduleWarnings {
+            NotificationManager.shared.scheduleTimeLowWarning(secondsRemaining: balance)
         }
     }
 
@@ -224,8 +248,9 @@ class TimeEngine: ObservableObject {
                         let deviceElapsed = deviceTime.timeIntervalSince(storedSync)
                         if deviceElapsed < realElapsed {
                             let stolen = (realElapsed - deviceElapsed) * self.effectiveDrainRate
-                            self.balance = max(0, self.balance - stolen)
-                            ZoneManager.shared.evaluateZoneChange(currentTime: self.balance)
+                            if stolen > 0 {
+                                self.applyBalanceState(self.balance - stolen)
+                            }
                         }
                     }
                 }
@@ -263,39 +288,27 @@ class TimeEngine: ObservableObject {
 
     /// Add time to balance (earnings, rewards, casino wins)
     func addTime(_ seconds: TimeInterval) {
-        DispatchQueue.main.async {
-            self.balance += seconds
-            self.isTimedOut = self.balance <= 0
-            ZoneManager.shared.evaluateZoneChange(currentTime: self.balance)
-            self.saveToKeychain(balance: self.balance, timestamp: Date())
-            NotificationManager.shared.scheduleTimeLowWarning(secondsRemaining: self.balance)
+        guard seconds > 0 else { return }
+        withMainThread {
+            self.applyBalanceState(self.balance + seconds)
         }
     }
 
     /// Deduct time (purchases, zone migration, casino losses, taxes)
     @discardableResult
     func deductTime(_ seconds: TimeInterval) -> Bool {
-        guard balance >= seconds else { return false }
-        DispatchQueue.main.async {
-            // Re-check balance on main thread to prevent double-spend from rapid calls
-            guard self.balance >= seconds else { return }
-            self.balance = max(0, self.balance - seconds)
-            self.isTimedOut = self.balance <= 0
-            ZoneManager.shared.evaluateZoneChange(currentTime: self.balance)
-            self.saveToKeychain(balance: self.balance, timestamp: Date())
-            NotificationManager.shared.scheduleTimeLowWarning(secondsRemaining: self.balance)
+        guard seconds > 0 else { return true }
+        return withMainThread {
+            guard self.balance >= seconds else { return false }
+            self.applyBalanceState(self.balance - seconds)
+            return true
         }
-        return true
     }
 
     /// Applies a server-authoritative balance while preserving local invariants.
     func applyServerBalance(_ seconds: TimeInterval) {
-        DispatchQueue.main.async {
-            self.balance = max(0, seconds)
-            self.isTimedOut = self.balance <= 0
-            ZoneManager.shared.evaluateZoneChange(currentTime: self.balance)
-            self.saveToKeychain(balance: self.balance, timestamp: Date())
-            NotificationManager.shared.scheduleTimeLowWarning(secondsRemaining: self.balance)
+        withMainThread {
+            self.applyBalanceState(seconds)
         }
     }
 
@@ -320,14 +333,11 @@ class TimeEngine: ObservableObject {
 
     /// DEV ONLY — Reset balance, persist to Keychain, and push to server
     func devResetBalance(to seconds: TimeInterval = 86400) {
-        DispatchQueue.main.async {
-            self.balance = seconds
+        withMainThread {
+            self.applyBalanceState(seconds)
             self.isTimedOut = false
             self.cheatingDetected = false
             self.skipServerCorrection = true
-            ZoneManager.shared.evaluateZoneChange(currentTime: seconds)
-            self.saveToKeychain(balance: seconds, timestamp: Date())
-            NotificationManager.shared.scheduleTimeLowWarning(secondsRemaining: seconds)
         }
         Task { await ServerSync.shared.syncBalance(seconds) }
     }

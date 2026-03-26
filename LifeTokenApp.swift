@@ -37,9 +37,9 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         }
 
         // Startup: auto-login with stored username if no token, then sync
-        let balance = TimeEngine.shared.balance
         Task {
             await ServerSync.shared.startup()           // handles auto-login
+            let balance = await MainActor.run { TimeEngine.shared.balance }
             await ServerSync.shared.syncBalance(balance)
             await ServerSync.shared.fetchZoneMembers()
             await ServerSync.shared.fetchLeaderboard()
@@ -65,9 +65,10 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         // Refresh health data and re-check award when returning from background
         IncomeManager.shared.loadAndRefresh()
         IncomeManager.shared.checkAndAwardDailyHealthIncome()
-        let balance = TimeEngine.shared.balance
         Task {
             await ServerSync.shared.checkHealth()
+            await ServerSync.shared.fetchServerBalance()
+            let balance = await MainActor.run { TimeEngine.shared.balance }
             await ServerSync.shared.syncBalance(balance)
             await ServerSync.shared.fetchZoneMembers()
         }
@@ -75,8 +76,10 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 
     func applicationDidEnterBackground(_ application: UIApplication) {
         TimeEngine.shared.saveToKeychainPublic()
-        let balance = TimeEngine.shared.balance
-        Task { await ServerSync.shared.syncBalance(balance) }
+        Task {
+            let balance = await MainActor.run { TimeEngine.shared.balance }
+            await ServerSync.shared.syncBalance(balance)
+        }
     }
 
     func applicationWillTerminate(_ application: UIApplication) {
