@@ -27,7 +27,7 @@ Run out of time and you die.
 | `ZoneManager.swift` | 14-zone migration with hysteresis |
 | `ZoneProfile.swift` | Static zone definitions (Askan → Evigheten), tax rates, work multipliers |
 | `InflationManager.swift` | Zone-based daily inflation applied to earnings |
-| `ServerSync.swift` | HTTP backend sync (register/login, balance push) |
+| `ServerSync.swift` | Backend sync (register/login, balance push) |
 
 ### Income Sources
 

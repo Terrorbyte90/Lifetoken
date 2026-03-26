@@ -34,6 +34,22 @@ struct ServerUser: Decodable, Identifiable {
     var timeBalance: Double?
     var hasSharedTime: Bool
 
+    init(
+        id: String,
+        username: String,
+        avatar: String = "⏱",
+        zone: String,
+        timeBalance: Double? = nil,
+        hasSharedTime: Bool = false
+    ) {
+        self.id = id
+        self.username = username
+        self.avatar = avatar
+        self.zone = zone
+        self.timeBalance = timeBalance
+        self.hasSharedTime = hasSharedTime
+    }
+
     enum CodingKeys: String, CodingKey {
         case id, username, avatar, zone
         case timeBalance, time_balance
@@ -135,12 +151,73 @@ class ServerSync: ObservableObject, @unchecked Sendable {
         }
     }
 
+    private struct ServerUserWire: Decodable {
+        let id: String
+        let username: String
+        let avatar: String?
+        let zone: String?
+        let timeBalance: Double?
+        let hasSharedTime: Bool?
+
+        enum CodingKeys: String, CodingKey {
+            case id, username, avatar, zone
+            case timeBalance, time_balance
+            case hasSharedTime, has_shared_time
+        }
+
+        init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            id = try container.decode(String.self, forKey: .id)
+            username = try container.decode(String.self, forKey: .username)
+            avatar = try container.decodeIfPresent(String.self, forKey: .avatar)
+            zone = try container.decodeIfPresent(String.self, forKey: .zone)
+            timeBalance = try container.decodeIfPresent(Double.self, forKey: .timeBalance)
+                ?? container.decodeIfPresent(Double.self, forKey: .time_balance)
+            hasSharedTime = try container.decodeIfPresent(Bool.self, forKey: .hasSharedTime)
+                ?? container.decodeIfPresent(Bool.self, forKey: .has_shared_time)
+        }
+
+        func toServerUser(fallbackZone: String?) -> ServerUser {
+            ServerUser(
+                id: id,
+                username: username,
+                avatar: avatar ?? "⏱",
+                zone: zone ?? fallbackZone ?? "",
+                timeBalance: timeBalance,
+                hasSharedTime: hasSharedTime ?? false
+            )
+        }
+    }
+
+    private struct ServerUserEnvelope: Decodable {
+        let zone: String?
+        let members: [ServerUserWire]?
+        let leaderboard: [ServerUserWire]?
+    }
+
     private func currentLocalBalance() async -> TimeInterval {
         await MainActor.run { TimeEngine.shared.balance }
     }
 
     private func currentZoneName() async -> String {
         await MainActor.run { GameState.shared.currentZone.name }
+    }
+
+    private func decodeServerUsers(from data: Data, fallbackZone: String? = nil) throws -> [ServerUser] {
+        let decoder = JSONDecoder()
+        if let direct = try? decoder.decode([ServerUser].self, from: data) {
+            return direct
+        }
+        if let envelope = try? decoder.decode(ServerUserEnvelope.self, from: data) {
+            let zone = envelope.zone ?? fallbackZone
+            if let members = envelope.members {
+                return members.map { $0.toServerUser(fallbackZone: zone) }
+            }
+            if let leaderboard = envelope.leaderboard {
+                return leaderboard.map { $0.toServerUser(fallbackZone: zone) }
+            }
+        }
+        throw ServerHTTPError(statusCode: 422, message: "Unexpected user list payload")
     }
 
     private func orderedOrigins() -> [String] {
@@ -391,9 +468,10 @@ class ServerSync: ObservableObject, @unchecked Sendable {
 
     func fetchZoneMembers() async {
         guard token != nil else { return }
+        let localZone = await currentZoneName()
         do {
             let data = try await get(path: "/social/zone-members", requireAuth: true)
-            let members = try JSONDecoder().decode([ServerUser].self, from: data)
+            let members = try decodeServerUsers(from: data, fallbackZone: localZone)
             DispatchQueue.main.async {
                 self.zoneMembers = members
                 self.onlineCount = members.count
@@ -403,9 +481,10 @@ class ServerSync: ObservableObject, @unchecked Sendable {
 
     func fetchLeaderboard() async {
         guard token != nil else { return }
+        let localZone = await currentZoneName()
         do {
             let data = try await get(path: "/social/zone-leaderboard", requireAuth: true)
-            let users = try JSONDecoder().decode([ServerUser].self, from: data)
+            let users = try decodeServerUsers(from: data, fallbackZone: localZone)
             DispatchQueue.main.async {
                 self.onlineCount = max(self.onlineCount, users.count)
             }
@@ -418,7 +497,7 @@ class ServerSync: ObservableObject, @unchecked Sendable {
         guard token != nil else { return [] }
         let encodedZone = zone.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? zone
         let data = try await get(path: "/social/zone-leaderboard?zone=\(encodedZone)&limit=\(limit)", requireAuth: true)
-        return try JSONDecoder().decode([ServerUser].self, from: data)
+        return try decodeServerUsers(from: data, fallbackZone: zone)
     }
 
     func transferTime(toUserId: String, amount: TimeInterval) async throws {
