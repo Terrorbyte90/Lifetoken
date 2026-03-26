@@ -389,6 +389,15 @@ class ServerSync: ObservableObject, @unchecked Sendable {
         } catch {}
     }
 
+    /// Fetches leaderboard entries for a specific zone.
+    /// Zone is URL-escaped to support spaces and Swedish characters.
+    func fetchZoneLeaderboard(zone: String, limit: Int = 20) async throws -> [ServerUser] {
+        guard token != nil else { return [] }
+        let encodedZone = zone.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? zone
+        let data = try await get(path: "/social/zone-leaderboard?zone=\(encodedZone)&limit=\(limit)", requireAuth: true)
+        return try JSONDecoder().decode([ServerUser].self, from: data)
+    }
+
     func transferTime(toUserId: String, amount: TimeInterval) async throws {
         let body: [String: Any] = ["targetUserId": toUserId, "amount": amount]
         _ = try await post(path: "/social/transfer", body: body, requireAuth: true)
