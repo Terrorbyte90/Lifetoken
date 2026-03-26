@@ -4,27 +4,6 @@ import Foundation
 // MARK: - StepBet — Arbetsduell
 // Två spelare satsar tid mot varandra. Flest steg vinner vid deadline.
 
-// MARK: - GroupBet model
-
-struct GroupBet: Codable, Identifiable {
-    let id: String
-    let participantIDs: [String]
-    var stepCounts: [String: Int]
-    var eliminatedIDs: [String]
-    let stakeSeconds: Int
-    let startDate: Date
-    let endDate: Date
-    var isActive: Bool
-}
-
-func processGroupBetElimination(bet: inout GroupBet) {
-    let remaining = bet.participantIDs.filter { !bet.eliminatedIDs.contains($0) }
-    guard remaining.count > 1 else { return }
-    if let loser = remaining.min(by: { (bet.stepCounts[$0] ?? 0) < (bet.stepCounts[$1] ?? 0) }) {
-        bet.eliminatedIDs.append(loser)
-    }
-}
-
 // MARK: - Modeller
 
 enum BetDeadline: String, CaseIterable {
@@ -55,6 +34,7 @@ struct StepBet: Identifiable, Codable {
     var isExpired: Bool { Date() > deadline }
     var winnerName: String? {
         guard status == .settled else { return nil }
+        guard challengerSteps != opponentSteps else { return nil }
         return challengerSteps > opponentSteps ? challengerName : opponentName
     }
 
@@ -101,7 +81,10 @@ class StepBetManager: ObservableObject {
         }
 
         // Lås insatsen från utmanaren
-        TimeEngine.shared.deductTime(stake)
+        guard TimeEngine.shared.deductTime(stake) else {
+            completion(false, "Kunde inte låsa insatsen. Försök igen.")
+            return
+        }
 
         let deadlineDate = nextDeadlineDate(hour: deadline.hour)
         let bet = StepBet(
@@ -128,7 +111,7 @@ class StepBetManager: ObservableObject {
             from: playerName,
             to: opponentName,
             stake: TimeEngine.shortFormatted(stake),
-            deadline: nextDeadlineDate(hour: deadline.hour).formatted(date: .omitted, time: .shortened)
+            deadline: bet.formattedDeadline
         )
         completion(true, "Duell skickad till \(opponentName).")
     }
@@ -141,7 +124,10 @@ class StepBetManager: ObservableObject {
         let stake = pendingBets[idx].stake
         guard TimeEngine.shared.balance >= stake else { completion(false); return }
 
-        TimeEngine.shared.deductTime(stake)
+        guard TimeEngine.shared.deductTime(stake) else {
+            completion(false)
+            return
+        }
         pendingBets[idx].status = .active
         activeBets.insert(pendingBets[idx], at: 0)
         pendingBets.remove(at: idx)
@@ -160,11 +146,11 @@ class StepBetManager: ObservableObject {
         }
     }
 
-    // MARK: - Sync steg var 5:e minut
+    // MARK: - Sync steg var minut
 
     private func startSyncTimer() {
         syncTimer?.invalidate()
-        syncTimer = Timer.scheduledTimer(withTimeInterval: 300, repeats: true) { [weak self] _ in
+        syncTimer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
             self?.syncStepsAndSettle()
         }
     }
@@ -172,18 +158,20 @@ class StepBetManager: ObservableObject {
     func syncStepsAndSettle() {
         let mySteps = IncomeManager.shared.dailySteps
         let playerName = GameState.shared.username
+        let betIDs = activeBets.map(\.id)
 
-        for i in activeBets.indices {
+        for betID in betIDs {
+            guard let i = activeBets.firstIndex(where: { $0.id == betID }) else { continue }
             let bet = activeBets[i]
 
-            // Uppdatera mina steg
             if bet.challengerName == playerName {
                 activeBets[i].challengerSteps = mySteps
+                Task { await ServerSync.shared.syncStepBet(betId: bet.id, steps: mySteps) }
             } else if bet.opponentName == playerName {
                 activeBets[i].opponentSteps = mySteps
+                Task { await ServerSync.shared.syncStepBet(betId: bet.id, steps: mySteps) }
             }
 
-            // Kontrollera om deadline passerat
             if activeBets[i].isExpired {
                 settleBet(betId: bet.id)
             }
@@ -197,11 +185,22 @@ class StepBetManager: ObservableObject {
         bet.status = .settled
 
         let playerName = GameState.shared.username
-        let iChallenger = bet.challengerName == playerName
-        let iWon = (iChallenger && bet.challengerSteps > bet.opponentSteps) ||
-                   (!iChallenger && bet.opponentSteps > bet.challengerSteps)
+        let challengerWon = bet.challengerSteps > bet.opponentSteps
+        let opponentWon = bet.opponentSteps > bet.challengerSteps
+        let isDraw = !challengerWon && !opponentWon
+        let winnerName = challengerWon ? bet.challengerName : (opponentWon ? bet.opponentName : "DRAW")
+        let isParticipant = bet.challengerName == playerName || bet.opponentName == playerName
+        let iWon = winnerName == playerName
 
-        if iWon {
+        Task { await ServerSync.shared.settleBet(betId: bet.id, winnerName: winnerName) }
+
+        if isDraw {
+            // Oavgjort i 1v1: återbetala lokal spelares låsta insats.
+            if isParticipant {
+                TimeEngine.shared.addTime(bet.stake)
+                TransactionLedger.shared.record(label: "Stegduell — oavgjort", amount: 0)
+            }
+        } else if iWon {
             // Vinnaren får dubbla insatsen minus 5% husavgift
             let grossPayout = bet.stake * 2
             let houseFee = grossPayout * 0.05
@@ -210,8 +209,8 @@ class StepBetManager: ObservableObject {
             BoardManager.shared.collectTax(amount: houseFee)
             TransactionLedger.shared.record(label: "Stegduell — vinst", amount: netPayout - bet.stake)
             NewsManager.shared.addStepBetEvent(
-                winner: iChallenger ? bet.challengerName : bet.opponentName,
-                loser:  iChallenger ? bet.opponentName : bet.challengerName,
+                winner: winnerName,
+                loser:  winnerName == bet.challengerName ? bet.opponentName : bet.challengerName,
                 amount: netPayout
             )
         } else {
@@ -274,8 +273,6 @@ class StepBetManager: ObservableObject {
 
 struct StepBetView: View {
     @ObservedObject private var manager   = StepBetManager.shared
-    @ObservedObject private var server    = ServerSync.shared
-    @ObservedObject private var engine    = TimeEngine.shared
     @ObservedObject private var gameState = GameState.shared
     @Environment(\.dismiss) var dismiss
 
@@ -283,8 +280,6 @@ struct StepBetView: View {
     @State private var showChallenge: Bool = false
     @State private var challengeResult: String = ""
     @State private var showResult: Bool = false
-    @State private var groupPlayerCount: Int = 3
-    @State private var isServerReachable: Bool = false
     @State private var now: Date = Date()
 
     // Timer för live-nedräkning
@@ -316,9 +311,6 @@ struct StepBetView: View {
                             case 1: pendingBetsTab
                             default: historyTab
                             }
-
-                            // Gruppduel-sektion
-                            groupDuelSection
                         }
                         .padding(LTSpacing.lg)
                         .padding(.bottom, LTSpacing.scrollBottom)
@@ -350,6 +342,9 @@ struct StepBetView: View {
             Button("OK", role: .cancel) {}
         } message: { Text(challengeResult) }
         .preferredColorScheme(.dark)
+        .onAppear {
+            manager.syncStepsAndSettle()
+        }
         .onReceive(countdownTimer) { t in now = t }
     }
 
@@ -591,20 +586,24 @@ struct StepBetView: View {
 
     private func historyCard(_ bet: StepBet) -> some View {
         let myName  = gameState.username
+        let isDraw  = bet.status == .settled && bet.winnerName == nil
         let won     = bet.winnerName == myName
         let oppName = bet.challengerName == myName ? bet.opponentName : bet.challengerName
         let mySteps = bet.challengerName == myName ? bet.challengerSteps : bet.opponentSteps
         let opSteps = bet.challengerName == myName ? bet.opponentSteps : bet.challengerSteps
+        let accent: Color = isDraw ? LTPalette.gold : (won ? LTPalette.neonGreen : LTPalette.danger)
+        let statusText = isDraw ? "OAVGJORT" : (won ? "VANN" : "FÖRLORADE")
+        let statusLabel = isDraw ? "Oavgjort" : (won ? "Vann" : "Förlorade")
 
         return HStack(spacing: LTSpacing.md) {
             // Resultatsymbol
             ZStack {
                 Circle()
-                    .fill(won ? LTPalette.neonGreen.opacity(0.15) : LTPalette.danger.opacity(0.15))
+                    .fill(accent.opacity(0.15))
                     .frame(width: 40, height: 40)
-                Image(systemName: won ? "trophy.fill" : "xmark")
+                Image(systemName: isDraw ? "equal.circle.fill" : (won ? "trophy.fill" : "xmark"))
                     .font(.system(size: 16))
-                    .foregroundColor(won ? LTPalette.neonGreen : LTPalette.danger)
+                    .foregroundColor(accent)
             }
 
             VStack(alignment: .leading, spacing: 3) {
@@ -619,9 +618,9 @@ struct StepBetView: View {
             Spacer()
 
             VStack(alignment: .trailing, spacing: 2) {
-                Text(won ? "VANN" : "FÖRLORADE")
+                Text(statusText)
                     .font(LTFont.label(11))
-                    .foregroundColor(won ? LTPalette.neonGreen : LTPalette.danger)
+                    .foregroundColor(accent)
                 Text(TimeEngine.shortFormatted(bet.stake))
                     .font(LTFont.body(10))
                     .foregroundColor(LTPalette.gold.opacity(0.8))
@@ -633,59 +632,12 @@ struct StepBetView: View {
         .overlay(
             RoundedRectangle(cornerRadius: LTRadius.sm)
                 .stroke(
-                    won ? LTPalette.neonGreen.opacity(0.15) : LTPalette.danger.opacity(0.15),
+                    accent.opacity(0.15),
                     lineWidth: 1
                 )
         )
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("Mot \(oppName): \(mySteps) mot \(opSteps) steg. \(won ? "Vann" : "Förlorade").")
-    }
-
-    // MARK: - Gruppduel-sektion
-
-    private var groupDuelSection: some View {
-        VStack(alignment: .leading, spacing: LTSpacing.md) {
-            Text("GRUPPDUEL")
-                .font(LTFont.label(9))
-                .foregroundColor(Color(red: 0.5, green: 0.5, blue: 0.55))
-                .tracking(2)
-
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("3–6 spelare")
-                        .font(LTFont.heading(13))
-                        .foregroundColor(.white)
-                    Text("Kräver serveranslutning")
-                        .font(LTFont.body(10))
-                        .foregroundColor(Color(red: 0.5, green: 0.5, blue: 0.55))
-                }
-                Spacer()
-                Stepper("", value: $groupPlayerCount, in: 3...6)
-                    .labelsHidden()
-                Text("\(groupPlayerCount)")
-                    .font(LTFont.value(20))
-                    .foregroundColor(.white)
-                    .frame(width: 28)
-            }
-
-            Button(isServerReachable ? "Starta gruppduel" : "Kräver anslutning") {
-                // Kräver backend-stöd
-            }
-            .font(LTFont.heading(13))
-            .foregroundColor(isServerReachable ? .black : Color(red: 0.4, green: 0.4, blue: 0.45))
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, LTSpacing.sm + 2)
-            .background(isServerReachable ? LTPalette.neonGreen : Color(red: 0.15, green: 0.15, blue: 0.2))
-            .clipShape(RoundedRectangle(cornerRadius: LTRadius.xs))
-            .disabled(!isServerReachable)
-        }
-        .padding(LTSpacing.lg)
-        .background(Color(red: 0.06, green: 0.06, blue: 0.09))
-        .clipShape(RoundedRectangle(cornerRadius: LTRadius.sm))
-        .overlay(
-            RoundedRectangle(cornerRadius: LTRadius.sm)
-                .stroke(Color(red: 0.18, green: 0.18, blue: 0.26), lineWidth: 1)
-        )
+        .accessibilityLabel("Mot \(oppName): \(mySteps) mot \(opSteps) steg. \(statusLabel).")
     }
 
     // MARK: - Hjälpkomponenter

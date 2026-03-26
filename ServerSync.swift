@@ -3,20 +3,55 @@ import Security
 import UIKit  // needed for UIDevice
 import CryptoKit
 
-struct AuthResponse: Codable {
+struct AuthResponse: Decodable {
     let token: String
     let userId: String
     let timeBalance: Double?
     let zone: String?
+
+    enum CodingKeys: String, CodingKey {
+        case token, userId, zone
+        case user_id
+        case timeBalance, time_balance
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        token = try container.decode(String.self, forKey: .token)
+        userId = try container.decodeIfPresent(String.self, forKey: .userId)
+            ?? container.decode(String.self, forKey: .user_id)
+        timeBalance = try container.decodeIfPresent(Double.self, forKey: .timeBalance)
+            ?? container.decodeIfPresent(Double.self, forKey: .time_balance)
+        zone = try container.decodeIfPresent(String.self, forKey: .zone)
+    }
 }
 
-struct ServerUser: Codable, Identifiable {
+struct ServerUser: Decodable, Identifiable {
     let id: String
     let username: String
     let avatar: String
     let zone: String
     var timeBalance: Double?
     var hasSharedTime: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case id, username, avatar, zone
+        case timeBalance, time_balance
+        case hasSharedTime, has_shared_time
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        username = try container.decode(String.self, forKey: .username)
+        avatar = try container.decodeIfPresent(String.self, forKey: .avatar) ?? "⏱"
+        zone = try container.decode(String.self, forKey: .zone)
+        timeBalance = try container.decodeIfPresent(Double.self, forKey: .timeBalance)
+            ?? container.decodeIfPresent(Double.self, forKey: .time_balance)
+        hasSharedTime = try container.decodeIfPresent(Bool.self, forKey: .hasSharedTime)
+            ?? container.decodeIfPresent(Bool.self, forKey: .has_shared_time)
+            ?? false
+    }
 }
 
 struct AdminUser: Codable, Identifiable {
@@ -40,11 +75,31 @@ struct AdminUser: Codable, Identifiable {
     }
 }
 
-struct SyncResponse: Codable {
+struct SyncResponse: Decodable {
     let serverTime: Double
     let adjustedBalance: Double?
     let antiCheatFlag: Bool?
     let adminOverride: Bool?  // Endast true när admin manuellt har satt balansen
+
+    enum CodingKeys: String, CodingKey {
+        case serverTime, server_time
+        case adjustedBalance, adjusted_balance
+        case antiCheatFlag, anti_cheat_flag
+        case adminOverride, admin_override
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        serverTime = try container.decodeIfPresent(Double.self, forKey: .serverTime)
+            ?? container.decodeIfPresent(Double.self, forKey: .server_time)
+            ?? Date().timeIntervalSince1970
+        adjustedBalance = try container.decodeIfPresent(Double.self, forKey: .adjustedBalance)
+            ?? container.decodeIfPresent(Double.self, forKey: .adjusted_balance)
+        antiCheatFlag = try container.decodeIfPresent(Bool.self, forKey: .antiCheatFlag)
+            ?? container.decodeIfPresent(Bool.self, forKey: .anti_cheat_flag)
+        adminOverride = try container.decodeIfPresent(Bool.self, forKey: .adminOverride)
+            ?? container.decodeIfPresent(Bool.self, forKey: .admin_override)
+    }
 }
 
 class ServerSync: ObservableObject, @unchecked Sendable {
@@ -56,6 +111,14 @@ class ServerSync: ObservableObject, @unchecked Sendable {
     private var preferredOriginIndex = 0
     private var syncTimer: Timer?
     private var reconnectTimer: Timer?
+
+    private func currentLocalBalance() async -> TimeInterval {
+        await MainActor.run { TimeEngine.shared.balance }
+    }
+
+    private func currentZoneName() async -> String {
+        await MainActor.run { GameState.shared.currentZone.name }
+    }
 
     private func orderedOrigins() -> [String] {
         guard preferredOriginIndex < serverOrigins.count else { return serverOrigins }
@@ -155,19 +218,26 @@ class ServerSync: ObservableObject, @unchecked Sendable {
     // MARK: - Periodic sync
 
     func startPeriodicSync() {
-        syncTimer?.invalidate()
-        syncTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
-            Task {
-                await self?.syncBalance(TimeEngine.shared.balance)
-                await self?.fetchZoneMembers()
+        DispatchQueue.main.async {
+            self.syncTimer?.invalidate()
+            self.syncTimer = Timer.scheduledTimer(withTimeInterval: 10, repeats: true) { [weak self] _ in
+                Task {
+                    guard let self = self else { return }
+                    await self.fetchServerBalance()
+                    let balance = await self.currentLocalBalance()
+                    await self.syncBalance(balance)
+                    await self.fetchZoneMembers()
+                }
             }
         }
     }
 
     private func scheduleReconnect() {
-        reconnectTimer?.invalidate()
-        reconnectTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: false) { [weak self] _ in
-            Task { await self?.checkHealth() }
+        DispatchQueue.main.async {
+            self.reconnectTimer?.invalidate()
+            self.reconnectTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: false) { [weak self] _ in
+                Task { await self?.checkHealth() }
+            }
         }
     }
 
@@ -235,15 +305,16 @@ class ServerSync: ObservableObject, @unchecked Sendable {
 
     func syncBalance(_ balance: TimeInterval) async {
         guard token != nil else { return }
+        let localZoneName = await currentZoneName()
         let body: [String: Any] = [
-            "timeBalance": balance,
-            "zone": GameState.shared.currentZone.name,
+            "timeBalance": max(0, balance),
+            "zone": localZoneName,
             "lastSyncTimestamp": Date().timeIntervalSince1970
         ]
         do {
             let data = try await post(path: "/user/sync", body: body, requireAuth: true)
             let resp = try JSONDecoder().decode(SyncResponse.self, from: data)
-            DispatchQueue.main.async {
+            await MainActor.run {
                 self.isOnline = true
                 self.lastSyncDate = Date()
                 // Applicera bara server-balansen om admin explicit har ändrat den
@@ -264,13 +335,22 @@ class ServerSync: ObservableObject, @unchecked Sendable {
         guard token != nil else { return }
         do {
             let data = try await get(path: "/user/balance", requireAuth: true)
-            if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-               let serverBalance = json["timeBalance"] as? Double {
-                let isAdminOverride = json["adminOverride"] as? Bool ?? false
-                DispatchQueue.main.async {
+            if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                let balanceValue = json["timeBalance"] ?? json["time_balance"]
+                let serverBalance: Double? = {
+                    if let d = balanceValue as? Double { return d }
+                    if let n = balanceValue as? NSNumber { return n.doubleValue }
+                    if let s = balanceValue as? String { return Double(s) }
+                    return nil
+                }()
+                guard let serverBalance = serverBalance else { return }
+                let isAdminOverride = (json["adminOverride"] as? Bool) ?? (json["admin_override"] as? Bool) ?? false
+                await MainActor.run {
                     if isAdminOverride || !TimeEngine.shared.skipServerCorrection {
                         TimeEngine.shared.applyServerBalance(serverBalance)
                     }
+                    self.isOnline = true
+                    self.lastSyncDate = Date()
                 }
             }
         } catch { /* endpoint may not exist on all server versions */ }
@@ -280,7 +360,7 @@ class ServerSync: ObservableObject, @unchecked Sendable {
         do {
             let data = try await get(path: "/user/servertime", requireAuth: false)
             let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
-            return json?["serverTime"] as? TimeInterval
+            return (json?["serverTime"] as? TimeInterval) ?? (json?["server_time"] as? TimeInterval)
         } catch { return nil }
     }
 
@@ -435,6 +515,11 @@ class ServerSync: ObservableObject, @unchecked Sendable {
     func adminSetBalance(userId: String, timeBalance: Double) async throws {
         let body: [String: Any] = ["timeBalance": timeBalance]
         _ = try await post(path: "/admin/user/\(userId)/balance", body: body, requireAuth: true)
+        if userId == self.userId {
+            await MainActor.run {
+                TimeEngine.shared.applyServerBalance(timeBalance)
+            }
+        }
     }
 
     func adminSetZone(userId: String, zone: String) async throws {
@@ -445,6 +530,9 @@ class ServerSync: ObservableObject, @unchecked Sendable {
     func adminGiveTime(userId: String, amount: Double) async throws {
         let body: [String: Any] = ["amount": amount]
         _ = try await post(path: "/admin/user/\(userId)/give-time", body: body, requireAuth: true)
+        if userId == self.userId {
+            await fetchServerBalance()
+        }
     }
 
     // MARK: - HTTP helpers

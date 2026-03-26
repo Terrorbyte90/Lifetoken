@@ -78,6 +78,7 @@ enum RaidStatus: String, Codable {
 struct RaidRecord: Identifiable, Codable {
     let id: String
     let attackerName: String
+    let defenderId: String?
     let defenderName: String
     let stake: TimeInterval
     var status: RaidStatus
@@ -122,24 +123,67 @@ class PvPRaidManager: ObservableObject {
         loadCooldowns()
     }
 
+    private func cooldownKey(id: String) -> String {
+        "id:\(id)"
+    }
+
+    private func cooldownKey(username: String) -> String {
+        "name:\(normalizeZoneID(username))"
+    }
+
+    private func cooldownDate(for target: ServerUser) -> Date? {
+        if let byID = cooldowns[cooldownKey(id: target.id)] { return byID }
+        if let byName = cooldowns[cooldownKey(username: target.username)] { return byName }
+        return cooldowns[target.username] // legacy storage key
+    }
+
+    func isOnCooldown(_ target: ServerUser) -> Bool {
+        guard let lastRaid = cooldownDate(for: target) else { return false }
+        return Date() < lastRaid.addingTimeInterval(cooldownDuration)
+    }
+
+    func cooldownRemaining(for target: ServerUser) -> TimeInterval {
+        guard let lastRaid = cooldownDate(for: target) else { return 0 }
+        return max(0, lastRaid.addingTimeInterval(cooldownDuration).timeIntervalSinceNow)
+    }
+
+    private func maxStake(for zone: ZoneProfile) -> TimeInterval {
+        switch zone.index {
+        case 0:     return 1800          // Askan: 30 min
+        case 1...3: return 3600          // Spillrorna–Dimman: 1h
+        case 4...6: return 7200          // Halvmörkret–Stigarnas Dal: 2h
+        default:    return 21600         // senare zoner: max 6h för rån
+        }
+    }
+
     func initiateRaid(target: ServerUser, stake: TimeInterval, completion: @escaping (Bool, String) -> Void) {
         let playerName = GameState.shared.username
         guard !playerName.isEmpty else { completion(false, "Inget spelarnamn."); return }
+        guard stake > 0 else { completion(false, "Ogiltig insats."); return }
         guard TimeEngine.shared.balance >= stake else { completion(false, "Otillräcklig balans."); return }
+        let zoneMaxStake = maxStake(for: GameState.shared.currentZone)
+        guard stake <= zoneMaxStake else {
+            completion(false, "Insatsen är för hög i din nuvarande zon. Max: \(TimeEngine.shortFormatted(zoneMaxStake)).")
+            return
+        }
 
-        if let lastRaid = cooldowns[target.username], Date() < lastRaid.addingTimeInterval(cooldownDuration) {
-            let remaining = lastRaid.addingTimeInterval(cooldownDuration).timeIntervalSinceNow
+        if isOnCooldown(target) {
+            let remaining = cooldownRemaining(for: target)
             let h = Int(remaining) / 3600
             let m = (Int(remaining) % 3600) / 60
             completion(false, "\(target.username) kan inte raidadas igen än. Cooldown: \(h)h \(m)m kvar.")
             return
         }
 
-        TimeEngine.shared.deductTime(stake)
+        guard TimeEngine.shared.deductTime(stake) else {
+            completion(false, "Kunde inte låsa insatsen. Försök igen.")
+            return
+        }
 
         let record = RaidRecord(
             id: UUID().uuidString,
             attackerName: playerName,
+            defenderId: target.id,
             defenderName: target.username,
             stake: stake,
             status: .active,
@@ -186,23 +230,25 @@ class PvPRaidManager: ObservableObject {
         opponentReactionMs = opponentMs
 
         // Utfall baserat på differens i reaktionstid
-        let diff = opponentMs - ms  // positivt = spelaren är snabbare
         let outcome: RaidOutcome
-        if diff > 100 {
-            // Spelaren är signifikant snabbare → framgång
-            outcome = .success
-        } else if diff < -200 {
-            // Motståndaren är signifikant snabbare → backfire
-            outcome = .backfire
-        } else {
-            // Ungefär lika → misslyckande
+        if !success {
+            // Timeout/feltryck ska inte ge backfire direkt.
             outcome = .failure
+        } else {
+            let diff = opponentMs - ms  // positivt = spelaren är snabbare
+            if diff > 100 {
+                outcome = .success
+            } else if diff < -200 {
+                outcome = .backfire
+            } else {
+                outcome = .failure
+            }
         }
 
-        resolveRaid(outcome: outcome, success: success)
+        resolveRaid(outcome: outcome)
     }
 
-    private func resolveRaid(outcome: RaidOutcome, success: Bool) {
+    private func resolveRaid(outcome: RaidOutcome) {
         guard var record = activeRaid else { return }
         raidPhase = .done
 
@@ -211,35 +257,51 @@ class PvPRaidManager: ObservableObject {
         switch outcome {
         case .success:
             scenario = successScenarios.randomElement()!
-            let gained = record.stake
-            TimeEngine.shared.addTime(record.stake + gained)
+            let grossPayout = record.stake * 2
+            let houseFee = grossPayout * 0.05
+            let netPayout = grossPayout - houseFee
+            TimeEngine.shared.addTime(netPayout)
+            BoardManager.shared.collectTax(amount: houseFee)
             record.status = .won
-            resolvedTimeDelta = gained
+            resolvedTimeDelta = netPayout - record.stake
+            TransactionLedger.shared.record(label: "Rån — vinst", amount: resolvedTimeDelta)
             MissionsManager.incrementProgress("pvp_raids_won")
         case .failure:
             scenario = failureScenarios.randomElement()!
             record.status = .lost
             resolvedTimeDelta = -record.stake
+            TransactionLedger.shared.record(label: "Rån — förlust", amount: resolvedTimeDelta)
         case .backfire:
             scenario = backfireScenarios.randomElement()!
             // Förlorar insatsen PLUS 10% av balansen (upp till stakebeloppet)
             let extraPenalty = min(TimeEngine.shared.balance * 0.10, record.stake)
             if extraPenalty > 0 {
-                TimeEngine.shared.deductTime(extraPenalty)
+                _ = TimeEngine.shared.deductTime(extraPenalty)
             }
             record.status = .backfired
             resolvedTimeDelta = -(record.stake + extraPenalty)
+            TransactionLedger.shared.record(label: "Rån — backfire", amount: resolvedTimeDelta)
         }
 
         resolvedScenario = scenario
         MissionsManager.incrementProgress("pvp_raids_done")
 
-        cooldowns[record.defenderName] = Date()
+        let now = Date()
+        if let defenderId = record.defenderId, !defenderId.isEmpty {
+            cooldowns[cooldownKey(id: defenderId)] = now
+        }
+        cooldowns[cooldownKey(username: record.defenderName)] = now
+        cooldowns[record.defenderName] = now // legacy compatibility
         saveCooldowns()
 
         history.insert(record, at: 0)
         let won = outcome == .success
-        NotificationManager.shared.sendRaidNotification(from: record.attackerName, amount: TimeEngine.shortFormatted(record.stake), won: won)
+        NotificationManager.shared.sendRaidNotification(
+            target: record.defenderName,
+            amount: TimeEngine.shortFormatted(abs(resolvedTimeDelta)),
+            won: won,
+            backfired: outcome == .backfire
+        )
         activeRaid = nil
         saveHistory()
     }
@@ -304,6 +366,19 @@ struct PvPRaidView: View {
     private let hapticLight  = UIImpactFeedbackGenerator(style: .light)
 
     enum ViewPhase { case selection, reaction, result }
+
+    private func raidStakeLimit(for zone: ZoneProfile) -> TimeInterval {
+        switch zone.index {
+        case 0:     return 1800
+        case 1...3: return 3600
+        case 4...6: return 7200
+        default:    return 21600
+        }
+    }
+
+    private var maxStakeMinutes: Double {
+        max(15, raidStakeLimit(for: gameState.currentZone) / 60)
+    }
 
     var body: some View {
         NavigationStack {
@@ -372,14 +447,16 @@ struct PvPRaidView: View {
 
                 VStack(alignment: .leading, spacing: LTSpacing.sm) {
                     sectionHeader("INSATS: \(TimeEngine.shortFormatted(stakeMinutes * 60))")
-                    Slider(value: $stakeMinutes, in: 15...120, step: 15)
+                    Slider(value: $stakeMinutes, in: 15...maxStakeMinutes, step: 15)
                         .tint(LTPalette.danger)
                         .accessibilityLabel("Insats i minuter")
                         .accessibilityValue(TimeEngine.shortFormatted(stakeMinutes * 60))
                     HStack {
                         Text("15 min").font(LTFont.body(9)).foregroundColor(.gray)
                         Spacer()
-                        Text("2h").font(LTFont.body(9)).foregroundColor(.gray)
+                        Text("Max \(TimeEngine.shortFormatted(maxStakeMinutes * 60))")
+                            .font(LTFont.body(9))
+                            .foregroundColor(.gray)
                     }
                 }
 
@@ -793,12 +870,7 @@ struct PvPRaidView: View {
 
     private func targetRow(_ member: ServerUser) -> some View {
         let selected = selectedTarget?.id == member.id
-        let onCooldown: Bool = {
-            if let cd = manager.cooldowns[member.username] {
-                return Date() < cd.addingTimeInterval(4 * 3600)
-            }
-            return false
-        }()
+        let onCooldown = manager.isOnCooldown(member)
 
         return Button {
             if !onCooldown {
