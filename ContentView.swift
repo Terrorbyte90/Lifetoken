@@ -81,6 +81,7 @@ struct DashboardView: View {
     @State private var showNewsFeed    = false
     @State private var showMiniJobs    = false
     @State private var showGazette     = false
+    @State private var showSettings    = false
     @State private var pulseAnim: Bool = false
 
     // Zonchatt
@@ -148,6 +149,7 @@ struct DashboardView: View {
         .sheet(isPresented: $showBoard)                { NavigationStack { BoardDetailView() } }
         .sheet(isPresented: $showMiniJobs)             { NavigationStack { MiniJobsView() } }
         .sheet(isPresented: $showGazette)              { NavigationStack { GazetteView() } }
+        .sheet(isPresented: $showSettings)             { AccountSettingsView() }
         .alert("Streak Bonus!", isPresented: $gameState.showStreakBonus) {
             Button("Tack!", role: .cancel) {}
         } message: { Text(gameState.streakBonusMessage) }
@@ -246,6 +248,13 @@ struct DashboardView: View {
             .background(Color.orange.opacity(0.10))
             .clipShape(Capsule())
             .overlay(Capsule().stroke(Color.orange.opacity(0.30), lineWidth: 1))
+
+            // Settings
+            Button { showSettings = true } label: {
+                Image(systemName: "gearshape")
+                    .font(.system(size: 14))
+                    .foregroundColor(.white.opacity(0.3))
+            }
         }
         .padding(.horizontal)
         .padding(.top, 58)
@@ -359,6 +368,9 @@ struct DashboardView: View {
                     Text(TimeEngine.formatted(incomeManager.projectedDailyIncome))
                         .font(.system(size: 20, weight: .black, design: .monospaced))
                         .foregroundColor(.green)
+                    Label("\(incomeManager.dailySteps.formatted()) steg", systemImage: "figure.walk")
+                        .font(.system(size: 9, design: .monospaced))
+                        .foregroundColor(.green.opacity(0.5))
                 }
                 Spacer()
                 VStack(alignment: .trailing, spacing: 3) {

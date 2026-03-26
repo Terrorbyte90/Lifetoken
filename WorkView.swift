@@ -350,7 +350,7 @@ struct WorkView: View {
             // Breakdown bars
             let total = max(income.todayBreakdown.total, 1)
             Group {
-                HealthBar(icon: "figure.walk",       label: "Steg",         value: income.todayBreakdown.stepsSeconds,    maxValue: 21600.0 * gameState.currentZone.stepBonusMultiplier, total: total, color: .green)  // 20k steps × 1.08s × zoneMult
+                HealthBar(icon: "figure.walk", label: "Steg  \(income.dailySteps.formatted()) steg", value: income.todayBreakdown.stepsSeconds, maxValue: 21600.0 * gameState.currentZone.stepBonusMultiplier, total: total, color: .green)  // 20k steps × 1.08s × zoneMult
                 HealthBar(icon: "flame",              label: "Kalorier",     value: income.todayBreakdown.caloriesSeconds, maxValue: 1200.0,  total: total, color: .orange)
                 HealthBar(icon: "bolt.heart",         label: "Träning",      value: income.todayBreakdown.exerciseSeconds, maxValue: 3600.0,  total: total, color: .yellow)
                 HealthBar(icon: "moon.zzz",           label: "Sömn",         value: income.todayBreakdown.sleepSeconds,    maxValue: 14400.0, total: total, color: .indigo)
@@ -360,6 +360,9 @@ struct WorkView: View {
             }
 
             VStack(alignment: .trailing, spacing: 3) {
+                Text("\(income.dailySteps.formatted()) steg idag")
+                    .font(.system(size: 10, design: .monospaced))
+                    .foregroundColor(.green.opacity(0.7))
                 Text("Tjänat via hälsa idag: \(TimeEngine.shortFormatted(income.todayBreakdown.total))")
                     .font(.system(size: 11, design: .monospaced))
                     .foregroundColor(.white.opacity(0.5))
@@ -452,6 +455,13 @@ struct WorkView: View {
                 .font(.system(size: 11, weight: .bold, design: .monospaced))
                 .foregroundColor(.white.opacity(0.4))
 
+            DetailRow(
+                label: "Steg idag",
+                value: income.dailySteps.formatted(),
+                color: .green,
+                description: "Antal steg — varje steg ger \(String(format: "%.1f", IncomeManager.stepRate))s i lön"
+            )
+            Divider().background(Color.white.opacity(0.06))
             DetailRow(
                 label: "Skattesats",
                 value: "\(Int(gameState.currentZone.taxRate * 100))%",

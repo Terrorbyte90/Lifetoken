@@ -24,7 +24,7 @@
 	<string>LifeToken läser dina steg, sömn, träning, kalorier, HRV och mindfulness för att omvandla ditt hälsobeteende till livstid i spelet. Ju friskare du lever, desto längre överlever du.</string>
 	<key>UIRequiredDeviceCapabilities</key>
 	<array>
-		<string>armv7</string>
+		<string>arm64</string>
 	</array>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
@@ -50,8 +50,6 @@
 	</array>
 	<key>NSAppTransportSecurity</key>
 	<dict>
-		<key>NSAllowsArbitraryLoads</key>
-		<true/>
 		<key>NSExceptionDomains</key>
 		<dict>
 			<key>209.38.98.107</key>
