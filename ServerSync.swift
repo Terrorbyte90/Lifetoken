@@ -19,6 +19,27 @@ struct ServerUser: Codable, Identifiable {
     var hasSharedTime: Bool
 }
 
+struct AdminUser: Codable, Identifiable {
+    let id: String
+    let username: String
+    let avatar: String?
+    let timeBalance: Double?
+    let zone: String
+    let totalEarned: Double?
+    let loginStreak: Int?
+    let lastLogin: String?
+    let createdAt: String?
+
+    enum CodingKeys: String, CodingKey {
+        case id, username, avatar, zone
+        case timeBalance = "time_balance"
+        case totalEarned = "total_earned"
+        case loginStreak = "login_streak"
+        case lastLogin = "last_login"
+        case createdAt = "created_at"
+    }
+}
+
 struct SyncResponse: Codable {
     let serverTime: Double
     let adjustedBalance: Double?
@@ -245,8 +266,9 @@ class ServerSync: ObservableObject, @unchecked Sendable {
             let data = try await get(path: "/user/balance", requireAuth: true)
             if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                let serverBalance = json["timeBalance"] as? Double {
+                let isAdminOverride = json["adminOverride"] as? Bool ?? false
                 DispatchQueue.main.async {
-                    if !TimeEngine.shared.skipServerCorrection {
+                    if isAdminOverride || !TimeEngine.shared.skipServerCorrection {
                         TimeEngine.shared.applyServerBalance(serverBalance)
                     }
                 }
@@ -373,6 +395,56 @@ class ServerSync: ObservableObject, @unchecked Sendable {
     func pushFactionContribution(factionID: String, seconds: Int) async throws {
         // Stub — implement with real API when backend is ready
         throw URLError(.notConnectedToInternet)
+    }
+
+    // MARK: - Account Management
+
+    /// Permanently deletes the user's account and all data from the server.
+    /// Called from settings/profile for App Store GDPR compliance.
+    func deleteAccount() async throws {
+        guard let t = token else { throw URLError(.userAuthenticationRequired) }
+        var lastError: Error = URLError(.cannotConnectToHost)
+        for origin in orderedOrigins() {
+            guard let url = URL(string: origin + "/api/user/account") else { continue }
+            var req = URLRequest(url: url, timeoutInterval: 10)
+            req.httpMethod = "DELETE"
+            req.setValue("Bearer \(t)", forHTTPHeaderField: "Authorization")
+            do {
+                let (_, response) = try await URLSession.shared.data(for: req)
+                let statusCode = (response as? HTTPURLResponse)?.statusCode ?? 0
+                if statusCode >= 500 { lastError = URLError(.badServerResponse); continue }
+                markPreferredOrigin(origin)
+                // Clear local auth after deletion
+                token = nil
+                userId = nil
+                return
+            } catch { lastError = error }
+        }
+        throw lastError
+    }
+
+    // MARK: - Admin
+
+    func adminFetchUsers() async throws -> [AdminUser] {
+        let data = try await get(path: "/admin/users", requireAuth: true)
+        struct UsersResponse: Codable { let users: [AdminUser] }
+        let resp = try JSONDecoder().decode(UsersResponse.self, from: data)
+        return resp.users
+    }
+
+    func adminSetBalance(userId: String, timeBalance: Double) async throws {
+        let body: [String: Any] = ["timeBalance": timeBalance]
+        _ = try await post(path: "/admin/user/\(userId)/balance", body: body, requireAuth: true)
+    }
+
+    func adminSetZone(userId: String, zone: String) async throws {
+        let body: [String: Any] = ["zone": zone]
+        _ = try await post(path: "/admin/user/\(userId)/zone", body: body, requireAuth: true)
+    }
+
+    func adminGiveTime(userId: String, amount: Double) async throws {
+        let body: [String: Any] = ["amount": amount]
+        _ = try await post(path: "/admin/user/\(userId)/give-time", body: body, requireAuth: true)
     }
 
     // MARK: - HTTP helpers

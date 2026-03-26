@@ -244,12 +244,17 @@ struct SocialView: View {
 
     private let hapticLight = UIImpactFeedbackGenerator(style: .light)
 
-    // Flikar: Fraktion och Lån borttagna
     enum SocialTab: String, CaseIterable {
         case spelare   = "Spelare"
         case yatzy     = "Yatzy"
         case chat      = "Zon-chatt"
         case topplista = "Topplista"
+        case admin     = "Admin"
+    }
+
+    private var visibleTabs: [SocialTab] {
+        let isAdmin = gameState.username.lowercased() == "ted"
+        return SocialTab.allCases.filter { $0 != .admin || isAdmin }
     }
 
     var body: some View {
@@ -270,6 +275,7 @@ struct SocialView: View {
                 case .yatzy:     yatzySection
                 case .chat:      chatSection
                 case .topplista: LeaderboardView()
+                case .admin:     AdminPanelView()
                 }
             }
         }
@@ -328,7 +334,7 @@ struct SocialView: View {
 
     private var tabBar: some View {
         HStack(spacing: 0) {
-            ForEach(SocialTab.allCases, id: \.self) { tab in
+            ForEach(visibleTabs, id: \.self) { tab in
                 Button {
                     withAnimation(LTAnimation.springFast) { selectedTab = tab }
                 } label: {
