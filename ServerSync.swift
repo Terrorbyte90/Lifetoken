@@ -110,6 +110,30 @@ class ServerSync: ObservableObject, @unchecked Sendable {
     private var preferredOriginIndex = 0
     private var syncTimer: Timer?
     private var reconnectTimer: Timer?
+    private let maxAttemptsPerOrigin = 3
+
+    private lazy var serverSession: URLSession = {
+        let cfg = URLSessionConfiguration.ephemeral
+        cfg.waitsForConnectivity = true
+        cfg.timeoutIntervalForRequest = 12
+        cfg.timeoutIntervalForResource = 30
+        if #available(iOS 13.0, *) {
+            cfg.tlsMinimumSupportedProtocolVersion = .TLSv12
+        }
+        return URLSession(configuration: cfg)
+    }()
+
+    private struct ServerHTTPError: LocalizedError {
+        let statusCode: Int
+        let message: String?
+
+        var errorDescription: String? {
+            if let message, !message.isEmpty {
+                return message
+            }
+            return "HTTP \(statusCode)"
+        }
+    }
 
     private func currentLocalBalance() async -> TimeInterval {
         await MainActor.run { TimeEngine.shared.balance }
@@ -189,10 +213,10 @@ class ServerSync: ObservableObject, @unchecked Sendable {
 
     func checkHealth() async {
         for origin in orderedOrigins() {
-            guard let url = URL(string: origin + "/health") else { continue }
+            guard let url = secureURL(from: origin + "/health") else { continue }
             do {
                 let req = URLRequest(url: url, timeoutInterval: 10)
-                let (data, resp) = try await URLSession.shared.data(for: req)
+                let (data, resp) = try await serverSession.data(for: req)
                 let statusCode = (resp as? HTTPURLResponse)?.statusCode ?? 0
                 if statusCode == 200,
                    let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
@@ -249,7 +273,7 @@ class ServerSync: ObservableObject, @unchecked Sendable {
             "deviceId": deviceId,
             "passwordHash": hash
         ]
-        let data = try await post(path: "/auth/register", body: body, requireAuth: false)
+        let data = try await post(path: "/auth/register", body: body, requireAuth: false, allowHTTPErrorResponseData: true)
         // Decode or throw if server returns error
         if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
            let errMsg = json["error"] as? String {
@@ -265,7 +289,7 @@ class ServerSync: ObservableObject, @unchecked Sendable {
             "deviceId": deviceId,
             "passwordHash": hash
         ]
-        let data = try await post(path: "/auth/login", body: body, requireAuth: false)
+        let data = try await post(path: "/auth/login", body: body, requireAuth: false, allowHTTPErrorResponseData: true)
         if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
            let errMsg = json["error"] as? String {
             throw NSError(domain: "ServerSync", code: 401, userInfo: [NSLocalizedDescriptionKey: errMsg])
@@ -490,25 +514,9 @@ class ServerSync: ObservableObject, @unchecked Sendable {
     /// Permanently deletes the user's account and all data from the server.
     /// Called from settings/profile for App Store GDPR compliance.
     func deleteAccount() async throws {
-        guard let t = token else { throw URLError(.userAuthenticationRequired) }
-        var lastError: Error = URLError(.cannotConnectToHost)
-        for origin in orderedOrigins() {
-            guard let url = URL(string: origin + "/api/user/account") else { continue }
-            var req = URLRequest(url: url, timeoutInterval: 10)
-            req.httpMethod = "DELETE"
-            req.setValue("Bearer \(t)", forHTTPHeaderField: "Authorization")
-            do {
-                let (_, response) = try await URLSession.shared.data(for: req)
-                let statusCode = (response as? HTTPURLResponse)?.statusCode ?? 0
-                if statusCode >= 500 { lastError = URLError(.badServerResponse); continue }
-                markPreferredOrigin(origin)
-                // Clear local auth after deletion
-                token = nil
-                userId = nil
-                return
-            } catch { lastError = error }
-        }
-        throw lastError
+        _ = try await requestData(method: "DELETE", path: "/user/account", body: nil, requireAuth: true)
+        token = nil
+        userId = nil
     }
 
     // MARK: - Admin
@@ -546,53 +554,136 @@ class ServerSync: ObservableObject, @unchecked Sendable {
     // MARK: - HTTP helpers
 
     private func get(path: String, requireAuth: Bool) async throws -> Data {
-        var lastError: Error = URLError(.cannotConnectToHost)
-        for origin in orderedOrigins() {
-            guard let url = URL(string: origin + "/api" + path) else { continue }
-            var req = URLRequest(url: url, timeoutInterval: 10)
-            if requireAuth, let t = token {
-                req.setValue("Bearer \(t)", forHTTPHeaderField: "Authorization")
-            }
-            do {
-                let (data, response) = try await URLSession.shared.data(for: req)
-                let statusCode = (response as? HTTPURLResponse)?.statusCode ?? 0
-                if statusCode >= 500 {
-                    lastError = URLError(.badServerResponse)
-                    continue
-                }
-                markPreferredOrigin(origin)
-                return data
-            } catch {
-                lastError = error
-            }
-        }
-        throw lastError
+        try await requestData(method: "GET", path: path, body: nil, requireAuth: requireAuth)
     }
 
-    private func post(path: String, body: [String: Any], requireAuth: Bool) async throws -> Data {
+    private func post(
+        path: String,
+        body: [String: Any],
+        requireAuth: Bool,
+        allowHTTPErrorResponseData: Bool = false
+    ) async throws -> Data {
+        try await requestData(
+            method: "POST",
+            path: path,
+            body: body,
+            requireAuth: requireAuth,
+            allowHTTPErrorResponseData: allowHTTPErrorResponseData
+        )
+    }
+
+    private func secureURL(from rawURL: String) -> URL? {
+        guard let url = URL(string: rawURL),
+              url.scheme?.lowercased() == "https" else { return nil }
+        return url
+    }
+
+    private func shouldRetry(statusCode: Int) -> Bool {
+        statusCode == 408 || statusCode == 429 || (500...599).contains(statusCode)
+    }
+
+    private func isTransientNetworkError(_ error: Error) -> Bool {
+        guard let urlError = error as? URLError else { return false }
+        switch urlError.code {
+        case .timedOut,
+             .cannotFindHost,
+             .cannotConnectToHost,
+             .networkConnectionLost,
+             .dnsLookupFailed,
+             .notConnectedToInternet,
+             .resourceUnavailable:
+            return true
+        default:
+            return false
+        }
+    }
+
+    private func retryAfterDelay(from response: HTTPURLResponse, attempt: Int) -> TimeInterval {
+        if let retryAfter = response.value(forHTTPHeaderField: "Retry-After"),
+           let secs = TimeInterval(retryAfter), secs > 0 {
+            return min(secs, 30)
+        }
+        // Exponential backoff with cap (0.5, 1, 2, ...)
+        return min(pow(2.0, Double(attempt - 1)) * 0.5, 5.0)
+    }
+
+    private func backoffDelay(attempt: Int) -> TimeInterval {
+        min(pow(2.0, Double(attempt - 1)) * 0.5, 5.0)
+    }
+
+    private func errorMessage(from data: Data) -> String? {
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return nil }
+        if let message = json["error"] as? String, !message.isEmpty {
+            return message
+        }
+        if let message = json["message"] as? String, !message.isEmpty {
+            return message
+        }
+        return nil
+    }
+
+    private func requestData(
+        method: String,
+        path: String,
+        body: [String: Any]?,
+        requireAuth: Bool,
+        allowHTTPErrorResponseData: Bool = false
+    ) async throws -> Data {
         var lastError: Error = URLError(.cannotConnectToHost)
+
         for origin in orderedOrigins() {
-            guard let url = URL(string: origin + "/api" + path) else { continue }
-            var req = URLRequest(url: url, timeoutInterval: 10)
-            req.httpMethod = "POST"
-            req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-            if requireAuth, let t = token {
-                req.setValue("Bearer \(t)", forHTTPHeaderField: "Authorization")
-            }
-            req.httpBody = try JSONSerialization.data(withJSONObject: body)
-            do {
-                let (data, response) = try await URLSession.shared.data(for: req)
-                let statusCode = (response as? HTTPURLResponse)?.statusCode ?? 0
-                if statusCode >= 500 {
-                    lastError = URLError(.badServerResponse)
-                    continue
+            guard let url = secureURL(from: origin + "/api" + path) else { continue }
+
+            for attempt in 1...maxAttemptsPerOrigin {
+                do {
+                    var req = URLRequest(url: url, timeoutInterval: 12)
+                    req.httpMethod = method
+                    req.setValue("application/json", forHTTPHeaderField: "Accept")
+                    if method != "GET" {
+                        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                    }
+                    if requireAuth, let t = token {
+                        req.setValue("Bearer \(t)", forHTTPHeaderField: "Authorization")
+                    }
+                    if let body {
+                        req.httpBody = try JSONSerialization.data(withJSONObject: body)
+                    }
+
+                    let (data, response) = try await serverSession.data(for: req)
+                    guard let http = response as? HTTPURLResponse else {
+                        throw URLError(.badServerResponse)
+                    }
+
+                    if shouldRetry(statusCode: http.statusCode), attempt < maxAttemptsPerOrigin {
+                        let delay = retryAfterDelay(from: http, attempt: attempt)
+                        try await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+                        continue
+                    }
+
+                    if shouldRetry(statusCode: http.statusCode) {
+                        lastError = ServerHTTPError(statusCode: http.statusCode, message: errorMessage(from: data))
+                        break
+                    }
+
+                    if !(200...299).contains(http.statusCode), !allowHTTPErrorResponseData {
+                        lastError = ServerHTTPError(statusCode: http.statusCode, message: errorMessage(from: data))
+                        break
+                    }
+
+                    markPreferredOrigin(origin)
+                    return data
+                } catch {
+                    lastError = error
+                    if isTransientNetworkError(error), attempt < maxAttemptsPerOrigin {
+                        let delay = backoffDelay(attempt: attempt)
+                        try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+                        continue
+                    }
+                    break
                 }
-                markPreferredOrigin(origin)
-                return data
-            } catch {
-                lastError = error
             }
         }
+
         throw lastError
     }
 
