@@ -129,3 +129,7 @@ Higher zones = higher tax, higher work multiplier, better passive income.
 - HealthKit entitlement required
 - Backend: `https://209-38-98-107.sslip.io/api` (TLS 1.2+ required)
 - Swedish-language UI throughout
+
+## Changelog (Latest)
+
+- Added realtime connection support (`wss://.../ws`) with automatic fallback to polling and an offline outbox queue for robust retry of deferred actions.

@@ -1,5 +1,6 @@
 import SwiftUI
 import HealthKit
+import UserNotifications
 
 @main
 struct LifeTokenApp: App {
@@ -27,6 +28,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         _ = MarketManager.shared
 
         // Request notification permission
+        UNUserNotificationCenter.current().delegate = self
         NotificationManager.shared.requestPermission()
 
         // Request HealthKit authorization on every launch
@@ -71,6 +73,9 @@ class AppDelegate: NSObject, UIApplicationDelegate {
             let balance = await MainActor.run { TimeEngine.shared.balance }
             await ServerSync.shared.syncBalance(balance)
             await ServerSync.shared.fetchZoneMembers()
+            await ServerSync.shared.refreshAdminStatus()
+            await ServerSync.shared.startRealtimeUpdates()
+            await ServerSync.shared.flushDeferredRequests()
         }
     }
 
@@ -85,4 +90,33 @@ class AppDelegate: NSObject, UIApplicationDelegate {
     func applicationWillTerminate(_ application: UIApplication) {
         TimeEngine.shared.saveToKeychainPublic()
     }
+}
+
+extension AppDelegate: UNUserNotificationCenterDelegate {
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse,
+        withCompletionHandler completionHandler: @escaping () -> Void
+    ) {
+        switch response.actionIdentifier {
+        case NotificationManager.actionOpenStepDuel:
+            UserDefaults.standard.set(4, forKey: "selectedTab")
+            NotificationCenter.default.post(name: .openStepDuelFromNotification, object: nil)
+        case NotificationManager.actionOpenRaid:
+            UserDefaults.standard.set(4, forKey: "selectedTab")
+            NotificationCenter.default.post(name: .openRaidFromNotification, object: nil)
+        case NotificationManager.actionOpenWork:
+            UserDefaults.standard.set(1, forKey: "selectedTab")
+        case NotificationManager.actionOpenHealth:
+            UserDefaults.standard.set(0, forKey: "selectedTab")
+        default:
+            break
+        }
+        completionHandler()
+    }
+}
+
+extension Notification.Name {
+    static let openStepDuelFromNotification = Notification.Name("lt.open.stepduel")
+    static let openRaidFromNotification = Notification.Name("lt.open.raid")
 }

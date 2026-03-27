@@ -54,12 +54,15 @@ class StepBetManager: ObservableObject {
     @Published var activeBets: [StepBet] = []
     @Published var pendingBets: [StepBet] = []
     @Published var history: [StepBet] = []
+    @Published var duelWinStreak: Int = 0
 
     private let storageKey = "stepBets"
+    private let streakKey = "stepDuelWinStreak"
     private var syncTimer: Timer?
 
     private init() {
         load()
+        duelWinStreak = UserDefaults.standard.integer(forKey: streakKey)
         startSyncTimer()
     }
 
@@ -200,6 +203,7 @@ class StepBetManager: ObservableObject {
                 TimeEngine.shared.addTime(bet.stake)
                 TransactionLedger.shared.record(label: "Stegduell — oavgjort", amount: 0)
             }
+            duelWinStreak = 0
         } else if iWon {
             // Vinnaren får dubbla insatsen minus 5% husavgift
             let grossPayout = bet.stake * 2
@@ -213,13 +217,22 @@ class StepBetManager: ObservableObject {
                 loser:  winnerName == bet.challengerName ? bet.opponentName : bet.challengerName,
                 amount: netPayout
             )
+            duelWinStreak += 1
         } else {
             TransactionLedger.shared.record(label: "Stegduell — förlust", amount: -bet.stake)
+            duelWinStreak = 0
         }
+        UserDefaults.standard.set(duelWinStreak, forKey: streakKey)
 
         history.insert(bet, at: 0)
         activeBets.remove(at: idx)
         save()
+    }
+
+    func rematch(from bet: StepBet, stake: TimeInterval, completion: @escaping (Bool, String) -> Void) {
+        let myName = GameState.shared.username
+        let opponent = bet.challengerName == myName ? bet.opponentName : bet.challengerName
+        createChallenge(opponentName: opponent, stake: stake, deadline: .midnight, completion: completion)
     }
 
     // MARK: - Zonbegränsning
@@ -291,6 +304,15 @@ struct StepBetView: View {
                 Color.black.ignoresSafeArea()
 
                 VStack(spacing: 0) {
+                    HStack {
+                        Text("Win-streak: \(manager.duelWinStreak)")
+                            .font(LTFont.caption(10))
+                            .foregroundColor(manager.duelWinStreak > 0 ? LTPalette.neonGreen : Color(red: 0.5, green: 0.5, blue: 0.55))
+                        Spacer()
+                    }
+                    .padding(.horizontal, LTSpacing.lg)
+                    .padding(.top, LTSpacing.sm)
+
                     // Flik-bar
                     HStack(spacing: 0) {
                         tabBtn("AKTIVA",     tag: 0, count: manager.activeBets.count)
@@ -578,10 +600,34 @@ struct StepBetView: View {
                 emptyState(text: "Ingen historik ännu.")
             } else {
                 ForEach(manager.history) { bet in
-                    historyCard(bet)
+                    VStack(spacing: 8) {
+                        historyCard(bet)
+                        rematchButton(for: bet)
+                    }
                 }
             }
         }
+    }
+
+    @ViewBuilder
+    private func rematchButton(for bet: StepBet) -> some View {
+        let amount = min(bet.stake, manager.maxStake(for: gameState.currentZone))
+        Button {
+            manager.rematch(from: bet, stake: amount) { success, msg in
+                challengeResult = msg
+                showResult = true
+                if success { selectedTab = 1 }
+            }
+        } label: {
+            Text("REMATCH (\(TimeEngine.shortFormatted(amount)))")
+                .font(LTFont.label(10))
+                .foregroundColor(.white.opacity(0.85))
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 6)
+                .background(Color.white.opacity(0.06))
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+        }
+        .buttonStyle(.plain)
     }
 
     private func historyCard(_ bet: StepBet) -> some View {

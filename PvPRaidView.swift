@@ -15,6 +15,13 @@ enum RaidOutcome {
     case backfire   // anfallaren rånas — förlorar MER än insatsen
 }
 
+struct RaidRiskProfile {
+    let successChance: Double
+    let backfireRisk: Double
+    let protectedTarget: Bool
+    let protectionReason: String?
+}
+
 struct RaidScenario: Identifiable, Equatable {
     let id = UUID()
     let outcome: RaidOutcome
@@ -156,6 +163,50 @@ class PvPRaidManager: ObservableObject {
         }
     }
 
+    func evaluateRisk(target: ServerUser, stake: TimeInterval) -> RaidRiskProfile {
+        let myBalance = max(TimeEngine.shared.balance, 1)
+        let targetBalance = max(target.timeBalance ?? myBalance, 1)
+        let balanceRatio = myBalance / targetBalance
+        let stakePressure = min(0.35, stake / myBalance)
+
+        let protectedTarget = targetBalance < (36 * 3600) && GameState.shared.currentZone.index <= 2
+        let protectionReason = protectedTarget ? "\(target.username) är under nybörjarskydd." : nil
+
+        var success = 0.52
+        success += min(0.12, max(-0.12, (balanceRatio - 1) * 0.07))
+        success -= stakePressure * 0.25
+        success = min(0.75, max(0.25, success))
+
+        var backfire = 0.10 + max(0, stakePressure * 0.35)
+        backfire += balanceRatio > 2.0 ? 0.03 : 0
+        backfire = min(0.30, max(0.06, backfire))
+
+        return RaidRiskProfile(
+            successChance: success,
+            backfireRisk: backfire,
+            protectedTarget: protectedTarget,
+            protectionReason: protectionReason
+        )
+    }
+
+    func preflightRaid(target: ServerUser, stake: TimeInterval) -> (Bool, String?) {
+        let myBalance = max(TimeEngine.shared.balance, 1)
+        let targetBalance = max(target.timeBalance ?? myBalance, 1)
+        let ratio = myBalance / targetBalance
+
+        let risk = evaluateRisk(target: target, stake: stake)
+        if risk.protectedTarget {
+            return (false, risk.protectionReason ?? "Målet är skyddat just nu.")
+        }
+        if ratio > 4.0 {
+            return (false, "Maktgapet är för stort just nu. Välj ett jämnare mål.")
+        }
+        if ratio < 0.25 {
+            return (false, "Målet är för starkt i jämförelse. Öka din balans först.")
+        }
+        return (true, nil)
+    }
+
     func initiateRaid(target: ServerUser, stake: TimeInterval, completion: @escaping (Bool, String) -> Void) {
         let playerName = GameState.shared.username
         guard !playerName.isEmpty else { completion(false, "Inget spelarnamn."); return }
@@ -164,6 +215,11 @@ class PvPRaidManager: ObservableObject {
         let zoneMaxStake = maxStake(for: GameState.shared.currentZone)
         guard stake <= zoneMaxStake else {
             completion(false, "Insatsen är för hög i din nuvarande zon. Max: \(TimeEngine.shortFormatted(zoneMaxStake)).")
+            return
+        }
+        let preflight = preflightRaid(target: target, stake: stake)
+        guard preflight.0 else {
+            completion(false, preflight.1 ?? "Rån kan inte startas mot detta mål just nu.")
             return
         }
 
@@ -380,6 +436,11 @@ struct PvPRaidView: View {
         max(15, raidStakeLimit(for: gameState.currentZone) / 60)
     }
 
+    private var selectedRiskProfile: RaidRiskProfile? {
+        guard let selectedTarget else { return nil }
+        return manager.evaluateRisk(target: selectedTarget, stake: stakeMinutes * 60)
+    }
+
     var body: some View {
         NavigationStack {
             ZStack {
@@ -460,6 +521,10 @@ struct PvPRaidView: View {
                     }
                 }
 
+                if let risk = selectedRiskProfile {
+                    riskCard(risk)
+                }
+
                 historySection
 
                 Button {
@@ -500,6 +565,52 @@ struct PvPRaidView: View {
                 Spacer(minLength: LTSpacing.xxxl + LTSpacing.lg)
             }
             .padding(LTSpacing.lg)
+        }
+    }
+
+    @ViewBuilder
+    private func riskCard(_ risk: RaidRiskProfile) -> some View {
+        VStack(alignment: .leading, spacing: LTSpacing.sm) {
+            sectionHeader("RISKBEDÖMNING")
+            riskBar(label: "Vinstchans", value: risk.successChance, color: LTPalette.neonGreen)
+            riskBar(label: "Backfire-risk", value: risk.backfireRisk, color: LTPalette.warning)
+            if let reason = risk.protectionReason {
+                Text(reason)
+                    .font(LTFont.body(11))
+                    .foregroundColor(.orange)
+            }
+        }
+        .padding(LTSpacing.md)
+        .background(Color.white.opacity(0.04))
+        .clipShape(RoundedRectangle(cornerRadius: LTRadius.sm))
+        .overlay(
+            RoundedRectangle(cornerRadius: LTRadius.sm)
+                .stroke(Color.white.opacity(0.12), lineWidth: 1)
+        )
+    }
+
+    private func riskBar(label: String, value: Double, color: Color) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Text(label)
+                    .font(LTFont.caption(10))
+                    .foregroundColor(.white.opacity(0.65))
+                Spacer()
+                Text("\(Int(value * 100))%")
+                    .font(LTFont.caption(10))
+                    .foregroundColor(color)
+            }
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    RoundedRectangle(cornerRadius: 3)
+                        .fill(Color.white.opacity(0.08))
+                        .frame(height: 6)
+                    RoundedRectangle(cornerRadius: 3)
+                        .fill(color)
+                        .frame(width: max(4, geo.size.width * CGFloat(value)), height: 6)
+                }
+            }
+            .frame(height: 6)
         }
     }
 

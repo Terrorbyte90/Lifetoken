@@ -84,6 +84,7 @@ struct ZoneMessage: Identifiable {
     let senderName: String
     let text: String
     let date: Date
+    let zone: String
     var isFromSelf: Bool
 }
 
@@ -99,10 +100,12 @@ class SocialManager: ObservableObject, @unchecked Sendable {
     @Published var alertMessage: String = ""
 
     private let loansKey = "social_loans"
+    private let chatKey = "social_zone_chat_v2"
 
     private init() {
         loadLoans()
-        loadMockMessages()
+        loadSavedMessages()
+        ensureZoneWelcomeMessage()
     }
 
     func npcsInZone(_ zone: ZoneProfile) -> [NPCPlayer] {
@@ -155,8 +158,17 @@ class SocialManager: ObservableObject, @unchecked Sendable {
     }
 
     func sendMessage(_ text: String) {
-        let msg = ZoneMessage(id: UUID(), senderName: GameState.shared.username, text: text, date: Date(), isFromSelf: true)
+        let zone = GameState.shared.currentZone.name
+        let msg = ZoneMessage(
+            id: UUID(),
+            senderName: GameState.shared.username,
+            text: text,
+            date: Date(),
+            zone: zone,
+            isFromSelf: true
+        )
         chatMessages.append(msg)
+        saveMessages()
         // Spegla via server
         Task {
             try? await ServerSync.shared.sendMessage(toUserId: "zone_broadcast", message: text)
@@ -167,11 +179,24 @@ class SocialManager: ObservableObject, @unchecked Sendable {
                 let npcs = NPCPlayer.all.filter { $0.zone == GameState.shared.currentZone.name }
                 if let npc = npcs.randomElement() {
                     let replies = ["Noterat.", "Intressant.", "Hmm...", "Håller med.", "Tveksam.", "OK."]
-                    let reply = ZoneMessage(id: UUID(), senderName: npc.name, text: replies.randomElement() ?? "...", date: Date(), isFromSelf: false)
+                    let reply = ZoneMessage(
+                        id: UUID(),
+                        senderName: npc.name,
+                        text: replies.randomElement() ?? "...",
+                        date: Date(),
+                        zone: GameState.shared.currentZone.name,
+                        isFromSelf: false
+                    )
                     self.chatMessages.append(reply)
+                    self.saveMessages()
                 }
             }
         }
+    }
+
+    var currentZoneMessages: [ZoneMessage] {
+        let zone = GameState.shared.currentZone.name
+        return chatMessages.filter { $0.zone == zone }
     }
 
     func transferToServerUser(_ user: ServerUser, amount: TimeInterval) {
@@ -198,16 +223,19 @@ class SocialManager: ObservableObject, @unchecked Sendable {
         }
     }
 
-    private func loadMockMessages() {
+    private func ensureZoneWelcomeMessage() {
         let zone = GameState.shared.currentZone.name
-        let mocks: [(String, String)] = [
-            ("System", "Välkommen till \(zone)-chatten."),
-            ("ARIA-7", "Zonmätare stabila."),
-            ("System", "Vänta på andra spelare..."),
-        ]
-        chatMessages = mocks.enumerated().map { (i, m) in
-            ZoneMessage(id: UUID(), senderName: m.0, text: m.1, date: Date().addingTimeInterval(Double(-mocks.count + i) * 60), isFromSelf: false)
-        }
+        guard !chatMessages.contains(where: { $0.zone == zone && $0.senderName == "System" }) else { return }
+        let welcome = ZoneMessage(
+            id: UUID(),
+            senderName: "System",
+            text: "Välkommen till \(zone)-chatten.",
+            date: Date(),
+            zone: zone,
+            isFromSelf: false
+        )
+        chatMessages.append(welcome)
+        saveMessages()
     }
 
     private func saveLoans() {
@@ -220,6 +248,44 @@ class SocialManager: ObservableObject, @unchecked Sendable {
         guard let data = UserDefaults.standard.data(forKey: loansKey),
               let loaded = try? JSONDecoder().decode([LoanRecord].self, from: data) else { return }
         activeLoans = loaded
+    }
+
+    private func saveMessages() {
+        let payload = Array(chatMessages.suffix(300)).map(SerializableZoneMessage.init)
+        if let data = try? JSONEncoder().encode(payload) {
+            UserDefaults.standard.set(data, forKey: chatKey)
+        }
+    }
+
+    private func loadSavedMessages() {
+        guard let data = UserDefaults.standard.data(forKey: chatKey),
+              let loaded = try? JSONDecoder().decode([SerializableZoneMessage].self, from: data) else {
+            chatMessages = []
+            return
+        }
+        chatMessages = loaded.map(\.zoneMessage)
+    }
+}
+
+private struct SerializableZoneMessage: Codable {
+    let id: UUID
+    let senderName: String
+    let text: String
+    let date: Date
+    let zone: String
+    let isFromSelf: Bool
+
+    init(_ message: ZoneMessage) {
+        id = message.id
+        senderName = message.senderName
+        text = message.text
+        date = message.date
+        zone = message.zone
+        isFromSelf = message.isFromSelf
+    }
+
+    var zoneMessage: ZoneMessage {
+        ZoneMessage(id: id, senderName: senderName, text: text, date: date, zone: zone, isFromSelf: isFromSelf)
     }
 }
 
@@ -253,8 +319,7 @@ struct SocialView: View {
     }
 
     private var visibleTabs: [SocialTab] {
-        let isAdmin = gameState.username.lowercased() == "ted"
-        return SocialTab.allCases.filter { $0 != .admin || isAdmin }
+        SocialTab.allCases.filter { $0 != .admin || serverSync.isAdmin }
     }
 
     var body: some View {
@@ -301,6 +366,14 @@ struct SocialView: View {
             MultiplayerYatzyView()
         }
         .onChange(of: selectedTab) { _, _ in hapticLight.impactOccurred() }
+        .onReceive(NotificationCenter.default.publisher(for: .openStepDuelFromNotification)) { _ in
+            selectedTab = .spelare
+            showStepBet = true
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .openRaidFromNotification)) { _ in
+            selectedTab = .spelare
+            showRaid = true
+        }
     }
 
     // MARK: Header
@@ -319,9 +392,17 @@ struct SocialView: View {
                 Text(serverSync.isOnline ? "Server online" : "Offline")
                     .font(LTFont.body(11))
                     .foregroundColor(.white.opacity(0.4))
+                Text("· \(serverSync.connectionMode)")
+                    .font(LTFont.body(11))
+                    .foregroundColor(.white.opacity(0.35))
                 Text("·  Zon: \(gameState.currentZone.name)")
                     .font(LTFont.body(11))
                     .foregroundColor(.white.opacity(0.4))
+                if serverSync.deferredRequestCount > 0 {
+                    Text("· kö: \(serverSync.deferredRequestCount)")
+                        .font(LTFont.body(11))
+                        .foregroundColor(.orange)
+                }
             }
             .accessibilityElement(children: .combine)
             .accessibilityLabel("\(serverSync.isOnline ? "Server online" : "Offline"). Zon: \(gameState.currentZone.name)")
@@ -661,19 +742,20 @@ struct SocialView: View {
     // MARK: - Chat Section
 
     private var chatSection: some View {
-        VStack(spacing: 0) {
+        let zoneMessages = social.currentZoneMessages
+        return VStack(spacing: 0) {
             ScrollViewReader { proxy in
                 ScrollView(showsIndicators: false) {
                     LazyVStack(spacing: 8) {
-                        ForEach(social.chatMessages) { msg in
+                        ForEach(zoneMessages) { msg in
                             ChatBubble(message: msg)
                                 .id(msg.id)
                         }
                     }
                     .padding()
                 }
-                .onChange(of: social.chatMessages.count) { _, _ in
-                    if let last = social.chatMessages.last {
+                .onChange(of: zoneMessages.count) { _, _ in
+                    if let last = zoneMessages.last {
                         withAnimation { proxy.scrollTo(last.id, anchor: .bottom) }
                     }
                 }

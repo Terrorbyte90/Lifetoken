@@ -3,13 +3,61 @@ import UserNotifications
 
 class NotificationManager {
     static let shared = NotificationManager()
+    static let actionOpenStepDuel = "lt_action_open_step_duel"
+    static let actionOpenRaid = "lt_action_open_raid"
+    static let actionOpenWork = "lt_action_open_work"
+    static let actionOpenHealth = "lt_action_open_health"
 
     private init() {}
 
     func requestPermission() {
+        registerCategories()
         UNUserNotificationCenter.current().requestAuthorization(
             options: [.alert, .badge, .sound]
         ) { _, _ in }
+    }
+
+    private func registerCategories() {
+        let stepOpen = UNNotificationAction(
+            identifier: Self.actionOpenStepDuel,
+            title: "Öppna Stegduell",
+            options: [.foreground]
+        )
+        let raidOpen = UNNotificationAction(
+            identifier: Self.actionOpenRaid,
+            title: "Öppna Rån",
+            options: [.foreground]
+        )
+        let workOpen = UNNotificationAction(
+            identifier: Self.actionOpenWork,
+            title: "Öppna Arbete",
+            options: [.foreground]
+        )
+        let healthOpen = UNNotificationAction(
+            identifier: Self.actionOpenHealth,
+            title: "Se Hälsoinkomst",
+            options: [.foreground]
+        )
+
+        let stepCategory = UNNotificationCategory(
+            identifier: "lt_step_duel",
+            actions: [stepOpen],
+            intentIdentifiers: [],
+            options: []
+        )
+        let raidCategory = UNNotificationCategory(
+            identifier: "lt_raid",
+            actions: [raidOpen],
+            intentIdentifiers: [],
+            options: []
+        )
+        let payoutCategory = UNNotificationCategory(
+            identifier: "lt_daily_payout",
+            actions: [healthOpen, workOpen],
+            intentIdentifiers: [],
+            options: []
+        )
+        UNUserNotificationCenter.current().setNotificationCategories([stepCategory, raidCategory, payoutCategory])
     }
 
     // MARK: - Time Low Warnings
@@ -69,6 +117,7 @@ class NotificationManager {
         }
         content.sound = .defaultCritical
         content.userInfo = ["type": "pvp_raid", "target": target]
+        content.categoryIdentifier = "lt_raid"
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
         let req = UNNotificationRequest(identifier: "raid_\(Date().timeIntervalSince1970)", content: content, trigger: trigger)
         UNUserNotificationCenter.current().add(req, withCompletionHandler: nil)
@@ -81,6 +130,7 @@ class NotificationManager {
         content.title = "💰 Hälsoinkomst utbetald!"
         content.body = "Din dagliga lön från hälsodata har betalats ut. Öppna appen för att se hur mycket du tjänat."
         content.sound = .default
+        content.categoryIdentifier = "lt_daily_payout"
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: max(1, secondsUntilMidnight), repeats: false)
         let req = UNNotificationRequest(identifier: "daily_payout", content: content, trigger: trigger)
         UNUserNotificationCenter.current().add(req, withCompletionHandler: nil)
@@ -105,6 +155,7 @@ class NotificationManager {
         content.title = "👟 Stegduell-utmaning!"
         content.body = "\(challenger) utmanar \(opponent) — insats: \(stake), deadline: \(deadline). Acceptera nu!"
         content.sound = .default
+        content.categoryIdentifier = "lt_step_duel"
         content.userInfo = ["type": "step_duel", "challenger": challenger]
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
         let req = UNNotificationRequest(identifier: "step_duel_\(Date().timeIntervalSince1970)", content: content, trigger: trigger)

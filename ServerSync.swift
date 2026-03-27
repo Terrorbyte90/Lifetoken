@@ -126,7 +126,20 @@ class ServerSync: ObservableObject, @unchecked Sendable {
     private var preferredOriginIndex = 0
     private var syncTimer: Timer?
     private var reconnectTimer: Timer?
+    private var websocketTask: URLSessionWebSocketTask?
+    private var websocketPingTimer: Timer?
+    private var hasLiveChannel = false
     private let maxAttemptsPerOrigin = 3
+
+    private struct DeferredRequest: Codable, Identifiable {
+        let id: String
+        let path: String
+        let bodyJSON: String
+        let requireAuth: Bool
+        let createdAt: Date
+    }
+    private let deferredStorageKey = "lt_deferred_requests_v1"
+    private var deferredRequests: [DeferredRequest] = []
 
     private lazy var serverSession: URLSession = {
         let cfg = URLSessionConfiguration.ephemeral
@@ -246,8 +259,12 @@ class ServerSync: ObservableObject, @unchecked Sendable {
     @Published var lastSyncDate: Date? = nil
     @Published var zoneMembers: [ServerUser] = []
     @Published var onlineCount: Int = 0
+    @Published var isAdmin: Bool = false
+    @Published var connectionMode: String = "polling"
+    @Published var deferredRequestCount: Int = 0
 
     private init() {
+        loadDeferredRequests()
         startPeriodicSync()
     }
 
@@ -281,6 +298,9 @@ class ServerSync: ObservableObject, @unchecked Sendable {
             await loginOrRegister(username: storedUsername)
             // Pull server's stored balance so admin changes propagate immediately
             await fetchServerBalance()
+            await refreshAdminStatus()
+            await startRealtimeUpdates()
+            await flushDeferredRequests()
         } else {
             await checkHealth()
         }
@@ -299,12 +319,17 @@ class ServerSync: ObservableObject, @unchecked Sendable {
                    let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                    json["status"] as? String == "ok" {
                     markPreferredOrigin(origin)
-                    DispatchQueue.main.async { self.isOnline = true }
+                    DispatchQueue.main.async {
+                        self.isOnline = true
+                        self.connectionMode = self.hasLiveChannel ? "live" : "polling"
+                    }
                     // Re-auth if we somehow have no token
                     let storedUsername = UserDefaults.standard.string(forKey: "username") ?? ""
                     if self.token == nil && !storedUsername.isEmpty {
                         await self.loginOrRegister(username: storedUsername)
                     }
+                    await self.refreshAdminStatus()
+                    await self.startRealtimeUpdates()
                     return
                 }
             } catch {
@@ -312,6 +337,7 @@ class ServerSync: ObservableObject, @unchecked Sendable {
             }
         }
         DispatchQueue.main.async { self.isOnline = false }
+        disconnectRealtimeUpdates()
         scheduleReconnect()
     }
 
@@ -327,6 +353,7 @@ class ServerSync: ObservableObject, @unchecked Sendable {
                     let balance = await self.currentLocalBalance()
                     await self.syncBalance(balance)
                     await self.fetchZoneMembers()
+                    await self.flushDeferredRequests()
                 }
             }
         }
@@ -377,14 +404,15 @@ class ServerSync: ObservableObject, @unchecked Sendable {
     func loginOrRegister(username: String) async {
         let deviceId = await MainActor.run { UIDevice.current.identifierForVendor?.uuidString ?? UUID().uuidString }
         do {
-            let resp = try await register(username: username, deviceId: deviceId)
-            token = resp.token
-            userId = resp.userId
-            DispatchQueue.main.async {
-                self.isOnline = true
-                self.onlineCount = 1
-            }
-        } catch {
+                let resp = try await register(username: username, deviceId: deviceId)
+                token = resp.token
+                userId = resp.userId
+                DispatchQueue.main.async {
+                    self.isOnline = true
+                    self.onlineCount = 1
+                }
+                await refreshAdminStatus()
+            } catch {
             // Register failed (user may already exist) — try login as fallback
             do {
                 let resp = try await login(username: username, deviceId: deviceId)
@@ -394,6 +422,7 @@ class ServerSync: ObservableObject, @unchecked Sendable {
                     self.isOnline = true
                     self.onlineCount = 1
                 }
+                await refreshAdminStatus()
             } catch {
                 DispatchQueue.main.async { self.isOnline = false }
                 scheduleReconnect()
@@ -512,7 +541,12 @@ class ServerSync: ObservableObject, @unchecked Sendable {
 
     func sendMessage(toUserId: String, message: String) async throws {
         let body: [String: Any] = ["targetUserId": toUserId, "message": message]
-        _ = try await post(path: "/social/message", body: body, requireAuth: true)
+        do {
+            _ = try await post(path: "/social/message", body: body, requireAuth: true)
+        } catch {
+            enqueueDeferredRequest(path: "/social/message", body: body, requireAuth: true)
+            throw error
+        }
     }
 
     // MARK: - StepBet
@@ -538,7 +572,11 @@ class ServerSync: ObservableObject, @unchecked Sendable {
     func syncStepBet(betId: String, steps: Int) async {
         guard token != nil else { return }
         let body: [String: Any] = ["betId": betId, "steps": steps, "timestamp": Date().timeIntervalSince1970]
-        _ = try? await post(path: "/bets/sync-steps", body: body, requireAuth: true)
+        do {
+            _ = try await post(path: "/bets/sync-steps", body: body, requireAuth: true)
+        } catch {
+            enqueueDeferredRequest(path: "/bets/sync-steps", body: body, requireAuth: true)
+        }
     }
 
     func settleBet(betId: String, winnerName: String) async {
@@ -553,7 +591,11 @@ class ServerSync: ObservableObject, @unchecked Sendable {
         guard token != nil else { return }
         let payload = members.map { ["id": $0.id, "balance": $0.balance, "displayName": $0.displayName] }
         let body: [String: Any] = ["members": payload]
-        _ = try? await post(path: "/board/sync", body: body, requireAuth: true)
+        do {
+            _ = try await post(path: "/board/sync", body: body, requireAuth: true)
+        } catch {
+            enqueueDeferredRequest(path: "/board/sync", body: body, requireAuth: true)
+        }
     }
 
     func fetchBoardState() async {
@@ -596,6 +638,10 @@ class ServerSync: ObservableObject, @unchecked Sendable {
         _ = try await requestData(method: "DELETE", path: "/user/account", body: nil, requireAuth: true)
         token = nil
         userId = nil
+        disconnectRealtimeUpdates()
+        await MainActor.run {
+            self.isAdmin = false
+        }
     }
 
     // MARK: - Admin
@@ -764,6 +810,180 @@ class ServerSync: ObservableObject, @unchecked Sendable {
         }
 
         throw lastError
+    }
+
+    // MARK: - Realtime channel (WebSocket with polling fallback)
+
+    private func websocketURL(for origin: String) -> URL? {
+        guard var comps = URLComponents(string: origin) else { return nil }
+        comps.scheme = "wss"
+        comps.path = "/ws"
+        return comps.url
+    }
+
+    func startRealtimeUpdates() async {
+        guard websocketTask == nil else { return }
+        guard let origin = orderedOrigins().first,
+              let url = websocketURL(for: origin) else { return }
+
+        var req = URLRequest(url: url)
+        if let token {
+            req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        let task = serverSession.webSocketTask(with: req)
+        websocketTask = task
+        task.resume()
+        hasLiveChannel = true
+        DispatchQueue.main.async {
+            self.connectionMode = "live"
+        }
+        startWebSocketPing()
+        receiveNextWebSocketMessage()
+    }
+
+    private func disconnectRealtimeUpdates() {
+        websocketPingTimer?.invalidate()
+        websocketPingTimer = nil
+        websocketTask?.cancel(with: .goingAway, reason: nil)
+        websocketTask = nil
+        hasLiveChannel = false
+        DispatchQueue.main.async {
+            self.connectionMode = "polling"
+        }
+    }
+
+    private func startWebSocketPing() {
+        DispatchQueue.main.async {
+            self.websocketPingTimer?.invalidate()
+            self.websocketPingTimer = Timer.scheduledTimer(withTimeInterval: 20, repeats: true) { [weak self] _ in
+                guard let self, let task = self.websocketTask else { return }
+                task.sendPing { error in
+                    if error != nil {
+                        self.disconnectRealtimeUpdates()
+                    }
+                }
+            }
+        }
+    }
+
+    private func receiveNextWebSocketMessage() {
+        websocketTask?.receive { [weak self] result in
+            guard let self else { return }
+            switch result {
+            case .failure:
+                self.disconnectRealtimeUpdates()
+            case .success(let message):
+                self.handleWebSocketMessage(message)
+                self.receiveNextWebSocketMessage()
+            }
+        }
+    }
+
+    private func handleWebSocketMessage(_ message: URLSessionWebSocketTask.Message) {
+        let data: Data?
+        switch message {
+        case .string(let text): data = text.data(using: .utf8)
+        case .data(let payload): data = payload
+        @unknown default: data = nil
+        }
+        guard let data,
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let type = json["type"] as? String else {
+            return
+        }
+
+        Task {
+            switch type {
+            case "balance_updated", "admin_override":
+                await fetchServerBalance()
+            case "zone_members_updated":
+                await fetchZoneMembers()
+            case "news_updated":
+                await fetchServerNews()
+            case "admin_role_changed":
+                await refreshAdminStatus()
+            default:
+                break
+            }
+        }
+    }
+
+    // MARK: - Admin role
+
+    func refreshAdminStatus() async {
+        guard token != nil else {
+            await MainActor.run { self.isAdmin = false }
+            return
+        }
+        do {
+            _ = try await get(path: "/admin/users", requireAuth: true)
+            await MainActor.run { self.isAdmin = true }
+        } catch {
+            await MainActor.run { self.isAdmin = false }
+        }
+    }
+
+    // MARK: - Deferred outbox
+
+    private func enqueueDeferredRequest(path: String, body: [String: Any], requireAuth: Bool) {
+        guard deferredRequests.count < 120,
+              JSONSerialization.isValidJSONObject(body),
+              let data = try? JSONSerialization.data(withJSONObject: body),
+              let json = String(data: data, encoding: .utf8) else {
+            return
+        }
+        let item = DeferredRequest(
+            id: UUID().uuidString,
+            path: path,
+            bodyJSON: json,
+            requireAuth: requireAuth,
+            createdAt: Date()
+        )
+        deferredRequests.append(item)
+        persistDeferredRequests()
+    }
+
+    private func loadDeferredRequests() {
+        guard let data = UserDefaults.standard.data(forKey: deferredStorageKey),
+              let decoded = try? JSONDecoder().decode([DeferredRequest].self, from: data) else {
+            deferredRequests = []
+            deferredRequestCount = 0
+            return
+        }
+        deferredRequests = decoded
+        deferredRequestCount = decoded.count
+    }
+
+    private func persistDeferredRequests() {
+        if let data = try? JSONEncoder().encode(deferredRequests) {
+            UserDefaults.standard.set(data, forKey: deferredStorageKey)
+        }
+        DispatchQueue.main.async {
+            self.deferredRequestCount = self.deferredRequests.count
+        }
+    }
+
+    func flushDeferredRequests() async {
+        guard !deferredRequests.isEmpty else { return }
+        var remaining: [DeferredRequest] = []
+        for item in deferredRequests {
+            do {
+                guard let data = item.bodyJSON.data(using: .utf8),
+                      let body = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+                    remaining.append(item)
+                    continue
+                }
+                _ = try await post(
+                    path: item.path,
+                    body: body,
+                    requireAuth: item.requireAuth
+                )
+            } catch {
+                remaining.append(item)
+            }
+        }
+        deferredRequests = remaining
+        persistDeferredRequests()
     }
 
     // MARK: - Keychain
