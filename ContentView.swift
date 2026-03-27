@@ -67,7 +67,7 @@ struct DashboardView: View {
     @ObservedObject private var inflation     = InflationManager.shared
     @ObservedObject private var server        = ServerSync.shared
     @ObservedObject private var board         = BoardManager.shared
-    @ObservedObject private var zoneChat      = ZoneChatManager.shared
+    @ObservedObject private var socialManager = SocialManager.shared
 
     @State private var showOnboarding  = !UserDefaults.standard.bool(forKey: "hasLaunched")
     @State private var showTimeMarket  = false
@@ -89,6 +89,7 @@ struct DashboardView: View {
 
     // Topplista
     @State private var topListIndex = 0
+    @State private var liveTopPlayers: [ServerUser] = []
 
     private let microTexts = [
         "Du arbetar för att leva. Inte tvärtom.",
@@ -134,6 +135,7 @@ struct DashboardView: View {
         .onAppear {
             gameState.updateZone()
             inflation.update()
+            Task { await loadLiveTopPlayers() }
         }
         .fullScreenCover(isPresented: $showOnboarding) {
             OnboardingView(showOnboarding: $showOnboarding)
@@ -398,14 +400,19 @@ struct DashboardView: View {
         "Klättra förbi dem och ta deras plats om du kan"
     ]
 
-    private let topPlayers: [(name: String, advantage: String)] = [
-        ("Viktor_H",  "+15% av allas inkomst"),
-        ("Malin_88",  "+8% av allas inkomst"),
-        ("ZeroKing",  "+4% av allas inkomst")
-    ]
-
     private var toplistaSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        let displayPlayers: [(name: String, advantage: String)] = liveTopPlayers.isEmpty
+            ? [
+                ("Viktor_H",  "+15% av allas inkomst"),
+                ("Malin_88",  "+8% av allas inkomst"),
+                ("ZeroKing",  "+4% av allas inkomst")
+            ]
+            : liveTopPlayers.prefix(3).map { user in
+                let balance = TimeEngine.shortFormatted(user.timeBalance ?? 0)
+                return (user.username, "~\(balance)")
+            }
+
+        return VStack(alignment: .leading, spacing: 10) {
             Text(topListCycleTexts[topListIndex])
                 .font(.system(size: 10, design: .monospaced))
                 .foregroundColor(.white.opacity(0.35))
@@ -421,7 +428,7 @@ struct DashboardView: View {
                 Spacer()
             }
 
-            ForEach(Array(topPlayers.enumerated()), id: \.offset) { i, player in
+            ForEach(Array(displayPlayers.enumerated()), id: \.offset) { i, player in
                 HStack(spacing: 10) {
                     Text("#\(i + 1)")
                         .font(.system(size: 14, weight: .black, design: .monospaced))
@@ -439,7 +446,6 @@ struct DashboardView: View {
                     Text("??:??:??")
                         .font(.system(size: 11, weight: .bold, design: .monospaced))
                         .foregroundColor(.white.opacity(0.5))
-                        .onReceive(Timer.publish(every: 60, on: .main, in: .common).autoconnect()) { _ in }
                 }
                 .padding(.vertical, 6)
                 .padding(.horizontal, 10)
@@ -455,12 +461,16 @@ struct DashboardView: View {
         .onReceive(Timer.publish(every: 5, on: .main, in: .common).autoconnect()) { _ in
             withAnimation { topListIndex = (topListIndex + 1) % topListCycleTexts.count }
         }
+        .task(id: gameState.currentZone.name) {
+            await loadLiveTopPlayers()
+        }
     }
 
     // MARK: - Zone Chat Card
 
     private var zoneChatCard: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        let zoneMessages = socialManager.currentZoneMessages
+        return VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 6) {
                 Image(systemName: "bubble.left.and.bubble.right.fill")
                     .foregroundColor(.cyan.opacity(0.55))
@@ -471,16 +481,16 @@ struct DashboardView: View {
                     .tracking(2)
             }
 
-            if zoneChat.messages.isEmpty {
+            if zoneMessages.isEmpty {
                 Text("Ingen har skrivit ännu. Var den första.")
                     .font(.system(size: 10, design: .monospaced))
                     .foregroundColor(.white.opacity(0.2))
                     .italic()
                     .padding(.vertical, 4)
             } else {
-                ForEach(zoneChat.messages.prefix(5)) { msg in
+                ForEach(zoneMessages.suffix(5)) { msg in
                     HStack(alignment: .top, spacing: 5) {
-                        Text(msg.username + ":")
+                        Text(msg.senderName + ":")
                             .font(.system(size: 9, weight: .bold, design: .monospaced))
                             .foregroundColor(.cyan.opacity(0.75))
                             .lineLimit(1)
@@ -498,8 +508,8 @@ struct DashboardView: View {
                     .foregroundColor(.white)
                     .textFieldStyle(.plain)
                     .submitLabel(.send)
-                    .onSubmit { zoneChat.send(chatInput); chatInput = "" }
-                Button("→") { zoneChat.send(chatInput); chatInput = "" }
+                    .onSubmit { sendZoneMessage() }
+                Button("→") { sendZoneMessage() }
                     .font(.system(size: 14, weight: .black))
                     .foregroundColor(.cyan)
             }
@@ -741,6 +751,26 @@ struct DashboardView: View {
         let m = (Int(secs) % 3600) / 60
         let s = Int(secs) % 60
         return String(format: "%02d:%02d:%02d", h, m, s)
+    }
+
+    private func sendZoneMessage() {
+        let text = chatInput.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return }
+        socialManager.sendMessage(text)
+        chatInput = ""
+    }
+
+    private func loadLiveTopPlayers() async {
+        do {
+            let users = try await server.fetchZoneLeaderboard(zone: gameState.currentZone.name, limit: 3)
+            await MainActor.run {
+                liveTopPlayers = users.sorted(by: { ($0.timeBalance ?? 0) > ($1.timeBalance ?? 0) })
+            }
+        } catch {
+            await MainActor.run {
+                liveTopPlayers = []
+            }
+        }
     }
 }
 
