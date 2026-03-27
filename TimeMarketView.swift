@@ -53,21 +53,27 @@ class MarketManager: ObservableObject {
         }
     }
 
-    func canPurchase(_ item: StoreItem, zone: ZoneProfile, balance: TimeInterval) -> PurchaseResult {
+    func canPurchase(
+        _ item: StoreItem,
+        zone: ZoneProfile,
+        balance: TimeInterval,
+        price: TimeInterval? = nil
+    ) -> PurchaseResult {
+        let finalPrice = price ?? item.costSeconds
         if zone.index < item.requiredZoneIndex { return .zoneLocked }
-        if balance < item.costSeconds { return .insufficientFunds }
+        if balance < finalPrice { return .insufficientFunds }
         return .available
     }
 
-    func purchase(_ item: StoreItem) -> Bool {
+    func purchase(_ item: StoreItem, price: TimeInterval) -> Bool {
         let zone    = GameState.shared.currentZone
         let balance = TimeEngine.shared.balance
-        guard canPurchase(item, zone: zone, balance: balance) == .available else { return false }
-        guard TimeEngine.shared.deductTime(item.costSeconds) else { return false }
+        guard canPurchase(item, zone: zone, balance: balance, price: price) == .available else { return false }
+        guard TimeEngine.shared.deductTime(price) else { return false }
         applyEffect(item)
         purchasedIds.insert(item.id)
         UserDefaults.standard.set(Array(purchasedIds), forKey: purchasedKey)
-        TransactionLedger.shared.record(label: "Tidsmarknaden — \(item.name)", amount: -item.costSeconds)
+        TransactionLedger.shared.record(label: "Tidsmarknaden — \(item.name)", amount: -price)
         return true
     }
 
@@ -95,6 +101,8 @@ struct TimeMarketView: View {
     @ObservedObject private var engine    = TimeEngine.shared
     @ObservedObject private var gameState = GameState.shared
     @ObservedObject private var market    = MarketManager.shared
+    @ObservedObject private var reputation = ZoneReputationManager.shared
+    @ObservedObject private var governance = GovernanceManager.shared
 
     @State private var selectedCategory: StoreItem.ItemCategory? = nil
     @State private var showAlert   = false
@@ -162,6 +170,19 @@ struct TimeMarketView: View {
         return allItems
     }
 
+    @MainActor
+    private var marketPriceFactor: Double {
+        let repFactor = reputation.priceMultiplier(for: gameState.currentZone.name)
+        let ruleFactor = governance.marketPriceMultiplier()
+        return repFactor * ruleFactor
+    }
+
+    @MainActor
+    private func adjustedPrice(for item: StoreItem) -> TimeInterval {
+        let adjusted = item.costSeconds * marketPriceFactor
+        return max(60, (adjusted / 60).rounded() * 60)
+    }
+
     var body: some View {
         ZStack {
             LinearGradient(
@@ -226,6 +247,34 @@ struct TimeMarketView: View {
                     .clipShape(Capsule())
                     .overlay(Capsule().stroke(gameState.currentZone.color.opacity(0.3), lineWidth: 1))
                 }
+
+                HStack(spacing: 8) {
+                    HStack(spacing: 5) {
+                        Image(systemName: "person.wave.2.fill")
+                            .font(.system(size: 10))
+                        Text("Rykte \(reputation.reputation(for: gameState.currentZone.name))/50")
+                            .font(.system(size: 11, weight: .bold, design: .monospaced))
+                    }
+                    .foregroundColor(.mint)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
+                    .background(Color.mint.opacity(0.12))
+                    .clipShape(Capsule())
+                    .overlay(Capsule().stroke(Color.mint.opacity(0.3), lineWidth: 1))
+
+                    HStack(spacing: 5) {
+                        Image(systemName: "percent")
+                            .font(.system(size: 10))
+                        Text("Pris x\(String(format: "%.2f", marketPriceFactor))")
+                            .font(.system(size: 11, weight: .bold, design: .monospaced))
+                    }
+                    .foregroundColor(.orange)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
+                    .background(Color.orange.opacity(0.12))
+                    .clipShape(Capsule())
+                    .overlay(Capsule().stroke(Color.orange.opacity(0.3), lineWidth: 1))
+                }
                 .padding(.bottom, 16)
             }
 
@@ -282,6 +331,8 @@ struct TimeMarketView: View {
                     item: item,
                     zone: gameState.currentZone,
                     balance: engine.balance,
+                    effectivePrice: adjustedPrice(for: item),
+                    pricingFactor: marketPriceFactor,
                     isPurchased: market.purchasedIds.contains(item.id),
                     isJustBought: lastPurchasedId == item.id
                 ) {
@@ -297,7 +348,8 @@ struct TimeMarketView: View {
     // MARK: - Purchase Logic
 
     private func handlePurchase(_ item: StoreItem) {
-        let result = market.canPurchase(item, zone: gameState.currentZone, balance: engine.balance)
+        let effectivePrice = adjustedPrice(for: item)
+        let result = market.canPurchase(item, zone: gameState.currentZone, balance: engine.balance, price: effectivePrice)
         switch result {
         case .zoneLocked:
             let reqName = ZoneProfile.allZones.first(where: { $0.index == item.requiredZoneIndex })?.name ?? "okänd zon"
@@ -305,9 +357,9 @@ struct TimeMarketView: View {
             alertMessage = "Du behöver vara i \(reqName) (niv. \(item.requiredZoneIndex)) för att köpa \(item.name)."
         case .insufficientFunds:
             alertTitle   = "Otillräcklig Tid"
-            alertMessage = "Du saknar \(TimeEngine.shortFormatted(item.costSeconds - engine.balance)) mer. Behövs totalt: \(TimeEngine.shortFormatted(item.costSeconds))."
+            alertMessage = "Du saknar \(TimeEngine.shortFormatted(max(0, effectivePrice - engine.balance))) mer. Behövs totalt: \(TimeEngine.shortFormatted(effectivePrice))."
         case .available:
-            if market.purchase(item) {
+            if market.purchase(item, price: effectivePrice) {
                 lastPurchasedId = item.id
                 alertTitle   = "✓ Köp Bekräftat"
                 alertMessage = "\(item.name) är nu aktivt på ditt konto."
@@ -327,16 +379,18 @@ struct MarketItemCard: View {
     let item: StoreItem
     let zone: ZoneProfile
     let balance: TimeInterval
+    let effectivePrice: TimeInterval
+    let pricingFactor: Double
     let isPurchased: Bool
     let isJustBought: Bool
     let onBuy: () -> Void
 
     var purchaseResult: MarketManager.PurchaseResult {
-        MarketManager.shared.canPurchase(item, zone: zone, balance: balance)
+        MarketManager.shared.canPurchase(item, zone: zone, balance: balance, price: effectivePrice)
     }
 
     var isZoneLocked: Bool { purchaseResult == .zoneLocked }
-    var canAfford:    Bool { balance >= item.costSeconds }
+    var canAfford:    Bool { balance >= effectivePrice }
 
     var body: some View {
         HStack(spacing: 14) {
@@ -390,10 +444,20 @@ struct MarketItemCard: View {
                 HStack(spacing: 8) {
                     HStack(spacing: 3) {
                         Image(systemName: "clock").font(.system(size: 9))
-                        Text(TimeEngine.shortFormatted(item.costSeconds))
+                        Text(TimeEngine.shortFormatted(effectivePrice))
                             .font(.system(size: 10, weight: .bold, design: .monospaced))
                     }
                     .foregroundColor(canAfford && !isZoneLocked ? .yellow : .red.opacity(0.7))
+
+                    if abs(pricingFactor - 1.0) > 0.01 {
+                        Text("\(pricingFactor < 1 ? "Rabatt" : "Påslag") \(Int(abs((pricingFactor - 1) * 100)))%")
+                            .font(.system(size: 8, weight: .bold, design: .monospaced))
+                            .foregroundColor(pricingFactor < 1 ? .green.opacity(0.85) : .orange.opacity(0.85))
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 2)
+                            .background((pricingFactor < 1 ? Color.green : Color.orange).opacity(0.12))
+                            .clipShape(Capsule())
+                    }
 
                     if isZoneLocked {
                         let reqName = ZoneProfile.allZones.first(where: { $0.index == item.requiredZoneIndex })?.name ?? "?"

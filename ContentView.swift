@@ -982,8 +982,8 @@ struct MainTabView: View {
             CasinoHubView()
                 .tabItem { Label("Kasino", systemImage: "suit.spade.fill") }
                 .tag(2)
-            ZoneVisual()
-                .tabItem { Label("Zoner", systemImage: "map.fill") }
+            ZoneOperationsView()
+                .tabItem { Label("Zoncentral", systemImage: "building.2.crop.circle.fill") }
                 .tag(3)
             SocialView()
                 .tabItem { Label("Social", systemImage: "person.2.fill") }

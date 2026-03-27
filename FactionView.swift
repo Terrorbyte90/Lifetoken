@@ -2,191 +2,325 @@ import SwiftUI
 
 struct FactionView: View {
     @StateObject private var manager = FactionManager.shared
-    @State private var showContributeSheet = false
-    @State private var contributeAmount: String = ""
+    @ObservedObject private var server = ServerSync.shared
+
+    @State private var newFactionName = ""
+    @State private var distributeTarget = ""
+    @State private var contributeAmount: Double = 1800
+    @State private var distributeAmount: Double = 1800
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: LTSpacing.xl) {
-                // Header
+            VStack(alignment: .leading, spacing: 14) {
                 headerSection
 
                 if let faction = manager.currentFaction {
-                    factionDetailSection(faction)
+                    factionOverviewCard(faction)
+                    factionBankCard(faction)
+                    memberManagementCard(faction)
+                    joinRequestsCard(faction)
+                    factionLedgerCard(faction)
                 } else {
-                    noFactionSection
-                }
-
-                if let war = manager.activeWar {
-                    warSection(war)
+                    createFactionCard
+                    discoverFactionsCard
                 }
             }
-            .padding(LTSpacing.lg)
+            .padding(.horizontal, LTSpacing.horizontal)
+            .padding(.top, 16)
+            .padding(.bottom, LTSpacing.scrollBottom)
         }
-        .navigationTitle("Fraktion")
-        .sheet(isPresented: $showContributeSheet) {
-            contributeSheet
-        }
+        .background(
+            LinearGradient(
+                colors: [Color(red: 0.03, green: 0.03, blue: 0.08), Color.black],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
+        )
+        .navigationTitle("FRAKTIONER")
+        .navigationBarTitleDisplayMode(.inline)
     }
 
     private var headerSection: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: LTSpacing.xs) {
-                Text("FRAKTION")
-                    .font(.system(size: 11, weight: .black, design: .monospaced))
-                    .foregroundStyle(LTPalette.neonGreen)
-                    .tracking(3)
-                if !manager.isOnline {
-                    Label("Hämtad från cache", systemImage: "wifi.slash")
-                        .font(.system(size: 11))
-                        .foregroundStyle(.secondary)
-                }
-            }
-            Spacer()
-        }
-    }
-
-    private func factionDetailSection(_ faction: Faction) -> some View {
-        VStack(alignment: .leading, spacing: LTSpacing.lg) {
-            Text(faction.name)
-                .font(.system(size: 24, weight: .black))
-                .foregroundStyle(.white)
-
-            HStack(spacing: LTSpacing.xl) {
-                statColumn(label: "MEDLEMMAR", value: "\(faction.memberIDs.count)/\(Faction.maxMembers)")
-                statColumn(label: "SKATTKAMMARE", value: "\(faction.treasurySeconds)s")
-            }
-
-            Button {
-                showContributeSheet = true
-            } label: {
-                Text("Bidra till skattkammaren")
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(.black)
-                    .frame(maxWidth: .infinity)
-                    .padding(LTSpacing.md)
-                    .background(LTPalette.neonGreen)
-                    .clipShape(RoundedRectangle(cornerRadius: LTRadius.sm))
-            }
-
-            weeklyMissionSection
-        }
-    }
-
-    private var weeklyMissionSection: some View {
-        let mission = manager.currentWeekMission()
-        let progress = Double(mission.currentProgress) / Double(mission.targetValue)
-        return VStack(alignment: .leading, spacing: LTSpacing.sm) {
-            Text("VECKOUPPDRAG")
-                .font(.system(size: 11, weight: .black, design: .monospaced))
-                .foregroundStyle(LTPalette.gold)
-                .tracking(3)
-
-            Text(mission.title)
-                .font(.system(size: 16, weight: .bold))
-                .foregroundStyle(.white)
-
-            ProgressView(value: min(progress, 1.0))
-                .tint(mission.isCompleted ? LTPalette.neonGreen : LTPalette.gold)
-
-            HStack {
-                Text("\(mission.currentProgress) / \(mission.targetValue)")
-                    .font(.system(size: 12, design: .monospaced))
-                    .foregroundStyle(.secondary)
-                Spacer()
-                if mission.isCompleted {
-                    Text("KLART")
-                        .font(.system(size: 10, weight: .black, design: .monospaced))
-                        .foregroundStyle(LTPalette.neonGreen)
-                        .tracking(2)
-                }
+        VStack(alignment: .leading, spacing: 5) {
+            Text("Hierarki: Leader / Officer / Member")
+                .font(LTFont.body(10))
+                .foregroundColor(.white.opacity(0.55))
+            if !manager.feedbackMessage.isEmpty {
+                Text(manager.feedbackMessage)
+                    .font(LTFont.caption(9))
+                    .foregroundColor(.orange)
             }
         }
-        .padding(LTSpacing.md)
-        .background(LTPalette.gold.opacity(0.06))
-        .clipShape(RoundedRectangle(cornerRadius: LTRadius.sm))
-        .overlay(RoundedRectangle(cornerRadius: LTRadius.sm).stroke(LTPalette.gold.opacity(0.25), lineWidth: 1))
+        .padding(12)
+        .ltCard(radius: LTRadius.sm)
     }
 
-    private var noFactionSection: some View {
-        VStack(alignment: .leading, spacing: LTSpacing.md) {
-            Text("Du är inte med i någon fraktion.")
-                .font(.system(size: 16))
-                .foregroundStyle(.secondary)
-
-            Button {
-                // Requires backend
-            } label: {
-                Text(manager.isOnline ? "Skapa fraktion" : "Kräver anslutning")
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(manager.isOnline ? .black : .secondary)
-                    .frame(maxWidth: .infinity)
-                    .padding(LTSpacing.md)
-                    .background(manager.isOnline ? LTPalette.neonGreen : Color.white.opacity(0.1))
-                    .clipShape(RoundedRectangle(cornerRadius: LTRadius.sm))
-            }
-            .disabled(!manager.isOnline)
-        }
-    }
-
-    private func warSection(_ war: FactionWar) -> some View {
-        VStack(alignment: .leading, spacing: LTSpacing.md) {
-            Text("AKTIVT KRIG")
-                .font(.system(size: 11, weight: .black, design: .monospaced))
-                .foregroundStyle(LTPalette.danger)
-                .tracking(3)
-
-            HStack {
-                let f1Score = war.scores[war.faction1ID] ?? 0
-                let f2Score = war.scores[war.faction2ID] ?? 0
-                Text("\(war.faction1ID): \(f1Score)")
-                Spacer()
-                Text("vs")
-                    .foregroundStyle(.secondary)
-                Spacer()
-                Text("\(war.faction2ID): \(f2Score)")
-            }
-            .font(.system(size: 14, design: .monospaced))
-            .foregroundStyle(.white)
-        }
-        .padding(LTSpacing.md)
-        .background(Color.white.opacity(0.05))
-        .clipShape(RoundedRectangle(cornerRadius: LTRadius.sm))
-    }
-
-    private var contributeSheet: some View {
-        VStack(spacing: LTSpacing.xl) {
-            Text("Bidra till skattkammaren")
-                .font(.system(size: 18, weight: .bold))
-
-            TextField("Antal sekunder", text: $contributeAmount)
-                .keyboardType(.numberPad)
-                .font(.system(size: 22, design: .monospaced))
-                .multilineTextAlignment(.center)
-
-            Button("Bidra") {
-                if let seconds = Int(contributeAmount), seconds > 0 {
-                    manager.contribute(seconds: seconds, to: manager.currentFaction?.id ?? "")
-                    showContributeSheet = false
-                    contributeAmount = ""
-                }
-            }
-            .buttonStyle(.borderedProminent)
-            .tint(LTPalette.neonGreen)
-        }
-        .padding(LTSpacing.xl)
-        .presentationDetents([.medium])
-    }
-
-    private func statColumn(label: String, value: String) -> some View {
-        VStack(alignment: .leading, spacing: LTSpacing.xs) {
-            Text(label)
-                .font(.system(size: 9, weight: .black, design: .monospaced))
-                .foregroundStyle(.secondary)
+    private var createFactionCard: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("SKAPA FRAKTION")
+                .font(LTFont.label(10))
+                .foregroundColor(.white.opacity(0.35))
                 .tracking(2)
-            Text(value)
-                .font(.system(size: 18, weight: .black))
-                .foregroundStyle(.white)
+            TextField("Namn", text: $newFactionName)
+                .textInputAutocapitalization(.words)
+                .padding(10)
+                .background(Color.white.opacity(0.07))
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+
+            Button("Skapa") {
+                manager.createFaction(name: newFactionName)
+                newFactionName = ""
+            }
+            .font(LTFont.heading(11))
+            .foregroundColor(.black)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 9)
+            .background(LTPalette.neonGreen)
+            .clipShape(RoundedRectangle(cornerRadius: 8))
         }
+        .padding(12)
+        .ltCard(radius: LTRadius.md)
+    }
+
+    private var discoverFactionsCard: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("GÅ MED I FRAKTION")
+                .font(LTFont.label(10))
+                .foregroundColor(.white.opacity(0.35))
+                .tracking(2)
+            if manager.factions.isEmpty {
+                Text("Inga fraktioner ännu.")
+                    .font(LTFont.body(10))
+                    .foregroundColor(.white.opacity(0.5))
+            } else {
+                ForEach(manager.factions) { faction in
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(faction.name)
+                                .font(LTFont.heading(11))
+                                .foregroundColor(.white)
+                            Text("\(faction.members.count)/\(Faction.maxMembers) medlemmar")
+                                .font(LTFont.caption(9))
+                                .foregroundColor(.white.opacity(0.45))
+                        }
+                        Spacer()
+                        Button("Ansök") {
+                            manager.requestJoin(factionID: faction.id, username: GameState.shared.username)
+                        }
+                        .font(LTFont.body(10))
+                    }
+                    .padding(10)
+                    .background(Color.white.opacity(0.05))
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                }
+            }
+        }
+        .padding(12)
+        .ltCard(radius: LTRadius.md)
+    }
+
+    private func factionOverviewCard(_ faction: Faction) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text(faction.name)
+                    .font(LTFont.heading(18))
+                    .foregroundColor(.white)
+                Spacer()
+                if let role = manager.currentMember?.role {
+                    Text(role.label.uppercased())
+                        .font(LTFont.caption(9))
+                        .foregroundColor(.cyan)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Color.cyan.opacity(0.13))
+                        .clipShape(Capsule())
+                }
+            }
+            Text("\(faction.members.count)/\(Faction.maxMembers) medlemmar")
+                .font(LTFont.body(10))
+                .foregroundColor(.white.opacity(0.55))
+            Button("Lämna fraktion") {
+                manager.leaveCurrentFaction()
+            }
+            .font(LTFont.body(10))
+            .foregroundColor(.red)
+        }
+        .padding(12)
+        .ltAccentCard(color: .purple)
+    }
+
+    private func factionBankCard(_ faction: Faction) -> some View {
+        VStack(alignment: .leading, spacing: 9) {
+            Text("FRAKTIONSBANK")
+                .font(LTFont.label(10))
+                .foregroundColor(.white.opacity(0.35))
+                .tracking(2)
+            Text("Saldo: \(TimeEngine.shortFormatted(Double(faction.treasurySeconds)))")
+                .font(LTFont.value(20))
+                .foregroundColor(.yellow)
+
+            HStack {
+                Text("Insättning: \(TimeEngine.shortFormatted(contributeAmount))")
+                    .font(LTFont.body(10))
+                Spacer()
+            }
+            Slider(value: $contributeAmount, in: 600...21600, step: 600)
+                .tint(.green)
+            Button("Sätt in tid i fraktionsbanken") {
+                manager.contribute(seconds: Int(contributeAmount), to: faction.id)
+            }
+            .font(LTFont.body(10))
+            .foregroundColor(.black)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
+            .background(.green)
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+
+            if manager.canDistributeFunds {
+                Divider().background(Color.white.opacity(0.1))
+                Text("Utdelning (Leader/Officer)")
+                    .font(LTFont.caption(9))
+                    .foregroundColor(.white.opacity(0.5))
+                TextField("Mottagare (användarnamn)", text: $distributeTarget)
+                    .textInputAutocapitalization(.never)
+                    .padding(9)
+                    .background(Color.white.opacity(0.07))
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                HStack {
+                    Text("Belopp: \(TimeEngine.shortFormatted(distributeAmount))")
+                        .font(LTFont.body(10))
+                    Spacer()
+                }
+                Slider(value: $distributeAmount, in: 600...21600, step: 600)
+                    .tint(.orange)
+                Button("Dela ut tid") {
+                    manager.distribute(seconds: Int(distributeAmount), to: distributeTarget)
+                    distributeTarget = ""
+                }
+                .font(LTFont.body(10))
+                .foregroundColor(.black)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 8)
+                .background(.orange)
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+            }
+        }
+        .padding(12)
+        .ltCard(radius: LTRadius.md)
+    }
+
+    private func memberManagementCard(_ faction: Faction) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("MEDLEMMAR")
+                .font(LTFont.label(10))
+                .foregroundColor(.white.opacity(0.35))
+                .tracking(2)
+            ForEach(faction.members) { member in
+                HStack {
+                    Text(member.username)
+                        .font(LTFont.body(11))
+                        .foregroundColor(.white)
+                    Spacer()
+                    Text(member.role.label)
+                        .font(LTFont.caption(9))
+                        .foregroundColor(.white.opacity(0.6))
+                    if manager.currentMember?.role == .leader && member.username != GameState.shared.username {
+                        Menu("Roll") {
+                            ForEach(FactionRole.allCases) { role in
+                                Button(role.label) {
+                                    manager.setRole(username: member.username, role: role)
+                                }
+                            }
+                        }
+                        .font(.caption)
+                    }
+                }
+                .padding(9)
+                .background(Color.white.opacity(0.05))
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+            }
+        }
+        .padding(12)
+        .ltCard(radius: LTRadius.md)
+    }
+
+    private func joinRequestsCard(_ faction: Faction) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("ANSÖKNINGAR")
+                .font(LTFont.label(10))
+                .foregroundColor(.white.opacity(0.35))
+                .tracking(2)
+            if faction.joinRequests.isEmpty {
+                Text("Inga väntande ansökningar.")
+                    .font(LTFont.body(10))
+                    .foregroundColor(.white.opacity(0.5))
+            } else {
+                ForEach(faction.joinRequests, id: \.self) { username in
+                    HStack {
+                        Text(username)
+                            .font(LTFont.body(11))
+                            .foregroundColor(.white)
+                        Spacer()
+                        if manager.canManageMembers {
+                            Button("Godkänn") { manager.approveJoin(username: username) }
+                                .font(.caption)
+                                .foregroundColor(.green)
+                            Button("Avslå") { manager.rejectJoin(username: username) }
+                                .font(.caption)
+                                .foregroundColor(.red)
+                        }
+                    }
+                    .padding(8)
+                    .background(Color.white.opacity(0.05))
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                }
+            }
+        }
+        .padding(12)
+        .ltCard(radius: LTRadius.md)
+    }
+
+    private func factionLedgerCard(_ faction: Faction) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("BANKHISTORIK")
+                .font(LTFont.label(10))
+                .foregroundColor(.white.opacity(0.35))
+                .tracking(2)
+            if faction.ledger.isEmpty {
+                Text("Ingen aktivitet ännu.")
+                    .font(LTFont.body(10))
+                    .foregroundColor(.white.opacity(0.5))
+            } else {
+                ForEach(faction.ledger.prefix(10)) { item in
+                    HStack {
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(item.label)
+                                .font(LTFont.body(10))
+                                .foregroundColor(.white)
+                            Text(item.actor)
+                                .font(LTFont.caption(9))
+                                .foregroundColor(.white.opacity(0.45))
+                        }
+                        Spacer()
+                        Text((item.amount >= 0 ? "+" : "") + TimeEngine.shortFormatted(Double(abs(item.amount))))
+                            .font(LTFont.body(10))
+                            .foregroundColor(item.amount >= 0 ? .green : .orange)
+                    }
+                    .padding(8)
+                    .background(Color.white.opacity(0.05))
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                }
+            }
+        }
+        .padding(12)
+        .ltCard(radius: LTRadius.md)
+    }
+}
+
+#Preview {
+    NavigationStack {
+        FactionView()
+            .preferredColorScheme(.dark)
     }
 }

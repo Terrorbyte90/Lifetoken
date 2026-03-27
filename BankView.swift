@@ -61,10 +61,12 @@ struct PlayerLoan: Codable {
 
 // MARK: - BankManager
 
+@MainActor
 class BankManager: ObservableObject {
     static let shared = BankManager()
 
     @Published var activeLoan: PlayerLoan? = nil
+    @Published var savingsBalance: TimeInterval = 0
     @Published var showAlert: Bool = false
     @Published var alertMessage: String = ""
 
@@ -86,6 +88,16 @@ class BankManager: ObservableObject {
         }
     }
 
+    private let savingsKey = "player_savings_balance_v1"
+    private let savingsDateKey = "player_savings_interest_date_v1"
+    private let savingsDailyRate: Double = 0.004
+
+    func effectiveLoanRate(for zone: ZoneProfile) -> Double {
+        let repFactor = ZoneReputationManager.shared.priceMultiplier(for: zone.name)
+        let ruleFactor = GovernanceManager.shared.loanRateMultiplier()
+        return BankManager.dailyRate(for: zone) * repFactor * ruleFactor
+    }
+
     func takeLoan(amount: TimeInterval) -> Bool {
         guard activeLoan == nil else {
             alertMessage = "Du har redan ett aktivt lån."
@@ -102,7 +114,7 @@ class BankManager: ObservableObject {
         activeLoan = PlayerLoan(
             id: UUID(),
             principal: amount,
-            dailyRate: BankManager.dailyRate(for: zone),
+            dailyRate: effectiveLoanRate(for: zone),
             startDate: Date(),
             dueDays: 30
         )
@@ -120,6 +132,7 @@ class BankManager: ObservableObject {
             return
         }
         TransactionLedger.shared.record(label: "Lån återbetalt (inkl. ränta)", amount: -total)
+        ZoneReputationManager.shared.adjustForLoanRepayment(onTime: !loan.isPastDue)
         activeLoan = nil
         save()
     }
@@ -152,10 +165,12 @@ class BankManager: ObservableObject {
             return false
         }
         TimeEngine.shared.addTime(amount)
+        let repFactor = ZoneReputationManager.shared.priceMultiplier(for: GameState.shared.currentZone.name)
+        let ruleFactor = GovernanceManager.shared.loanRateMultiplier()
         activeLoan = PlayerLoan(
             id: UUID(),
             principal: amount,
-            dailyRate: dailyRate,
+            dailyRate: dailyRate * repFactor * ruleFactor,
             startDate: Date(),
             dueDays: 30
         )
@@ -171,6 +186,54 @@ class BankManager: ObservableObject {
            let l = try? JSONDecoder().decode(PlayerLoan.self, from: d) {
             activeLoan = l
         }
+        savingsBalance = UserDefaults.standard.double(forKey: savingsKey)
+        applySavingsInterestIfNeeded()
+    }
+
+    func depositToSavings(_ amount: TimeInterval) -> Bool {
+        guard amount > 0 else { return false }
+        applySavingsInterestIfNeeded()
+        guard TimeEngine.shared.deductTime(amount) else {
+            alertMessage = "Otillräcklig tid för insättning."
+            showAlert = true
+            return false
+        }
+        savingsBalance += amount
+        saveSavings()
+        TransactionLedger.shared.record(label: "Bankkonto — insättning", amount: -amount)
+        return true
+    }
+
+    func withdrawFromSavings(_ amount: TimeInterval) -> Bool {
+        guard amount > 0 else { return false }
+        applySavingsInterestIfNeeded()
+        guard savingsBalance >= amount else {
+            alertMessage = "Du har inte tillräckligt på bankkontot."
+            showAlert = true
+            return false
+        }
+        savingsBalance -= amount
+        TimeEngine.shared.addTime(amount)
+        saveSavings()
+        TransactionLedger.shared.record(label: "Bankkonto — uttag", amount: amount)
+        return true
+    }
+
+    private func applySavingsInterestIfNeeded() {
+        let now = Date()
+        let last = UserDefaults.standard.object(forKey: savingsDateKey) as? Date ?? now
+        let elapsedDays = max(0, now.timeIntervalSince(last) / 86400)
+        guard savingsBalance > 0, elapsedDays > 0 else {
+            UserDefaults.standard.set(now, forKey: savingsDateKey)
+            return
+        }
+        let growth = savingsBalance * (pow(1 + savingsDailyRate, elapsedDays) - 1)
+        if growth > 0 {
+            savingsBalance += growth
+            TransactionLedger.shared.record(label: "Bankkonto — ränta", amount: growth)
+        }
+        UserDefaults.standard.set(now, forKey: savingsDateKey)
+        saveSavings()
     }
 
     private func save() {
@@ -179,6 +242,12 @@ class BankManager: ObservableObject {
         } else {
             UserDefaults.standard.removeObject(forKey: loanKey)
         }
+        saveSavings()
+    }
+
+    private func saveSavings() {
+        UserDefaults.standard.set(savingsBalance, forKey: savingsKey)
+        UserDefaults.standard.set(Date(), forKey: savingsDateKey)
     }
 }
 
@@ -335,7 +404,7 @@ struct BankView: View {
             Button("Avbryt", role: .cancel) {}
         } message: {
             let zone = gameState.currentZone
-            let rate = BankManager.dailyRate(for: zone) * 100
+            let rate = bankManager.effectiveLoanRate(for: zone) * 100
             Text("Låna \(TimeEngine.shortFormatted(loanAmount))?\nDaglig ränta: \(String(format: "%.2f", rate))%\nFörfaller om 30 dagar.")
         }
         .alert("Bekräfta Investering", isPresented: $showInvestConfirm) {
@@ -470,7 +539,7 @@ struct BankView: View {
         VStack(spacing: LTSpacing.md) {
             let zone    = gameState.currentZone
             let maxLoan = BankManager.maxLoan(for: zone)
-            let rate    = BankManager.dailyRate(for: zone) * 100
+            let rate    = bankManager.effectiveLoanRate(for: zone) * 100
 
             VStack(spacing: 0) {
                 HStack {
@@ -627,6 +696,8 @@ struct BankView: View {
         VStack(spacing: LTSpacing.md) {
             let rate = InvestmentManager.dailyRate(for: gameState.currentZone)
 
+            savingsAccountCard
+
             HStack(spacing: 0) {
                 VStack(alignment: .leading, spacing: LTSpacing.xs) {
                     Text("DAGLIG RÄNTA")
@@ -766,6 +837,57 @@ struct BankView: View {
                 }
             }
         }
+    }
+
+    private var savingsAccountCard: some View {
+        VStack(spacing: 10) {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("PERSONLIGT KONTO")
+                        .font(LTFont.label(9))
+                        .foregroundColor(.white.opacity(0.4))
+                        .tracking(2)
+                    Text(TimeEngine.shortFormatted(bankManager.savingsBalance))
+                        .font(LTFont.value(24))
+                        .foregroundColor(.green)
+                        .contentTransition(.numericText())
+                }
+                Spacer()
+                Text("Ränta ~0.40%/dag")
+                    .font(LTFont.caption(9))
+                    .foregroundColor(.white.opacity(0.5))
+            }
+
+            HStack(spacing: 8) {
+                Button {
+                    let amount = min(engine.balance * 0.25, 7200)
+                    _ = bankManager.depositToSavings(max(600, amount))
+                } label: {
+                    Text("Sätt in")
+                        .font(LTFont.body(11))
+                        .foregroundColor(.black)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 9)
+                        .background(.green)
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                }
+
+                Button {
+                    let amount = min(bankManager.savingsBalance, 7200)
+                    _ = bankManager.withdrawFromSavings(max(600, amount))
+                } label: {
+                    Text("Ta ut")
+                        .font(LTFont.body(11))
+                        .foregroundColor(.black)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 9)
+                        .background(.yellow)
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                }
+            }
+        }
+        .padding(12)
+        .ltAccentCard(color: .green)
     }
 
     // MARK: - Privatlån Section

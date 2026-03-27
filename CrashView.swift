@@ -36,6 +36,8 @@ struct CrashView: View {
     @State private var showResult: Bool = false
     @State private var showConfetti: Bool = false
 
+    private let maxCrashMultiplier: Double = 25.0
+
     enum CrashPhase { case waiting, countdown, running, crashed }
 
     var body: some View {
@@ -427,6 +429,8 @@ struct CrashView: View {
     // MARK: - Spellogik
 
     func startRound() {
+        guard phase == .waiting || phase == .crashed else { return }
+        guard betAmount > 0 else { return }
         guard TimeEngine.shared.deductTime(betAmount) else { return }
         multiplier = 1.0
         elapsed = 0
@@ -449,7 +453,7 @@ struct CrashView: View {
         // P(crash > x) = 0.95/x för x >= 1
         let r = Double.random(in: 0..<1)
         if r < 0.05 { return 1.0 }
-        return max(1.0, 0.95 / r)
+        return min(maxCrashMultiplier, max(1.0, 0.95 / r))
     }
 
     func startTimer() {
