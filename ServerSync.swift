@@ -121,7 +121,7 @@ struct SyncResponse: Decodable {
 class ServerSync: ObservableObject, @unchecked Sendable {
     static let shared = ServerSync()
     private let serverOrigins = [
-        "https://209.38.98.107:4000"
+        "https://209-38-98-107.sslip.io"
     ]
     private var preferredOriginIndex = 0
     private var syncTimer: Timer?

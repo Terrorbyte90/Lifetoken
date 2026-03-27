@@ -127,5 +127,5 @@ Higher zones = higher tax, higher work multiplier, better passive income.
 - iOS 17+ (uses two-parameter `onChange` closure form)
 - Swift 5.9+
 - HealthKit entitlement required
-- Backend: `https://209.38.98.107:4000/api` (TLS 1.2+ required)
+- Backend: `https://209-38-98-107.sslip.io/api` (TLS 1.2+ required)
 - Swedish-language UI throughout
