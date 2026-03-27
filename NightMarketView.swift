@@ -110,6 +110,7 @@ struct NightMarketPurchase: Identifiable, Codable {
 
 // MARK: - Night Market Manager
 
+@MainActor
 class NightMarketManager: ObservableObject {
     static let shared = NightMarketManager()
 
@@ -134,12 +135,15 @@ class NightMarketManager: ObservableObject {
         cal.timeZone = Self.stockholmTZ
         let hour = cal.component(.hour, from: Date())
         isOpen = hour < 5
+        refreshOfferPrices()
     }
 
     private func startCheckTimer() {
         checkTimer?.invalidate()
         checkTimer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
-            self?.updateOpenStatus()
+            Task { @MainActor in
+                self?.updateOpenStatus()
+            }
         }
     }
 
@@ -165,6 +169,7 @@ class NightMarketManager: ObservableObject {
                 boostType: boost.0, boostDuration: boost.1
             )
         }
+        refreshOfferPrices()
     }
 
     // MARK: - Köplogik
@@ -172,17 +177,21 @@ class NightMarketManager: ObservableObject {
     func purchase(offerIndex: Int, completion: @escaping (String) -> Void) {
         guard isOpen else { completion("Nattmarknaden är stängd."); return }
         guard offerIndex < offers.count else { return }
+        refreshOfferPrices()
         let offer = offers[offerIndex]
-        guard TimeEngine.shared.balance >= offer.currentPrice else {
+        let currentPrice = offer.currentPrice
+        guard TimeEngine.shared.balance >= currentPrice else {
             completion("Otillräcklig balans."); return
         }
-        TimeEngine.shared.deductTime(offer.currentPrice)
+        guard TimeEngine.shared.deductTime(currentPrice) else {
+            completion("Otillräcklig balans."); return
+        }
         offers[offerIndex].buyCount += 1
-        offers[offerIndex].currentPrice = offer.basePrice * (1 + Double(offers[offerIndex].buyCount) * 0.15)
+        recomputeOfferPrice(at: offerIndex)
         let outcome = resolveOutcome(seller: offer.seller, offer: offer)
         let purchase = NightMarketPurchase(
             id: UUID().uuidString, sellerName: offer.seller.rawValue,
-            itemName: offer.itemName, pricePaid: offer.currentPrice,
+            itemName: offer.itemName, pricePaid: currentPrice,
             outcome: outcome, timestamp: Date()
         )
         purchaseHistory.insert(purchase, at: 0)
@@ -224,6 +233,40 @@ class NightMarketManager: ObservableObject {
 
     private func applyBoost(_ type: String, duration: TimeInterval) {
         BoostManager.shared.activateBoost(named: type, duration: duration)
+    }
+
+    var currentZoneReputation: Int {
+        ZoneReputationManager.shared.reputation(for: GameState.shared.currentZone.name)
+    }
+
+    var currentPricingFactor: Double {
+        dynamicMarketMultiplier()
+    }
+
+    func refreshOfferPrices() {
+        guard !offers.isEmpty else { return }
+        for idx in offers.indices {
+            recomputeOfferPrice(at: idx)
+        }
+    }
+
+    private func recomputeOfferPrice(at index: Int) {
+        guard offers.indices.contains(index) else { return }
+        let offer = offers[index]
+        let demandMultiplier = 1 + Double(offer.buyCount) * 0.15
+        let dynamicPrice = offer.basePrice * demandMultiplier * dynamicMarketMultiplier()
+        offers[index].currentPrice = roundedPrice(dynamicPrice)
+    }
+
+    private func dynamicMarketMultiplier() -> Double {
+        let zoneName = GameState.shared.currentZone.name
+        let repFactor = ZoneReputationManager.shared.priceMultiplier(for: zoneName)
+        let ruleFactor = GovernanceManager.shared.marketPriceMultiplier()
+        return repFactor * ruleFactor
+    }
+
+    private func roundedPrice(_ value: TimeInterval) -> TimeInterval {
+        max(60, (value / 60).rounded() * 60)
     }
 
     // MARK: - Persistence
@@ -330,7 +373,10 @@ struct NightMarketView: View {
         .onReceive(countdownTick) { _ in
             market.updateOpenStatus()
         }
-        .onAppear { pulseOpen = true }
+        .onAppear {
+            pulseOpen = true
+            market.refreshOfferPrices()
+        }
     }
 
     // MARK: - Bakgrund med atmosfärisk gradient
@@ -460,22 +506,42 @@ struct NightMarketView: View {
     // MARK: - Öppen statusrad
 
     private var openStatusBar: some View {
-        HStack(spacing: LTSpacing.sm + 2) {
-            ZStack {
-                Circle()
-                    .fill(Color(red: 0.2, green: 0.9, blue: 0.4).opacity(pulseOpen ? 0.3 : 0.08))
-                    .frame(width: 16, height: 16)
-                    .animation(LTAnimation.ambientPulse, value: pulseOpen)
-                Circle()
-                    .fill(Color(red: 0.2, green: 0.9, blue: 0.4))
-                    .frame(width: 7, height: 7)
-                    .neonGlow(LTPalette.neonGreen, intensity: 0.5)
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: LTSpacing.sm + 2) {
+                ZStack {
+                    Circle()
+                        .fill(Color(red: 0.2, green: 0.9, blue: 0.4).opacity(pulseOpen ? 0.3 : 0.08))
+                        .frame(width: 16, height: 16)
+                        .animation(LTAnimation.ambientPulse, value: pulseOpen)
+                    Circle()
+                        .fill(Color(red: 0.2, green: 0.9, blue: 0.4))
+                        .frame(width: 7, height: 7)
+                        .neonGlow(LTPalette.neonGreen, intensity: 0.5)
+                }
+                Text("ÖPPEN — STÄNGER KL 05:00 STOCKHOLMSTID")
+                    .font(LTFont.caption(8))
+                    .foregroundColor(Color(red: 0.25, green: 0.75, blue: 0.40))
+                    .tracking(1)
+                Spacer()
             }
-            Text("ÖPPEN — STÄNGER KL 05:00 STOCKHOLMSTID")
-                .font(LTFont.caption(8))
-                .foregroundColor(Color(red: 0.25, green: 0.75, blue: 0.40))
-                .tracking(1)
-            Spacer()
+
+            HStack(spacing: 10) {
+                Text("Rykte \(market.currentZoneReputation)/50")
+                    .font(LTFont.caption(8))
+                    .foregroundColor(.mint.opacity(0.9))
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Color.mint.opacity(0.12))
+                    .clipShape(Capsule())
+                Text("Pris x\(String(format: "%.2f", market.currentPricingFactor))")
+                    .font(LTFont.caption(8))
+                    .foregroundColor(.orange.opacity(0.9))
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Color.orange.opacity(0.12))
+                    .clipShape(Capsule())
+                Spacer()
+            }
         }
         .padding(.horizontal, LTSpacing.md)
         .padding(.vertical, LTSpacing.sm + 2)

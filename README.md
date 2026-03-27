@@ -133,3 +133,4 @@ Higher zones = higher tax, higher work multiplier, better passive income.
 ## Changelog (Latest)
 
 - Added realtime connection support (`wss://.../ws`) with automatic fallback to polling and an offline outbox queue for robust retry of deferred actions.
+- Expanded economy systems with personal bank deposits/interest, faction hierarchy+treasury, zone reputation/governance/garden mechanics, dynamic market/raid modifiers, upgraded casino hub UX, and smarter non-cheating Yatzy AI.

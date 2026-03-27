@@ -61,6 +61,9 @@ struct CasinoHubView: View {
     @ObservedObject private var engine = TimeEngine.shared
     @ObservedObject private var gameState = GameState.shared
     @ObservedObject private var server = ServerSync.shared
+    @ObservedObject private var reputation = ZoneReputationManager.shared
+    @ObservedObject private var governance = GovernanceManager.shared
+    @ObservedObject private var nightMarket = NightMarketManager.shared
     @AppStorage("selectedTab") private var selectedTab: Int = 0
 
     @State private var selectedGame: CasinoGame? = nil
@@ -102,6 +105,20 @@ struct CasinoHubView: View {
 
     private var needsDoorman: Bool {
         gameState.currentZone.index <= 3 && !bribeAccepted
+    }
+
+    private var suggestedGame: CasinoGame {
+        if engine.balance < 1800 { return .blackjack }
+        if engine.balance > 86400 * 3 { return .poker }
+        return .roulette
+    }
+
+    private var zoneReputation: Int {
+        reputation.reputation(for: gameState.currentZone.name)
+    }
+
+    private var zoneTone: String {
+        reputation.npcTone(for: gameState.currentZone.name)
     }
 
     var body: some View {
@@ -275,6 +292,14 @@ struct CasinoHubView: View {
             VStack(spacing: 0) {
                 casinoHeader
 
+                casinoIntelPanel
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 12)
+
+                featuredTableCard
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 14)
+
                 // Spelkort-rutnät
                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 14) {
                     gameCard(
@@ -328,6 +353,133 @@ struct CasinoHubView: View {
                 Spacer(minLength: 100)
             }
         }
+    }
+
+    private var casinoIntelPanel: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("KASINO-INTEL")
+                .font(.system(size: 9, weight: .black, design: .monospaced))
+                .foregroundColor(.white.opacity(0.45))
+                .tracking(3)
+
+            HStack(spacing: 8) {
+                infoPill(
+                    icon: "person.wave.2.fill",
+                    text: "Rykte \(zoneReputation)/50",
+                    color: .mint
+                )
+                infoPill(
+                    icon: nightMarket.isOpen ? "moon.stars.fill" : "moon.zzz.fill",
+                    text: nightMarket.isOpen ? "Nattmarknad öppen" : "Nattmarknad stängd",
+                    color: nightMarket.isOpen ? .purple : .gray
+                )
+            }
+
+            HStack(spacing: 8) {
+                infoPill(
+                    icon: "bubble.left.and.bubble.right.fill",
+                    text: zoneTone,
+                    color: zoneReputation >= 40 ? .green : (zoneReputation >= 20 ? .yellow : .red)
+                )
+                if let activeRule = governance.activeRule {
+                    infoPill(
+                        icon: "building.columns.fill",
+                        text: activeRule.type.title,
+                        color: .orange
+                    )
+                } else {
+                    infoPill(
+                        icon: "building.columns",
+                        text: "Inga globala regler",
+                        color: .gray
+                    )
+                }
+            }
+        }
+        .padding(12)
+        .background(Color.white.opacity(0.04))
+        .clipShape(RoundedRectangle(cornerRadius: 14))
+        .overlay(
+            RoundedRectangle(cornerRadius: 14)
+                .stroke(Color.white.opacity(0.08), lineWidth: 1)
+        )
+    }
+
+    private var featuredTableCard: some View {
+        Button {
+            selectedGame = suggestedGame
+        } label: {
+            HStack(spacing: 12) {
+                ZStack {
+                    Circle()
+                        .fill(Color.orange.opacity(0.15))
+                        .frame(width: 42, height: 42)
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundColor(.orange)
+                }
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("REKOMMENDERAT BORD")
+                        .font(.system(size: 9, weight: .black, design: .monospaced))
+                        .foregroundColor(.white.opacity(0.45))
+                        .tracking(2)
+                    Text(featuredTitle(for: suggestedGame))
+                        .font(.system(size: 13, weight: .black, design: .monospaced))
+                        .foregroundColor(.white)
+                    Text("Baserat på saldo och zonstatus")
+                        .font(.system(size: 10, design: .monospaced))
+                        .foregroundColor(.white.opacity(0.5))
+                }
+
+                Spacer()
+
+                Image(systemName: "arrow.right.circle.fill")
+                    .font(.system(size: 20))
+                    .foregroundColor(.orange.opacity(0.9))
+            }
+            .padding(12)
+            .background(
+                LinearGradient(
+                    colors: [Color.orange.opacity(0.15), Color.orange.opacity(0.05)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 14))
+            .overlay(
+                RoundedRectangle(cornerRadius: 14)
+                    .stroke(Color.orange.opacity(0.35), lineWidth: 1)
+            )
+        }
+        .buttonStyle(LTPressEffect(scale: 0.98))
+    }
+
+    private func featuredTitle(for game: CasinoGame) -> String {
+        switch game {
+        case .poker: return "TEXAS HOLD'EM"
+        case .roulette: return "EUROPEISK ROULETT"
+        case .blackjack: return "BLACKJACK 21"
+        case .yatzy: return "YATZY"
+        case .crash: return "ROCKET CRASH"
+        }
+    }
+
+    private func infoPill(icon: String, text: String, color: Color) -> some View {
+        HStack(spacing: 4) {
+            Image(systemName: icon)
+                .font(.system(size: 9, weight: .bold))
+            Text(text)
+                .font(.system(size: 9, weight: .bold, design: .monospaced))
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+        }
+        .foregroundColor(color.opacity(0.95))
+        .padding(.horizontal, 9)
+        .padding(.vertical, 5)
+        .background(color.opacity(0.12))
+        .clipShape(Capsule())
+        .overlay(Capsule().stroke(color.opacity(0.32), lineWidth: 1))
     }
 
     private var casinoHeader: some View {

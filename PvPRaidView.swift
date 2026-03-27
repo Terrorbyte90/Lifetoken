@@ -101,6 +101,7 @@ struct RaidRecord: Identifiable, Codable {
 
 // MARK: - PvP Manager
 
+@MainActor
 class PvPRaidManager: ObservableObject {
     static let shared = PvPRaidManager()
 
@@ -154,13 +155,24 @@ class PvPRaidManager: ObservableObject {
         return max(0, lastRaid.addingTimeInterval(cooldownDuration).timeIntervalSinceNow)
     }
 
-    private func maxStake(for zone: ZoneProfile) -> TimeInterval {
+    func stakeLimit(for zone: ZoneProfile) -> TimeInterval {
+        let base: TimeInterval
         switch zone.index {
-        case 0:     return 1800          // Askan: 30 min
-        case 1...3: return 3600          // Spillrorna–Dimman: 1h
-        case 4...6: return 7200          // Halvmörkret–Stigarnas Dal: 2h
-        default:    return 21600         // senare zoner: max 6h för rån
+        case 0:     base = 1800          // Askan: 30 min
+        case 1...3: base = 3600          // Spillrorna–Dimman: 1h
+        case 4...6: base = 7200          // Halvmörkret–Stigarnas Dal: 2h
+        default:    base = 21600         // senare zoner: max 6h för rån
         }
+        let governanceFactor = GovernanceManager.shared.raidStakeMultiplier()
+        let adjusted = base * governanceFactor
+        return max(900, (adjusted / 300).rounded() * 300) // 5-minuterssteg, minst 15 min
+    }
+
+    var raidRuleDescription: String? {
+        let governanceFactor = GovernanceManager.shared.raidStakeMultiplier()
+        guard governanceFactor < 0.999 else { return nil }
+        let cut = Int((1.0 - governanceFactor) * 100)
+        return "Global regel aktiv: max insats är sänkt med \(cut)%."
     }
 
     func evaluateRisk(target: ServerUser, stake: TimeInterval) -> RaidRiskProfile {
@@ -175,10 +187,18 @@ class PvPRaidManager: ObservableObject {
         var success = 0.52
         success += min(0.12, max(-0.12, (balanceRatio - 1) * 0.07))
         success -= stakePressure * 0.25
+
+        let reputation = ZoneReputationManager.shared.reputation(for: GameState.shared.currentZone.name)
+        let trustBonus = max(0, Double(reputation - 30) / 20.0) // 0...1 vid rep 30-50
+        let hostilityPenalty = max(0, Double(20 - reputation) / 20.0) // 0...1 vid rep 20-0
+        success += trustBonus * 0.04
+        success -= hostilityPenalty * 0.07
         success = min(0.75, max(0.25, success))
 
         var backfire = 0.10 + max(0, stakePressure * 0.35)
         backfire += balanceRatio > 2.0 ? 0.03 : 0
+        backfire += hostilityPenalty * 0.06
+        backfire -= trustBonus * 0.03
         backfire = min(0.30, max(0.06, backfire))
 
         return RaidRiskProfile(
@@ -212,7 +232,7 @@ class PvPRaidManager: ObservableObject {
         guard !playerName.isEmpty else { completion(false, "Inget spelarnamn."); return }
         guard stake > 0 else { completion(false, "Ogiltig insats."); return }
         guard TimeEngine.shared.balance >= stake else { completion(false, "Otillräcklig balans."); return }
-        let zoneMaxStake = maxStake(for: GameState.shared.currentZone)
+        let zoneMaxStake = stakeLimit(for: GameState.shared.currentZone)
         guard stake <= zoneMaxStake else {
             completion(false, "Insatsen är för hög i din nuvarande zon. Max: \(TimeEngine.shortFormatted(zoneMaxStake)).")
             return
@@ -339,6 +359,8 @@ class PvPRaidManager: ObservableObject {
             TransactionLedger.shared.record(label: "Rån — backfire", amount: resolvedTimeDelta)
         }
 
+        ZoneReputationManager.shared.adjustForRaid(wonRaid: outcome == .success)
+
         resolvedScenario = scenario
         MissionsManager.incrementProgress("pvp_raids_done")
 
@@ -424,12 +446,7 @@ struct PvPRaidView: View {
     enum ViewPhase { case selection, reaction, result }
 
     private func raidStakeLimit(for zone: ZoneProfile) -> TimeInterval {
-        switch zone.index {
-        case 0:     return 1800
-        case 1...3: return 3600
-        case 4...6: return 7200
-        default:    return 21600
-        }
+        manager.stakeLimit(for: zone)
     }
 
     private var maxStakeMinutes: Double {
@@ -518,6 +535,12 @@ struct PvPRaidView: View {
                         Text("Max \(TimeEngine.shortFormatted(maxStakeMinutes * 60))")
                             .font(LTFont.body(9))
                             .foregroundColor(.gray)
+                    }
+
+                    if let ruleText = manager.raidRuleDescription {
+                        Text(ruleText)
+                            .font(LTFont.body(10))
+                            .foregroundColor(.orange.opacity(0.8))
                     }
                 }
 

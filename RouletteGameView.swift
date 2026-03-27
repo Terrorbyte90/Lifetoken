@@ -504,6 +504,7 @@ struct RouletteGameView: View {
     }
 
     func spin() {
+        guard !isSpinning, betAmount > 0 else { return }
         guard TimeEngine.shared.deductTime(betAmount) else { return }
         isSpinning = true
         result = nil
