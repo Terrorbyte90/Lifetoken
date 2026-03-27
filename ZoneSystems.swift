@@ -51,17 +51,17 @@ final class ZoneReputationManager: ObservableObject {
     func adjustForLoanRepayment(onTime: Bool) {
         let zoneName = GameState.shared.currentZone.name
         if onTime {
-            adjust(zoneName: zoneName, delta: 3, reason: "Lån återbetalt i tid ökade ryktet i \(zoneName).")
+            adjust(zoneName: zoneName, delta: 2, reason: "Lån återbetalt i tid ökade ryktet i \(zoneName).")
         } else {
-            adjust(zoneName: zoneName, delta: -3, reason: "Försenad betalning sänkte ryktet i \(zoneName).")
+            adjust(zoneName: zoneName, delta: -4, reason: "Försenad betalning sänkte ryktet i \(zoneName).")
         }
     }
 
-    // 0 rep => +20% dyrare, 50 rep => -20% billigare
+    // 0 rep => +15% dyrare, 50 rep => -15% billigare
     func priceMultiplier(for zoneName: String) -> Double {
         let rep = Double(reputation(for: zoneName))
         let normalized = rep / 50.0
-        return 1.20 - (0.40 * normalized)
+        return 1.15 - (0.30 * normalized)
     }
 
     func npcTone(for zoneName: String) -> String {
@@ -99,10 +99,10 @@ enum GovernanceRuleType: String, CaseIterable, Codable, Identifiable {
 
     var description: String {
         switch self {
-        case .marketTaxCut: return "Alla marknadspriser -10% i 24h."
-        case .marketTaxHike: return "Alla marknadspriser +10% i 24h."
-        case .loanAmnesty: return "Låneräntor -25% i 24h."
-        case .raidCrackdown: return "Max råninsats -25% i 24h."
+        case .marketTaxCut: return "Alla marknadspriser -8% i 24h."
+        case .marketTaxHike: return "Alla marknadspriser +8% i 24h."
+        case .loanAmnesty: return "Låneräntor -20% i 24h."
+        case .raidCrackdown: return "Max råninsats -20% i 24h."
         }
     }
 }
@@ -145,13 +145,15 @@ final class GovernanceManager: ObservableObject {
     func propose(rule: GovernanceRuleType, by username: String) -> Bool {
         cleanupExpired()
         guard activeProposal == nil else { return false }
+        let voter = normalizedVoter(username)
+        guard !voter.isEmpty else { return false }
         let proposal = GovernanceProposal(
             id: UUID().uuidString,
             type: rule,
             createdBy: username,
             createdAt: Date(),
-            endsAt: Date().addingTimeInterval(6 * 3600),
-            yesVotes: [username],
+            endsAt: Date().addingTimeInterval(8 * 3600),
+            yesVotes: [voter],
             noVotes: []
         )
         activeProposal = proposal
@@ -161,12 +163,14 @@ final class GovernanceManager: ObservableObject {
 
     func vote(yes: Bool, by username: String) {
         guard var proposal = activeProposal, Date() < proposal.endsAt else { return }
-        proposal.yesVotes.removeAll { $0 == username }
-        proposal.noVotes.removeAll { $0 == username }
+        let voter = normalizedVoter(username)
+        guard !voter.isEmpty else { return }
+        proposal.yesVotes.removeAll { normalizedVoter($0) == voter }
+        proposal.noVotes.removeAll { normalizedVoter($0) == voter }
         if yes {
-            proposal.yesVotes.append(username)
+            proposal.yesVotes.append(voter)
         } else {
-            proposal.noVotes.append(username)
+            proposal.noVotes.append(voter)
         }
         activeProposal = proposal
         resolveIfReady()
@@ -176,8 +180,8 @@ final class GovernanceManager: ObservableObject {
     func marketPriceMultiplier() -> Double {
         guard let rule = activeRule, Date() < rule.expiresAt else { return 1.0 }
         switch rule.type {
-        case .marketTaxCut: return 0.90
-        case .marketTaxHike: return 1.10
+        case .marketTaxCut: return 0.92
+        case .marketTaxHike: return 1.08
         default: return 1.0
         }
     }
@@ -185,7 +189,7 @@ final class GovernanceManager: ObservableObject {
     func loanRateMultiplier() -> Double {
         guard let rule = activeRule, Date() < rule.expiresAt else { return 1.0 }
         switch rule.type {
-        case .loanAmnesty: return 0.75
+        case .loanAmnesty: return 0.80
         default: return 1.0
         }
     }
@@ -193,7 +197,7 @@ final class GovernanceManager: ObservableObject {
     func raidStakeMultiplier() -> Double {
         guard let rule = activeRule, Date() < rule.expiresAt else { return 1.0 }
         switch rule.type {
-        case .raidCrackdown: return 0.75
+        case .raidCrackdown: return 0.80
         default: return 1.0
         }
     }
@@ -212,7 +216,7 @@ final class GovernanceManager: ObservableObject {
     private func resolveIfReady() {
         guard let proposal = activeProposal else { return }
         let totalVotes = proposal.yesVotes.count + proposal.noVotes.count
-        if totalVotes >= 5 {
+        if totalVotes >= 4 {
             activateRuleIfApproved(from: proposal)
             activeProposal = nil
         }
@@ -250,6 +254,10 @@ final class GovernanceManager: ObservableObject {
         } else {
             UserDefaults.standard.removeObject(forKey: ruleKey)
         }
+    }
+
+    private func normalizedVoter(_ raw: String) -> String {
+        raw.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
     }
 }
 

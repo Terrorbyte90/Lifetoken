@@ -389,26 +389,60 @@ final class YatzyGameEngine: ObservableObject {
 
         DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
             guard let self, self.players.indices.contains(aiIdx) else { return }
+            let engine = self
             let available = self.players[aiIdx].availableCategories
-            let keepMask = YatzyAILogic.selectDiceToKeep(dice: self.dice, available: available, rollsRemaining: rollsLeft - 1)
+            let diceSnapshot = self.dice
 
-            self.isRolling = true
-            self.rollsUsed = 4 - rollsLeft
-            for i in 0..<5 {
-                self.heldDice[i] = keepMask[i]
-                if !keepMask[i] { self.dice[i] = Int.random(in: 1...6) }
-            }
+            Task.detached(priority: .userInitiated) { [engine, available, diceSnapshot] in
+                let keepMask = YatzyAILogic.selectDiceToKeep(
+                    dice: diceSnapshot,
+                    available: available,
+                    rollsRemaining: rollsLeft
+                )
 
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.28) { [weak self] in
-                guard let self else { return }
-                self.isRolling = false
+                await MainActor.run {
+                    guard engine.players.indices.contains(aiIdx),
+                          engine.currentPlayerIndex == aiIdx,
+                          engine.isAIThinking else {
+                        return
+                    }
 
-                let shouldStop = YatzyAILogic.shouldStopRolling(dice: self.dice, available: available, rollsLeft: rollsLeft - 1)
-                if shouldStop {
-                    self.aiPickCategory()
-                    return
+                    engine.isRolling = true
+                    engine.rollsUsed = 4 - rollsLeft
+                    for i in 0..<5 {
+                        engine.heldDice[i] = keepMask[i]
+                        if !keepMask[i] { engine.dice[i] = Int.random(in: 1...6) }
+                    }
+
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.28) { [weak self] in
+                        guard let self else { return }
+                        let engine = self
+                        engine.isRolling = false
+
+                        let postRollDice = engine.dice
+                        Task.detached(priority: .userInitiated) { [engine, available, postRollDice] in
+                            let shouldStop = YatzyAILogic.shouldStopRolling(
+                                dice: postRollDice,
+                                available: available,
+                                rollsLeft: rollsLeft - 1
+                            )
+
+                            await MainActor.run {
+                                guard engine.players.indices.contains(aiIdx),
+                                      engine.currentPlayerIndex == aiIdx,
+                                      engine.isAIThinking else {
+                                    return
+                                }
+
+                                if shouldStop {
+                                    engine.aiPickCategory()
+                                    return
+                                }
+                                engine.performAIRoll(rollsLeft: rollsLeft - 1)
+                            }
+                        }
+                    }
                 }
-                self.performAIRoll(rollsLeft: rollsLeft - 1)
             }
         }
     }
@@ -418,21 +452,35 @@ final class YatzyGameEngine: ObservableObject {
         guard players.indices.contains(aiIdx) else { return }
         let available = players[aiIdx].availableCategories
         let aiName = players[aiIdx].name
+        let diceSnapshot = dice
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
             guard let self else { return }
-            if let chosen = YatzyAILogic.chooseCategory(dice: self.dice, available: available) {
-                let score = multiYatzyScore(for: chosen, dice: self.dice)
-                self.players[aiIdx].scores[chosen] = score
-                self.statusMessage = "🤖 \(aiName) väljer \(chosen.displayName): \(score)p"
-            }
+            let engine = self
 
-            self.isAIThinking = false
-            self.heldDice = [false, false, false, false, false]
+            Task.detached(priority: .userInitiated) { [engine, available, diceSnapshot] in
+                let chosen = YatzyAILogic.chooseCategory(dice: diceSnapshot, available: available)
 
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { [weak self] in
-                guard let self else { return }
-                self.advanceTurn(gameMode: self.currentGameMode, betAmount: self.currentBetAmount)
+                await MainActor.run {
+                    guard engine.players.indices.contains(aiIdx),
+                          engine.currentPlayerIndex == aiIdx else {
+                        return
+                    }
+
+                    if let chosen {
+                        let score = multiYatzyScore(for: chosen, dice: engine.dice)
+                        engine.players[aiIdx].scores[chosen] = score
+                        engine.statusMessage = "🤖 \(aiName) väljer \(chosen.displayName): \(score)p"
+                    }
+
+                    engine.isAIThinking = false
+                    engine.heldDice = [false, false, false, false, false]
+
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { [weak self] in
+                        guard let self else { return }
+                        self.advanceTurn(gameMode: self.currentGameMode, betAmount: self.currentBetAmount)
+                    }
+                }
             }
         }
     }
