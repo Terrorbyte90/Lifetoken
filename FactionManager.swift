@@ -81,7 +81,7 @@ final class FactionManager: ObservableObject {
 
     var currentMember: FactionMember? {
         guard let faction = currentFaction else { return nil }
-        return faction.members.first(where: { $0.username == GameState.shared.username })
+        return faction.members.first(where: { usernamesMatch($0.username, GameState.shared.username) })
     }
 
     var canDistributeFunds: Bool {
@@ -92,6 +92,7 @@ final class FactionManager: ObservableObject {
     private var syncTimer: AnyCancellable?
     private let storageKey = "factions_v2"
     private let currentFactionKey = "current_faction_id_v2"
+    private let pendingPayoutsKey = "faction_pending_payouts_v1"
 
     private let missionTemplates: [(String, String, Int)] = [
         ("Stegjägare", "steps", 500_000),
@@ -108,6 +109,7 @@ final class FactionManager: ObservableObject {
 
     init() {
         loadCache()
+        claimPendingPayoutsIfAny()
         startSyncTimer()
     }
 
@@ -162,6 +164,11 @@ final class FactionManager: ObservableObject {
 
     func requestJoin(factionID: String, username: String) {
         guard let idx = factions.firstIndex(where: { $0.id == factionID }) else { return }
+        let applicant = username.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !applicant.isEmpty else {
+            setFeedback("Ogiltigt användarnamn.")
+            return
+        }
         guard currentFaction == nil else {
             setFeedback("Lämna din nuvarande fraktion först.")
             return
@@ -170,11 +177,11 @@ final class FactionManager: ObservableObject {
             setFeedback("Fraktionen är full.")
             return
         }
-        if factions[idx].joinRequests.contains(username) {
+        if factions[idx].joinRequests.contains(where: { usernamesMatch($0, applicant) }) {
             setFeedback("Ansökan finns redan.")
             return
         }
-        factions[idx].joinRequests.append(username)
+        factions[idx].joinRequests.append(applicant)
         saveCache()
         setFeedback("Ansökan skickad till \(factions[idx].name).")
     }
@@ -182,9 +189,9 @@ final class FactionManager: ObservableObject {
     func approveJoin(username: String) {
         guard let currentFactionID, canManageMembers,
               let idx = factions.firstIndex(where: { $0.id == currentFactionID }) else { return }
-        guard factions[idx].joinRequests.contains(username) else { return }
+        guard factions[idx].joinRequests.contains(where: { usernamesMatch($0, username) }) else { return }
         guard factions[idx].members.count < Faction.maxMembers else { return }
-        factions[idx].joinRequests.removeAll { $0 == username }
+        factions[idx].joinRequests.removeAll { usernamesMatch($0, username) }
         factions[idx].members.append(
             FactionMember(id: UUID().uuidString, username: username, role: .member, joinedAt: Date())
         )
@@ -194,7 +201,7 @@ final class FactionManager: ObservableObject {
     func rejectJoin(username: String) {
         guard let currentFactionID, canManageMembers,
               let idx = factions.firstIndex(where: { $0.id == currentFactionID }) else { return }
-        factions[idx].joinRequests.removeAll { $0 == username }
+        factions[idx].joinRequests.removeAll { usernamesMatch($0, username) }
         saveCache()
     }
 
@@ -209,7 +216,7 @@ final class FactionManager: ObservableObject {
             return
         }
 
-        factions[idx].members.removeAll { $0.username == me.username }
+        factions[idx].members.removeAll { usernamesMatch($0.username, me.username) }
         if factions[idx].members.isEmpty {
             factions.removeAll { $0.id == currentFactionID }
         } else if me.role == .leader {
@@ -226,19 +233,27 @@ final class FactionManager: ObservableObject {
               currentMember?.role == .leader else {
             return
         }
-        guard let memberIdx = factions[idx].members.firstIndex(where: { $0.username == username }) else { return }
-        guard factions[idx].members[memberIdx].username != GameState.shared.username else { return }
+        guard let memberIdx = factions[idx].members.firstIndex(where: { usernamesMatch($0.username, username) }) else { return }
+        guard !usernamesMatch(factions[idx].members[memberIdx].username, GameState.shared.username) else { return }
         factions[idx].members[memberIdx].role = role
         saveCache()
+        setFeedback("Rollen för \(factions[idx].members[memberIdx].username) uppdaterades till \(role.label).")
     }
 
     func contribute(seconds: Int, to factionID: String) {
         guard seconds > 0 else { return }
+        guard let idx = factions.firstIndex(where: { $0.id == factionID }) else {
+            setFeedback("Fraktionen kunde inte hittas.")
+            return
+        }
+        guard factions[idx].members.contains(where: { usernamesMatch($0.username, GameState.shared.username) }) else {
+            setFeedback("Du måste vara medlem för att sätta in i fraktionsbanken.")
+            return
+        }
         guard TimeEngine.shared.deductTime(Double(seconds)) else {
             setFeedback("Otillräcklig balans för insättning.")
             return
         }
-        guard let idx = factions.firstIndex(where: { $0.id == factionID }) else { return }
         let user = GameState.shared.username
         factions[idx].treasurySeconds += seconds
         factions[idx].weeklyContributions[user, default: 0] += seconds
@@ -254,6 +269,7 @@ final class FactionManager: ObservableObject {
         )
         TransactionLedger.shared.record(label: "Fraktionsbank — insättning", amount: -Double(seconds))
         saveCache()
+        setFeedback("Insättning klar: \(TimeEngine.shortFormatted(Double(seconds))).")
         Task {
             try? await ServerSync.shared.pushFactionContribution(factionID: factionID, seconds: seconds)
         }
@@ -261,13 +277,19 @@ final class FactionManager: ObservableObject {
 
     func distribute(seconds: Int, to username: String) {
         guard seconds > 0 else { return }
+        let receiver = username.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !receiver.isEmpty else {
+            setFeedback("Ange en mottagare.")
+            return
+        }
         guard canDistributeFunds else {
             setFeedback("Endast leader/officer kan dela ut tid.")
             return
         }
         guard let currentFactionID,
               let idx = factions.firstIndex(where: { $0.id == currentFactionID }),
-              factions[idx].members.contains(where: { $0.username == username }) else {
+              factions[idx].members.contains(where: { usernamesMatch($0.username, receiver) }) else {
+            setFeedback("Mottagaren måste vara medlem i fraktionen.")
             return
         }
         guard factions[idx].treasurySeconds >= seconds else {
@@ -279,14 +301,19 @@ final class FactionManager: ObservableObject {
             FactionLedgerEntry(
                 id: UUID().uuidString,
                 actor: GameState.shared.username,
-                label: "Utdelning till \(username)",
+                label: "Utdelning till \(receiver)",
                 amount: -seconds,
                 createdAt: Date()
             ),
             at: 0
         )
-        if username == GameState.shared.username {
+        if usernamesMatch(receiver, GameState.shared.username) {
             TimeEngine.shared.addTime(Double(seconds))
+            TransactionLedger.shared.record(label: "Fraktionsbank — utdelning", amount: Double(seconds))
+            setFeedback("Du tog ut \(TimeEngine.shortFormatted(Double(seconds))) från fraktionsbanken.")
+        } else {
+            enqueuePendingPayout(for: receiver, seconds: seconds)
+            setFeedback("Utdelning registrerad till \(receiver).")
         }
         saveCache()
     }
@@ -294,6 +321,48 @@ final class FactionManager: ObservableObject {
     var canManageMembers: Bool {
         guard let role = currentMember?.role else { return false }
         return role == .leader || role == .officer
+    }
+
+    func claimPendingPayoutsIfAny() {
+        let username = GameState.shared.username.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !username.isEmpty else { return }
+        var pending = loadPendingPayouts()
+        guard let amount = pending.removeValue(forKey: normalizedUsername(username)), amount > 0 else {
+            return
+        }
+        TimeEngine.shared.addTime(Double(amount))
+        TransactionLedger.shared.record(label: "Fraktionsbank — utdelning mottagen", amount: Double(amount))
+        savePendingPayouts(pending)
+        setFeedback("Du har mottagit \(TimeEngine.shortFormatted(Double(amount))) från fraktionsbanken.")
+    }
+
+    private func usernamesMatch(_ lhs: String, _ rhs: String) -> Bool {
+        normalizedUsername(lhs) == normalizedUsername(rhs)
+    }
+
+    private func normalizedUsername(_ username: String) -> String {
+        username.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    }
+
+    private func enqueuePendingPayout(for username: String, seconds: Int) {
+        var pending = loadPendingPayouts()
+        let key = normalizedUsername(username)
+        pending[key, default: 0] += seconds
+        savePendingPayouts(pending)
+    }
+
+    private func loadPendingPayouts() -> [String: Int] {
+        guard let data = UserDefaults.standard.data(forKey: pendingPayoutsKey),
+              let decoded = try? JSONDecoder().decode([String: Int].self, from: data) else {
+            return [:]
+        }
+        return decoded
+    }
+
+    private func savePendingPayouts(_ payouts: [String: Int]) {
+        if let data = try? JSONEncoder().encode(payouts) {
+            UserDefaults.standard.set(data, forKey: pendingPayoutsKey)
+        }
     }
 
     private func setFeedback(_ text: String) {

@@ -135,7 +135,6 @@ class NightMarketManager: ObservableObject {
         cal.timeZone = Self.stockholmTZ
         let hour = cal.component(.hour, from: Date())
         isOpen = hour < 5
-        refreshOfferPrices()
     }
 
     private func startCheckTimer() {
@@ -255,7 +254,10 @@ class NightMarketManager: ObservableObject {
         let offer = offers[index]
         let demandMultiplier = 1 + Double(offer.buyCount) * 0.15
         let dynamicPrice = offer.basePrice * demandMultiplier * dynamicMarketMultiplier()
-        offers[index].currentPrice = roundedPrice(dynamicPrice)
+        let nextPrice = roundedPrice(dynamicPrice)
+        if abs(offers[index].currentPrice - nextPrice) >= 30 {
+            offers[index].currentPrice = nextPrice
+        }
     }
 
     private func dynamicMarketMultiplier() -> Double {
