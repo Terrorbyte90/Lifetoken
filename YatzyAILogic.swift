@@ -46,8 +46,8 @@ struct YatzyAILogic {
 
     // MARK: Select Dice to Keep
 
-    /// Picks hold-mask by evaluating candidate keep patterns with Monte Carlo rollouts.
-    /// rollsRemaining: rerolls left after this keep decision.
+    /// Picks hold-mask by exact expected-value search (non-cheating).
+    /// rollsRemaining: roll decisions left including this one.
     static func selectDiceToKeep(
         dice: [Int],
         available: Set<MultiYatzyCategory>,
@@ -61,57 +61,13 @@ struct YatzyAILogic {
         let maxCount = counts.values.max() ?? 0
         if maxCount == 5 { return [Bool](repeating: true, count: 5) } // already Yatzy
 
-        var candidateBits: Set<Int> = []
-
-        func addMask(_ mask: [Bool]) {
-            guard mask.count == 5 else { return }
-            candidateBits.insert(encodeMask(mask))
-        }
-
-        // Baselines
-        addMask([Bool](repeating: false, count: 5))
-        addMask([Bool](repeating: true, count: 5))
-        addMask(heuristicKeepMask(dice: dice, available: available, rollsRemaining: rollsRemaining))
-
-        // Keep all dice matching each face value
-        for face in 1...6 {
-            addMask(dice.map { $0 == face })
-        }
-
-        // Straight-oriented keeps
-        let smallStraightSet = Set([1, 2, 3, 4, 5])
-        let largeStraightSet = Set([2, 3, 4, 5, 6])
-        addMask(dice.map { smallStraightSet.contains($0) })
-        addMask(dice.map { largeStraightSet.contains($0) })
-
-        // Anchor single dice and top-end values
-        for i in 0..<5 {
-            var single = [Bool](repeating: false, count: 5)
-            single[i] = true
-            addMask(single)
-        }
-        let topValues = Set(dice.sorted(by: >).prefix(2))
-        addMask(dice.map { topValues.contains($0) })
-
-        let samples = rollsRemaining >= 2 ? 140 : 260
-        var bestMask = heuristicKeepMask(dice: dice, available: available, rollsRemaining: rollsRemaining)
-        var bestValue = -Double.greatestFiniteMagnitude
-
-        for bits in candidateBits {
-            let mask = decodeMask(bits, count: 5)
-            let value = estimatedMaskValue(
-                keepMask: mask,
-                dice: dice,
-                available: available,
-                rollsRemaining: rollsRemaining,
-                samples: samples
-            )
-            if value > bestValue {
-                bestValue = value
-                bestMask = mask
-            }
-        }
-
+        var memo: [RollStateKey: Double] = [:]
+        let (bestMask, _) = bestMaskAndExpectedValue(
+            dice: dice,
+            available: available,
+            rollsRemaining: rollsRemaining,
+            memo: &memo
+        )
         return bestMask
     }
 
@@ -130,24 +86,34 @@ struct YatzyAILogic {
         if multiYatzyScore(for: .litenStege, dice: dice) == 15 && available.contains(.litenStege) { return true }
         if multiYatzyScore(for: .kas, dice: dice) > 0 && available.contains(.kas) { return true }
 
-        // If best expected value from rerolling is not significantly better than current best score, stop.
+        // Stop only when no meaningful EV gain remains, or best play is to keep all dice.
         let currentBest = bestStrategicBoardValue(dice: dice, available: available)
-        let keepAllValue = estimatedMaskValue(
-            keepMask: [Bool](repeating: true, count: 5),
+        var memo: [RollStateKey: Double] = [:]
+        let (bestMask, bestFutureValue) = bestMaskAndExpectedValue(
             dice: dice,
             available: available,
-            rollsRemaining: min(1, rollsLeft),
-            samples: 1
+            rollsRemaining: rollsLeft,
+            memo: &memo
         )
-        let margin = 2.0
-        if keepAllValue + margin >= currentBest { return true }
-        return false
+        let noGain = bestFutureValue <= currentBest + 0.01
+        let keepAll = bestMask.allSatisfy { $0 }
+        return keepAll || noGain
     }
 }
 
 // MARK: - Internals
 
 private extension YatzyAILogic {
+    struct RollStateKey: Hashable {
+        let rollsRemaining: Int
+        let dice: [Int]
+
+        init(dice: [Int], rollsRemaining: Int) {
+            self.rollsRemaining = rollsRemaining
+            self.dice = dice.sorted()
+        }
+    }
+
     struct RankedCategory {
         let category: MultiYatzyCategory
         let rawScore: Int
@@ -231,49 +197,117 @@ private extension YatzyAILogic {
         rankedCategories(dice: dice, available: available).first?.strategicScore ?? 0
     }
 
-    static func estimatedMaskValue(
-        keepMask: [Bool],
+    static func bestMaskAndExpectedValue(
         dice: [Int],
         available: Set<MultiYatzyCategory>,
         rollsRemaining: Int,
-        samples: Int
+        memo: inout [RollStateKey: Double]
+    ) -> ([Bool], Double) {
+        var bestMask = heuristicKeepMask(dice: dice, available: available, rollsRemaining: rollsRemaining)
+        var bestValue = -Double.greatestFiniteMagnitude
+
+        for bits in 0..<32 {
+            let mask = decodeMask(bits, count: 5)
+            let value = exactExpectedValueAfterMask(
+                keepMask: mask,
+                dice: dice,
+                available: available,
+                rollsRemaining: rollsRemaining,
+                memo: &memo
+            )
+            if value > bestValue {
+                bestValue = value
+                bestMask = mask
+            }
+        }
+
+        return (bestMask, bestValue)
+    }
+
+    static func exactBestExpectedValue(
+        dice: [Int],
+        available: Set<MultiYatzyCategory>,
+        rollsRemaining: Int,
+        memo: inout [RollStateKey: Double]
     ) -> Double {
         guard rollsRemaining > 0 else {
             return bestStrategicBoardValue(dice: dice, available: available)
         }
 
-        var total = 0.0
-        for _ in 0..<max(1, samples) {
-            var simDice = reroll(dice: dice, keepMask: keepMask)
+        let key = RollStateKey(dice: dice, rollsRemaining: rollsRemaining)
+        if let cached = memo[key] { return cached }
 
-            // At most one more meaningful reroll remains in this game flow.
-            if rollsRemaining > 1 {
-                let nextMask = heuristicKeepMask(dice: simDice, available: available, rollsRemaining: rollsRemaining - 1)
-                simDice = reroll(dice: simDice, keepMask: nextMask)
+        let (_, value) = bestMaskAndExpectedValue(
+            dice: dice,
+            available: available,
+            rollsRemaining: rollsRemaining,
+            memo: &memo
+        )
+        memo[key] = value
+        return value
+    }
+
+    static func exactExpectedValueAfterMask(
+        keepMask: [Bool],
+        dice: [Int],
+        available: Set<MultiYatzyCategory>,
+        rollsRemaining: Int,
+        memo: inout [RollStateKey: Double]
+    ) -> Double {
+        guard rollsRemaining > 0 else {
+            return bestStrategicBoardValue(dice: dice, available: available)
+        }
+
+        let rerollIndices = keepMask.enumerated().compactMap { index, keep in
+            keep ? nil : index
+        }
+        if rerollIndices.isEmpty {
+            return exactBestExpectedValue(
+                dice: dice,
+                available: available,
+                rollsRemaining: rollsRemaining - 1,
+                memo: &memo
+            )
+        }
+
+        var workingDice = dice
+        var total = 0.0
+
+        func enumerateOutcomes(depth: Int) {
+            if depth == rerollIndices.count {
+                total += exactBestExpectedValue(
+                    dice: workingDice,
+                    available: available,
+                    rollsRemaining: rollsRemaining - 1,
+                    memo: &memo
+                )
+                return
             }
 
-            total += bestStrategicBoardValue(dice: simDice, available: available)
+            let idx = rerollIndices[depth]
+            for face in 1...6 {
+                workingDice[idx] = face
+                enumerateOutcomes(depth: depth + 1)
+            }
+            workingDice[idx] = dice[idx]
         }
-        return total / Double(max(1, samples))
-    }
 
-    static func reroll(dice: [Int], keepMask: [Bool]) -> [Int] {
-        guard dice.count == keepMask.count else { return dice }
-        var out = dice
-        for i in out.indices where !keepMask[i] {
-            out[i] = Int.random(in: 1...6)
-        }
-        return out
-    }
-
-    static func encodeMask(_ mask: [Bool]) -> Int {
-        mask.enumerated().reduce(0) { partial, entry in
-            entry.element ? (partial | (1 << entry.offset)) : partial
-        }
+        enumerateOutcomes(depth: 0)
+        let outcomeCount = powInt(6, rerollIndices.count)
+        return total / Double(max(1, outcomeCount))
     }
 
     static func decodeMask(_ bits: Int, count: Int) -> [Bool] {
         (0..<count).map { ((bits >> $0) & 1) == 1 }
+    }
+
+    static func powInt(_ base: Int, _ exponent: Int) -> Int {
+        guard exponent > 0 else { return 1 }
+        var result = 1
+        for _ in 0..<exponent {
+            result *= base
+        }
+        return result
     }
 
     // Previous deterministic strategy retained as fallback policy for rollouts.
