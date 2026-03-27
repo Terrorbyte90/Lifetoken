@@ -17,6 +17,13 @@ struct JobCard: View {
         return .green
     }
 
+    private var riskLabel: String {
+        let value = Int(job.riskPercentage * 100)
+        if value >= 25 { return "Hög risk \(value)%" }
+        if value >= 12 { return "Medelrisk \(value)%" }
+        return "Låg risk \(value)%"
+    }
+
     var body: some View {
         Button(action: {
             guard !isDisabled else { return }
@@ -24,63 +31,71 @@ struct JobCard: View {
             impact.impactOccurred()
             onTap()
         }) {
-            VStack(spacing: 0) {
-                // Top colored stripe
-                accentColor.opacity(isDisabled ? 0.15 : 0.6)
-                    .frame(height: 2)
-
-                HStack(spacing: 14) {
-                    // Icon
+            VStack(alignment: .leading, spacing: LTSpacing.sm) {
+                HStack(spacing: LTSpacing.md) {
                     ZStack {
-                        RoundedRectangle(cornerRadius: 10)
-                            .fill(accentColor.opacity(isDisabled ? 0.06 : 0.12))
-                            .frame(width: 44, height: 44)
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(accentColor.opacity(isDisabled ? 0.08 : 0.16))
+                            .frame(width: 48, height: 48)
                         Image(systemName: job.icon)
-                            .font(.system(size: 18))
+                            .font(.system(size: 20, weight: .semibold))
                             .foregroundColor(isDisabled ? .gray : accentColor)
                     }
 
-                    // Info
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(job.name)
-                            .font(.system(size: 13, weight: .bold, design: .monospaced))
-                            .foregroundColor(isDisabled ? .gray.opacity(0.6) : .white)
+                    VStack(alignment: .leading, spacing: LTSpacing.xs - 1) {
+                        Text(job.name.uppercased())
+                            .font(LTFont.heading(13))
+                            .foregroundColor(isDisabled ? .gray.opacity(0.65) : .white)
+                            .lineLimit(1)
                         Text(job.description)
-                            .font(.system(size: 9, design: .monospaced))
-                            .foregroundColor(.white.opacity(isDisabled ? 0.2 : 0.4))
+                            .font(LTFont.body(10))
+                            .foregroundColor(.white.opacity(isDisabled ? 0.22 : 0.48))
                             .lineLimit(2)
                     }
 
                     Spacer()
 
-                    // Earnings column
-                    VStack(alignment: .trailing, spacing: 3) {
+                    VStack(alignment: .trailing, spacing: LTSpacing.xs - 1) {
                         Text("+\(TimeEngine.shortFormatted(job.netEarningsInflated(for: zone)))")
-                            .font(.system(size: 12, weight: .black, design: .monospaced))
-                            .foregroundColor(isDisabled ? .gray.opacity(0.4) : accentColor)
+                            .font(LTFont.heading(13))
+                            .foregroundColor(isDisabled ? .gray.opacity(0.45) : accentColor)
                         Text(formatDur(job.durationSeconds))
-                            .font(.system(size: 9, design: .monospaced))
+                            .font(LTFont.caption(9))
                             .foregroundColor(.white.opacity(0.35))
-                        if job.riskPercentage > 0.10 {
-                            Text("Risk \(Int(job.riskPercentage * 100))%")
-                                .font(.system(size: 8, weight: .bold, design: .monospaced))
-                                .foregroundColor(.red.opacity(0.7))
-                                .padding(.horizontal, 5)
-                                .padding(.vertical, 2)
-                                .background(Color.red.opacity(0.08))
-                                .clipShape(Capsule())
-                        }
                     }
                 }
-                .padding(.horizontal, 14)
-                .padding(.vertical, 13)
+
+                HStack(spacing: LTSpacing.xs) {
+                    LTStatPill(
+                        icon: "speedometer",
+                        text: "\(TimeEngine.shortFormatted(job.hourlyRate(for: zone))) / h",
+                        tint: .cyan
+                    )
+                    LTStatPill(
+                        icon: "exclamationmark.triangle.fill",
+                        text: riskLabel,
+                        tint: job.riskPercentage > 0.18 ? .red : .orange
+                    )
+                    Spacer()
+                }
             }
+            .padding(14)
         }
         .disabled(isDisabled)
-        .buttonStyle(PlainButtonStyle())
-        .background(Color(red: 0.06, green: 0.07, blue: 0.09))
+        .buttonStyle(LTPressEffect(scale: 0.98))
+        .background(
+            LinearGradient(
+                colors: [accentColor.opacity(isDisabled ? 0.05 : 0.10), Color(red: 0.05, green: 0.06, blue: 0.09)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        )
         .clipShape(RoundedRectangle(cornerRadius: LTRadius.sm))
-        .overlay(RoundedRectangle(cornerRadius: LTRadius.sm).stroke(accentColor.opacity(isDisabled ? 0.05 : 0.2), lineWidth: 1))
+        .overlay(
+            RoundedRectangle(cornerRadius: LTRadius.sm)
+                .stroke(accentColor.opacity(isDisabled ? 0.08 : 0.28), lineWidth: 1)
+        )
+        .shadow(color: accentColor.opacity(isDisabled ? 0.0 : 0.08), radius: 10, y: 3)
         .opacity(isDisabled ? 0.5 : 1.0)
         .accessibilityLabel("\(job.name), \(job.description)")
         .accessibilityHint(isDisabled ? "Inaktiverat — ett jobb pågår redan" : "Dubbeltryck för att starta jobbet")
@@ -248,10 +263,10 @@ struct JobConfirmSheet: View {
                     .font(.system(size: 32))
                     .foregroundColor(.green)
                 Text(job.name)
-                    .font(.system(size: 18, weight: .black, design: .monospaced))
+                    .font(LTFont.displayTitle(20))
                     .foregroundColor(.white)
                 Text(job.description)
-                    .font(.system(size: 11, design: .monospaced))
+                    .font(LTFont.body(11))
                     .foregroundColor(.white.opacity(0.5))
                     .multilineTextAlignment(.center)
             }
@@ -331,7 +346,13 @@ struct JobConfirmSheet: View {
             .padding(.horizontal, LTSpacing.xxl)
             .padding(.bottom, LTSpacing.lg)
         }
-        .background(Color(red: 0.05, green: 0.07, blue: 0.06))
+        .background(
+            LinearGradient(
+                colors: [Color(red: 0.05, green: 0.08, blue: 0.07), Color(red: 0.03, green: 0.05, blue: 0.04)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        )
         .preferredColorScheme(.dark)
     }
 }
@@ -354,7 +375,7 @@ struct JobCompleteToast: View {
                 Text(message)
                     .font(.system(size: 11, design: .monospaced))
                     .foregroundColor(.white.opacity(0.8))
-                    .lineLimit(2)
+                    .lineLimit(3)
             }
             Spacer()
         }

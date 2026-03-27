@@ -179,13 +179,20 @@ struct PipeGameView: View {
     let difficulty: Int
     @Environment(\.dismiss) var dismiss
 
-    private let gridSizes:  [Int]    = [4, 5, 6, 7]
-    private let timeLimits: [Int]    = [45, 35, 25, 20]
-    private let rewards:    [Int]    = [6, 11, 19, 32]
+    private let gridSizes: [Int] = [4, 5, 6, 7, 8]
+    private let timeLimits: [Int] = [45, 35, 25, 20, 15]
+    private let rewards: [Int] = [6, 11, 19, 32, 64]
+    private let scrambleLevels: [Int] = [1, 2, 3, 3, 4]
+    private let difficultyLabels = ["ENKEL", "MEDEL", "SVÅR", "EXPERT", "LEGENDE"]
 
-    private var gridSize:  Int { gridSizes[difficulty] }
-    private var timeLimit: Int { timeLimits[difficulty] }
-    private var reward:    Int { rewards[difficulty] }
+    private var difficultyIndex: Int {
+        min(max(difficulty, 0), gridSizes.count - 1)
+    }
+
+    private var gridSize: Int { gridSizes[difficultyIndex] }
+    private var timeLimit: Int { timeLimits[difficultyIndex] }
+    private var reward: Int { rewards[difficultyIndex] }
+    private var difficultyLabel: String { difficultyLabels[difficultyIndex] }
 
     enum Phase { case ready, playing, waterFlowing(won: Bool), result(won: Bool, earned: TimeInterval) }
 
@@ -264,7 +271,7 @@ struct PipeGameView: View {
                     .font(.system(size: 22, weight: .black, design: .monospaced))
                     .foregroundColor(.white)
                     .tracking(4)
-                Text(["ENKEL","MEDEL","SVÅR","EXPERT"][difficulty])
+                Text(difficultyLabel)
                     .font(.system(size: 10, weight: .bold, design: .monospaced))
                     .foregroundColor(Color(red: 0.1, green: 0.8, blue: 0.5).opacity(0.7))
                     .tracking(6)
@@ -567,8 +574,7 @@ struct PipeGameView: View {
     // MARK: - Logic
 
     private func startGame() {
-        // Enkel=1 rotation, Medel=2, Svår=3, Expert=3
-        let maxScramble = [1, 2, 3, 3][difficulty]
+        let maxScramble = scrambleLevels[difficultyIndex]
         grid      = PipeGrid.generate(size: gridSize, maxScramble: maxScramble)
         timeLeft  = timeLimit
         waterAnim = 0

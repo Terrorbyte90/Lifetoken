@@ -6,22 +6,30 @@ struct CodeBreakerView: View {
     let difficulty: Int
     @Environment(\.dismiss) var dismiss
 
-    // Config [Enkel, Medel, Svår, Expert]
-    private let codeLengths:  [Int] = [4, 4, 5, 6]
-    private let symbolCounts: [Int] = [6, 8, 9, 9]  // symbols available (1-N + letters for expert)
-    private let maxAttempts:  [Int] = [5, 4, 4, 4]
-    private let timeLimits:   [Int] = [90, 90, 90, 60]
+    // Config [Enkel, Medel, Svår, Expert, Legende]
+    private let codeLengths: [Int] = [4, 4, 5, 6, 6]
+    private let symbolCounts: [Int] = [6, 8, 9, 9, 12]  // symbols available (1-N + letters)
+    private let maxAttempts: [Int] = [5, 4, 4, 4, 3]
+    private let timeLimits: [Int] = [90, 90, 90, 60, 40]
     private let rewards = [
-        (on2:9,  on34:6,  on5:3),
-        (on2:15, on34:10, on5:5),
-        (on2:25, on34:16, on5:8),
-        (on2:40, on34:26, on5:13),
+        (on2: 9, on34: 6, on5: 3),
+        (on2: 15, on34: 10, on5: 5),
+        (on2: 25, on34: 16, on5: 8),
+        (on2: 40, on34: 26, on5: 13),
+        (on2: 80, on34: 52, on5: 26),
     ]
-    private var codeLen:    Int { codeLengths[difficulty] }
-    private var symCount:   Int { symbolCounts[difficulty] }
-    private var maxAttempt: Int { maxAttempts[difficulty] }
-    private var timeLimit:  Int { timeLimits[difficulty] }
-    private var reward:     (on2:Int,on34:Int,on5:Int) { rewards[difficulty] }
+    private let difficultyLabels = ["ENKEL", "MEDEL", "SVÅR", "EXPERT", "LEGENDE"]
+
+    private var difficultyIndex: Int {
+        min(max(difficulty, 0), timeLimits.count - 1)
+    }
+
+    private var codeLen: Int { codeLengths[difficultyIndex] }
+    private var symCount: Int { symbolCounts[difficultyIndex] }
+    private var maxAttempt: Int { maxAttempts[difficultyIndex] }
+    private var timeLimit: Int { timeLimits[difficultyIndex] }
+    private var reward: (on2: Int, on34: Int, on5: Int) { rewards[difficultyIndex] }
+    private var difficultyLabel: String { difficultyLabels[difficultyIndex] }
 
     private var symbols: [String] {
         let digits = (1...9).map { "\($0)" }
@@ -148,7 +156,7 @@ struct CodeBreakerView: View {
             terminalHeader
 
             VStack(alignment: .leading, spacing: 12) {
-                termLine("> SÄKERHETSNIVÅ: \(["ENKEL","MEDEL","SVÅR","EXPERT"][difficulty])", .green)
+                termLine("> SÄKERHETSNIVÅ: \(difficultyLabel)", .green)
                 termLine("> KOD: \(codeLen) TECKEN (1-\(symCount)\(difficulty == 3 ? "+A-F" : ""))", .green)
                 termLine("> FÖRSÖK: \(maxAttempt)", .green)
                 termLine("> TID: \(timeLimit)s", .green)

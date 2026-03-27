@@ -170,11 +170,7 @@ struct DashboardView: View {
 
     private var dashboardBackground: some View {
         ZStack {
-            LinearGradient(
-                colors: [Color(red: 0.02, green: 0.03, blue: 0.07), Color.black],
-                startPoint: .top, endPoint: .bottom
-            )
-            .ignoresSafeArea()
+            LTScreenBackground(style: .neutral)
 
             // Atmospheric glow emanating from top (behind clock)
             RadialGradient(
@@ -349,19 +345,11 @@ struct DashboardView: View {
 
     private var salaryCard: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("LÖN")
-                        .font(.system(size: 11, weight: .black, design: .monospaced))
-                        .foregroundColor(.white.opacity(0.35))
-                        .tracking(3)
-                    Text("Din hälsa ger dig lön, bättre hälsa, mer lön")
-                        .font(.system(size: 9, design: .monospaced))
-                        .foregroundColor(.white.opacity(0.3))
-                        .italic()
-                }
-                Spacer()
-            }
+            LTSectionTitle(
+                overline: "Lön",
+                title: "Hälsodata växlas till tid varje dygn",
+                tint: .green
+            )
             HStack {
                 VStack(alignment: .leading, spacing: 3) {
                     Label("HÄLSOINKOMST", systemImage: "heart.fill")
@@ -386,9 +374,7 @@ struct DashboardView: View {
             }
         }
         .padding(14)
-        .background(Color(red: 0.03, green: 0.10, blue: 0.03))
-        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.green.opacity(0.18), lineWidth: 1))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .ltCard(color: .green, opacity: 0.07, radius: LTRadius.sm, borderOpacity: 0.22)
         .padding(.horizontal)
     }
 
