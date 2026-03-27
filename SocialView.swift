@@ -324,11 +324,7 @@ struct SocialView: View {
 
     var body: some View {
         ZStack {
-            LinearGradient(
-                colors: [Color(red: 0.04, green: 0.04, blue: 0.05), Color.black],
-                startPoint: .top,
-                endPoint: .bottom
-            ).ignoresSafeArea()
+            LTScreenBackground(style: .social)
 
             VStack(spacing: 0) {
                 headerSection
@@ -379,68 +375,67 @@ struct SocialView: View {
     // MARK: Header
 
     private var headerSection: some View {
-        VStack(spacing: LTSpacing.xs) {
-            Text("SOCIAL")
-                .font(LTFont.displayTitle(22))
-                .foregroundColor(.white)
-                .padding(.top, 60)
-            HStack(spacing: LTSpacing.xs + 2) {
-                Circle()
-                    .fill(serverSync.isOnline ? LTPalette.neonGreen : LTPalette.danger)
-                    .frame(width: 7, height: 7)
-                    .neonGlow(serverSync.isOnline ? LTPalette.neonGreen : LTPalette.danger, intensity: 0.4)
-                Text(serverSync.isOnline ? "Server online" : "Offline")
-                    .font(LTFont.body(11))
-                    .foregroundColor(.white.opacity(0.4))
-                Text("· \(serverSync.connectionMode)")
-                    .font(LTFont.body(11))
-                    .foregroundColor(.white.opacity(0.35))
-                Text("·  Zon: \(gameState.currentZone.name)")
-                    .font(LTFont.body(11))
-                    .foregroundColor(.white.opacity(0.4))
+        VStack(alignment: .leading, spacing: LTSpacing.sm) {
+            LTSectionTitle(
+                overline: "Social Hub",
+                title: "Spelare, dueller och kommunikation",
+                tint: .green
+            )
+            HStack(spacing: LTSpacing.xs) {
+                LTStatPill(
+                    icon: serverSync.isOnline ? "dot.radiowaves.left.and.right" : "wifi.slash",
+                    text: serverSync.isOnline ? "Online" : "Offline",
+                    tint: serverSync.isOnline ? .green : .red
+                )
+                LTStatPill(
+                    icon: "wave.3.right.circle",
+                    text: serverSync.connectionMode,
+                    tint: .cyan
+                )
+                LTStatPill(
+                    icon: gameState.currentZone.zoneIcon,
+                    text: gameState.currentZone.name,
+                    tint: gameState.currentZone.color
+                )
                 if serverSync.deferredRequestCount > 0 {
-                    Text("· kö: \(serverSync.deferredRequestCount)")
-                        .font(LTFont.body(11))
-                        .foregroundColor(.orange)
+                    LTStatPill(
+                        icon: "tray.full.fill",
+                        text: "Kö \(serverSync.deferredRequestCount)",
+                        tint: .orange
+                    )
                 }
             }
             .accessibilityElement(children: .combine)
             .accessibilityLabel("\(serverSync.isOnline ? "Server online" : "Offline"). Zon: \(gameState.currentZone.name)")
         }
-        .frame(maxWidth: .infinity)
-        .padding(.bottom, LTSpacing.md)
+        .padding(.horizontal, LTSpacing.horizontal)
+        .padding(.top, 60)
+        .padding(.bottom, LTSpacing.sm)
     }
 
     // MARK: Tab Bar
 
     private var tabBar: some View {
-        HStack(spacing: 0) {
+        HStack(spacing: 6) {
             ForEach(visibleTabs, id: \.self) { tab in
                 Button {
                     withAnimation(LTAnimation.springFast) { selectedTab = tab }
                 } label: {
                     Text(tab.rawValue)
                         .font(LTFont.label(12))
-                        .foregroundColor(selectedTab == tab ? .green : .white.opacity(0.4))
+                        .foregroundColor(selectedTab == tab ? .black : .white.opacity(0.55))
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, LTSpacing.sm + 2)
-                        .background(selectedTab == tab ? Color.green.opacity(0.1) : Color.clear)
-                        .overlay(alignment: .bottom) {
-                            if selectedTab == tab {
-                                Rectangle()
-                                    .fill(LTPalette.neonGreen)
-                                    .frame(height: 2)
-                                    .neonGlow(LTPalette.neonGreen, intensity: 0.5)
-                                    .transition(.opacity)
-                            }
-                        }
+                        .padding(.vertical, LTSpacing.sm)
+                        .background(selectedTab == tab ? LTPalette.neonGreen : Color.white.opacity(0.05))
+                        .clipShape(RoundedRectangle(cornerRadius: LTRadius.xs))
                 }
                 .buttonStyle(LTPressEffect(scale: 0.97))
                 .accessibilityLabel(tab.rawValue)
                 .accessibilityAddTraits(selectedTab == tab ? .isSelected : [])
             }
         }
-        .background(Color.black.opacity(0.3))
+        .padding(.horizontal, LTSpacing.horizontal)
+        .padding(.vertical, LTSpacing.xs)
         .animation(LTAnimation.springFast, value: selectedTab)
     }
 

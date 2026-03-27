@@ -262,3 +262,129 @@ extension View {
             .accessibilityHint(hint ?? "")
     }
 }
+
+// MARK: - Shared Screen Backgrounds
+
+enum LTBackgroundStyle {
+    case neutral
+    case work
+    case social
+    case zone
+    case casino
+
+    var topColor: Color {
+        switch self {
+        case .neutral: return Color(red: 0.02, green: 0.03, blue: 0.07)
+        case .work:    return Color(red: 0.03, green: 0.04, blue: 0.06)
+        case .social:  return Color(red: 0.04, green: 0.03, blue: 0.05)
+        case .zone:    return Color(red: 0.03, green: 0.05, blue: 0.09)
+        case .casino:  return Color(red: 0.02, green: 0.01, blue: 0.04)
+        }
+    }
+
+    var midColor: Color {
+        switch self {
+        case .neutral: return Color(red: 0.03, green: 0.05, blue: 0.10)
+        case .work:    return Color(red: 0.04, green: 0.05, blue: 0.08)
+        case .social:  return Color(red: 0.05, green: 0.04, blue: 0.07)
+        case .zone:    return Color(red: 0.04, green: 0.06, blue: 0.11)
+        case .casino:  return Color(red: 0.05, green: 0.02, blue: 0.08)
+        }
+    }
+
+    var glowColor: Color {
+        switch self {
+        case .neutral: return LTPalette.neonGreen.opacity(0.10)
+        case .work:    return Color.cyan.opacity(0.10)
+        case .social:  return Color.green.opacity(0.10)
+        case .zone:    return Color.blue.opacity(0.10)
+        case .casino:  return Color.purple.opacity(0.12)
+        }
+    }
+}
+
+struct LTScreenBackground: View {
+    let style: LTBackgroundStyle
+
+    var body: some View {
+        ZStack {
+            LinearGradient(
+                colors: [style.topColor, style.midColor, Color.black],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
+
+            RadialGradient(
+                colors: [style.glowColor, .clear],
+                center: UnitPoint(x: 0.5, y: 0.0),
+                startRadius: 24,
+                endRadius: 440
+            )
+            .ignoresSafeArea()
+
+            Canvas { context, size in
+                for y in stride(from: 0.0, to: size.height, by: 5.0) {
+                    var path = Path()
+                    path.move(to: CGPoint(x: 0, y: y))
+                    path.addLine(to: CGPoint(x: size.width, y: y))
+                    context.stroke(path, with: .color(Color.white.opacity(0.008)), lineWidth: 1)
+                }
+            }
+            .ignoresSafeArea()
+        }
+    }
+}
+
+extension View {
+    func ltScreenBackground(_ style: LTBackgroundStyle = .neutral) -> some View {
+        self.background(LTScreenBackground(style: style))
+    }
+}
+
+// MARK: - Shared Visual Building Blocks
+
+struct LTSectionTitle: View {
+    let overline: String
+    var title: String? = nil
+    var tint: Color = .white
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(overline.uppercased())
+                .font(LTFont.label(10))
+                .tracking(2)
+                .foregroundColor(tint.opacity(0.65))
+            if let title {
+                Text(title)
+                    .font(LTFont.heading(14))
+                    .foregroundColor(.white)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+struct LTStatPill: View {
+    let icon: String
+    let text: String
+    var tint: Color = .white
+
+    var body: some View {
+        HStack(spacing: 5) {
+            Image(systemName: icon)
+                .font(.system(size: 10, weight: .semibold))
+            Text(text)
+                .font(LTFont.labelSemibold(10))
+        }
+        .foregroundColor(tint)
+        .padding(.horizontal, 9)
+        .padding(.vertical, 6)
+        .background(tint.opacity(0.12))
+        .clipShape(Capsule())
+        .overlay(
+            Capsule()
+                .stroke(tint.opacity(0.28), lineWidth: 1)
+        )
+    }
+}

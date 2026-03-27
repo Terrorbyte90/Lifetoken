@@ -21,12 +21,7 @@ struct ZoneOperationsView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                LinearGradient(
-                    colors: [Color(red: 0.03, green: 0.05, blue: 0.09), Color.black],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-                .ignoresSafeArea()
+                LTScreenBackground(style: .zone)
 
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 14) {
@@ -40,7 +35,7 @@ struct ZoneOperationsView: View {
                     .padding(.bottom, LTSpacing.scrollBottom)
                 }
             }
-            .navigationTitle("ZONCENTRALEN")
+            .navigationTitle("Zoncentralen")
             .navigationBarTitleDisplayMode(.inline)
         }
         .alert("Zonstyre", isPresented: $showGovernanceMessage) {
@@ -55,14 +50,23 @@ struct ZoneOperationsView: View {
 
     private var headerCard: some View {
         VStack(alignment: .leading, spacing: 8) {
+            LTSectionTitle(
+                overline: "Aktiv zon",
+                title: zoneName,
+                tint: gameState.currentZone.color
+            )
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(zoneName.uppercased())
-                        .font(LTFont.heading(16))
-                        .foregroundColor(gameState.currentZone.color)
-                    Text("Rykte: \(repValue)/50")
-                        .font(LTFont.body(11))
-                        .foregroundColor(.white.opacity(0.7))
+                    LTStatPill(
+                        icon: "chart.bar.fill",
+                        text: "Rykte \(repValue)/50",
+                        tint: repValue >= 25 ? .green : .orange
+                    )
+                    LTStatPill(
+                        icon: "tag.fill",
+                        text: "Pris x\(String(format: "%.2f", reputation.priceMultiplier(for: zoneName)))",
+                        tint: .cyan
+                    )
                 }
                 Spacer()
                 Text(reputation.npcTone(for: zoneName))
@@ -75,8 +79,8 @@ struct ZoneOperationsView: View {
             }
             ProgressView(value: repProgress)
                 .tint(repValue >= 25 ? LTPalette.neonGreen : LTPalette.warning)
-            Text("Prisfaktor i zon: x\(String(format: "%.2f", reputation.priceMultiplier(for: zoneName)))")
-                .font(LTFont.caption(10))
+            Text("Högre rykte ger bättre zonpriser, fler dialogvägar och mjukare NPC-respons.")
+                .font(LTFont.body(10))
                 .foregroundColor(.white.opacity(0.5))
         }
         .padding(14)
@@ -85,10 +89,7 @@ struct ZoneOperationsView: View {
 
     private var zoneActionsCard: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("AKTIVITETER")
-                .font(LTFont.label(10))
-                .foregroundColor(.white.opacity(0.35))
-                .tracking(2)
+            LTSectionTitle(overline: "Aktiviteter", title: "Snabbåtkomst i zonen", tint: .cyan)
 
             HStack(spacing: 8) {
                 NavigationLink {
@@ -116,7 +117,7 @@ struct ZoneOperationsView: View {
             }
         }
         .padding(14)
-        .ltCard(radius: LTRadius.md)
+        .ltCard(color: .cyan, opacity: 0.06, radius: LTRadius.md, borderOpacity: 0.16)
     }
 
     private func actionChip(icon: String, text: String, color: Color) -> some View {
@@ -140,10 +141,7 @@ struct ZoneOperationsView: View {
     private var governanceCard: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Text("SOCIALT MAKTSPEL")
-                    .font(LTFont.label(10))
-                    .foregroundColor(.white.opacity(0.35))
-                    .tracking(2)
+                LTSectionTitle(overline: "Socialt maktspel", title: "Regler som påverkar hela ekonomin", tint: .yellow)
                 Spacer()
                 if let rule = governance.activeRule, Date() < rule.expiresAt {
                     Text("AKTIV REGEL")
@@ -217,7 +215,13 @@ struct ZoneOperationsView: View {
                         .foregroundColor(.black)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 8)
-                        .background(LTPalette.neonGreen)
+                        .background(
+                            LinearGradient(
+                                colors: [LTPalette.neonGreen, LTPalette.neonGreenDim],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
                         .clipShape(RoundedRectangle(cornerRadius: 8))
                     } else {
                         Text("Endast toppspelare i högsta zonerna kan lägga regel-förslag.")
@@ -228,16 +232,13 @@ struct ZoneOperationsView: View {
             }
         }
         .padding(14)
-        .ltCard(radius: LTRadius.md)
+        .ltCard(color: .yellow, opacity: 0.06, radius: LTRadius.md, borderOpacity: 0.16)
         .onAppear { governance.cleanupExpired() }
     }
 
     private var gardenCard: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("TRÄDGÅRD")
-                .font(LTFont.label(10))
-                .foregroundColor(.white.opacity(0.35))
-                .tracking(2)
+            LTSectionTitle(overline: "Trädgård", title: "Odla i realtid och skörda senare", tint: .green)
 
             if !garden.isUnlocked(for: gameState.currentZone) {
                 Text("Låses upp från zon 9. Fortsätt klättra.")
@@ -250,7 +251,7 @@ struct ZoneOperationsView: View {
             }
         }
         .padding(14)
-        .ltCard(radius: LTRadius.md)
+        .ltCard(color: .green, opacity: 0.06, radius: LTRadius.md, borderOpacity: 0.16)
     }
 
     private func gardenPlotRow(_ plot: GardenPlot) -> some View {

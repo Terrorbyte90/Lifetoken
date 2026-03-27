@@ -6,22 +6,30 @@ struct SortingGameView: View {
     let difficulty: Int
     @Environment(\.dismiss) var dismiss
 
-    // Config [Enkel, Medel, Svår, Expert]
-    private let categoryCounts: [Int]    = [3, 4, 5, 5]
-    private let timeLimits:     [Int]    = [60, 60, 45, 40]
-    private let fallingSpeed:   [Double] = [8.0, 6.0, 4.5, 3.5]  // seconds to fall across screen
-    private let spawnInterval:  [Double] = [1.4, 1.1, 0.85, 0.7]
+    // Config [Enkel, Medel, Svår, Expert, Legende]
+    private let categoryCounts: [Int] = [3, 4, 5, 5, 5]
+    private let timeLimits: [Int] = [60, 60, 45, 40, 25]
+    private let fallingSpeed: [Double] = [8.0, 6.0, 4.5, 3.5, 2.7]  // seconds to fall across screen
+    private let spawnInterval: [Double] = [1.4, 1.1, 0.85, 0.7, 0.55]
     private let rewards = [
-        (perfect:7,  good:4,  worse:1),
-        (perfect:12, good:7,  worse:2),
-        (perfect:21, good:11, worse:3),
-        (perfect:35, good:19, worse:5),
+        (perfect: 7, good: 4, worse: 1),
+        (perfect: 12, good: 7, worse: 2),
+        (perfect: 21, good: 11, worse: 3),
+        (perfect: 35, good: 19, worse: 5),
+        (perfect: 70, good: 38, worse: 10),
     ]
-    private var catCount:  Int    { categoryCounts[difficulty] }
-    private var timeLimit: Int    { timeLimits[difficulty] }
-    private var fallSpeed: Double { fallingSpeed[difficulty] }
-    private var spawn:     Double { spawnInterval[difficulty] }
-    private var reward:    (perfect:Int,good:Int,worse:Int) { rewards[difficulty] }
+    private let difficultyLabels = ["ENKEL", "MEDEL", "SVÅR", "EXPERT", "LEGENDE"]
+
+    private var difficultyIndex: Int {
+        min(max(difficulty, 0), timeLimits.count - 1)
+    }
+
+    private var catCount: Int { categoryCounts[difficultyIndex] }
+    private var timeLimit: Int { timeLimits[difficultyIndex] }
+    private var fallSpeed: Double { fallingSpeed[difficultyIndex] }
+    private var spawn: Double { spawnInterval[difficultyIndex] }
+    private var reward: (perfect: Int, good: Int, worse: Int) { rewards[difficultyIndex] }
+    private var difficultyLabel: String { difficultyLabels[difficultyIndex] }
 
     // Categories (name, icon, color)
     private let allCategories: [(name:String,icon:String,color:Color)] = [
@@ -127,7 +135,7 @@ struct SortingGameView: View {
                     .font(.system(size: 18, weight: .black, design: .monospaced))
                     .foregroundColor(.white)
                     .tracking(3)
-                Text(["ENKEL","MEDEL","SVÅR","EXPERT"][difficulty])
+                Text(difficultyLabel)
                     .font(.system(size: 11, design: .monospaced))
                     .foregroundColor(Color(white:0.35))
                     .tracking(4)

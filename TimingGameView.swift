@@ -6,22 +6,29 @@ struct TimingGameView: View {
     let difficulty: Int
     @Environment(\.dismiss) var dismiss
 
-    // Config per difficulty: [Enkel, Medel, Svår, Expert]
-    private let zoneDegrees:  [Double] = [60, 35, 18, 8]
-    private let speedRPS:     [Double] = [0.6, 1.0, 1.6, 2.4]  // rotations/sec
-    private let roundCounts:  [Int]    = [3, 3, 4, 5]
-    private let timeLimits:   [Int]    = [90, 90, 90, 90]
+    // Config per difficulty: [Enkel, Medel, Svår, Expert, Legende]
+    private let zoneDegrees: [Double] = [60, 35, 18, 8, 4]
+    private let speedRPS: [Double] = [0.6, 1.0, 1.6, 2.4, 3.2]  // rotations/sec
+    private let roundCounts: [Int] = [3, 3, 4, 5, 6]
+    private let timeLimits: [Int] = [90, 90, 90, 90, 60]
     private let rewards = [
-        (best:8,  normal:5,  worse:2),
-        (best:14, normal:9,  worse:4),
-        (best:22, normal:14, worse:7),
-        (best:37, normal:24, worse:12),
+        (best: 8, normal: 5, worse: 2),
+        (best: 14, normal: 9, worse: 4),
+        (best: 22, normal: 14, worse: 7),
+        (best: 37, normal: 24, worse: 12),
+        (best: 74, normal: 48, worse: 24),
     ]
+    private let difficultyLabels = ["ENKEL", "MEDEL", "SVÅR", "EXPERT", "LEGENDE"]
 
-    private var zoneWidth:   Double { zoneDegrees[difficulty] }
-    private var speed:       Double { speedRPS[difficulty] }
-    private var totalRounds: Int    { roundCounts[difficulty] }
-    private var reward:      (best:Int,normal:Int,worse:Int) { rewards[difficulty] }
+    private var difficultyIndex: Int {
+        min(max(difficulty, 0), timeLimits.count - 1)
+    }
+
+    private var zoneWidth: Double { zoneDegrees[difficultyIndex] }
+    private var speed: Double { speedRPS[difficultyIndex] }
+    private var totalRounds: Int { roundCounts[difficultyIndex] }
+    private var reward: (best: Int, normal: Int, worse: Int) { rewards[difficultyIndex] }
+    private var difficultyLabel: String { difficultyLabels[difficultyIndex] }
 
     // Game state
     enum Phase { case ready, playing, result(earned: TimeInterval) }
@@ -97,7 +104,7 @@ struct TimingGameView: View {
                     .font(.system(size: 20, weight: .black, design: .monospaced))
                     .foregroundColor(.cyan)
                     .tracking(5)
-                Text(["ENKEL","MEDEL","SVÅR","EXPERT"][difficulty])
+                Text(difficultyLabel)
                     .font(.system(size: 12, design: .monospaced))
                     .foregroundColor(Color(white: 0.4))
                     .tracking(4)
@@ -399,7 +406,7 @@ struct TimingGameView: View {
     // MARK: - Logic
 
     private func startGame() {
-        timeLeft     = timeLimits[difficulty]
+        timeLeft     = timeLimits[difficultyIndex]
         gameStart    = Date()
         currentRound = 0
         deviations   = []

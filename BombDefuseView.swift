@@ -6,20 +6,27 @@ struct BombDefuseView: View {
     let difficulty: Int
     @Environment(\.dismiss) var dismiss
 
-    // Config [Enkel, Medel, Svår, Expert]
-    private let wireCountCfg:  [Int]    = [3, 4, 5, 6]
-    private let timeLimits:    [Int]    = [20, 15, 12, 8]
-    private let clueShowTime:  [Double] = [5, 5, 5, 5]
+    // Config [Enkel, Medel, Svår, Expert, Legende]
+    private let wireCountCfg: [Int] = [3, 4, 5, 6, 7]
+    private let timeLimits: [Int] = [20, 15, 12, 8, 5]
+    private let clueShowTime: [Double] = [5, 5, 5, 5, 4]
     private let rewards = [
-        (early:10, normal:6,  penalty:5),
-        (early:17, normal:10, penalty:10),
-        (early:30, normal:17, penalty:20),
-        (early:50, normal:30, penalty:40),
+        (early: 10, normal: 6, penalty: 5),
+        (early: 17, normal: 10, penalty: 10),
+        (early: 30, normal: 17, penalty: 20),
+        (early: 50, normal: 30, penalty: 40),
+        (early: 100, normal: 60, penalty: 60),
     ]
+    private let difficultyLabels = ["ENKEL", "MEDEL", "SVÅR", "EXPERT", "LEGENDE"]
 
-    private var wireCount: Int { wireCountCfg[difficulty] }
-    private var timeLimit: Int { timeLimits[difficulty] }
-    private var reward:    (early:Int,normal:Int,penalty:Int) { rewards[difficulty] }
+    private var difficultyIndex: Int {
+        min(max(difficulty, 0), timeLimits.count - 1)
+    }
+
+    private var wireCount: Int { wireCountCfg[difficultyIndex] }
+    private var timeLimit: Int { timeLimits[difficultyIndex] }
+    private var reward: (early: Int, normal: Int, penalty: Int) { rewards[difficultyIndex] }
+    private var difficultyLabel: String { difficultyLabels[difficultyIndex] }
 
     // Wire colors
     private let wireColors: [Color] = [
@@ -145,14 +152,14 @@ struct BombDefuseView: View {
                     .font(.system(size: 16, weight: .black, design: .monospaced))
                     .foregroundColor(.red)
                     .tracking(2)
-                Text(["ENKEL","MEDEL","SVÅR","EXPERT"][difficulty])
+                Text(difficultyLabel)
                     .font(.system(size: 11, design: .monospaced))
                     .foregroundColor(Color(white:0.35))
                     .tracking(4)
             }
 
             VStack(alignment: .leading, spacing: 10) {
-                warnRow("Ledtråden visas \(Int(clueShowTime[difficulty]))s sedan försvinner den.")
+                warnRow("Ledtråden visas \(Int(clueShowTime[difficultyIndex]))s sedan försvinner den.")
                 warnRow("Du har en chans. Klipper du fel — straff.")
                 warnRow("Fel tråd kostar dig \(reward.penalty) min.")
                 warnRow("\(wireCount) trådar. Tänk snabbt.")
@@ -227,7 +234,7 @@ struct BombDefuseView: View {
                         .frame(height: 4)
                     RoundedRectangle(cornerRadius: 3)
                         .fill(Color(red:0.2,green:0.9,blue:0.2))
-                        .frame(width: g.size.width * CGFloat(clueLeft / clueShowTime[difficulty]), height: 4)
+                        .frame(width: g.size.width * CGFloat(clueLeft / clueShowTime[difficultyIndex]), height: 4)
                         .animation(.linear(duration: 0.05), value: clueLeft)
                 }
             }
@@ -429,7 +436,7 @@ struct BombDefuseView: View {
         clue        = generateClue(correct: correctWire)
         timeLeft    = timeLimit
         wiresCut    = []
-        clueLeft    = clueShowTime[difficulty]
+        clueLeft    = clueShowTime[difficultyIndex]
         clueFade    = 1
         phase       = .clueShowing
     }

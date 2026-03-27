@@ -244,11 +244,7 @@ struct WorkView: View {
 
     var body: some View {
         ZStack {
-            LinearGradient(
-                colors: [Color(red: 0.04, green: 0.04, blue: 0.05), Color.black],
-                startPoint: .top,
-                endPoint: .bottom
-            ).ignoresSafeArea()
+            LTScreenBackground(style: .work)
 
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 20) {
@@ -303,44 +299,72 @@ struct WorkView: View {
     // MARK: Header
 
     private var headerSection: some View {
-        VStack(spacing: 4) {
-            Text("ARBETSMARKNADEN")
-                .font(.system(size: 22, weight: .bold, design: .monospaced))
-                .foregroundColor(.white)
-                .padding(.top, 60)
-            Text("Zon: \(gameState.currentZone.name)  |  Skatt: \(Int(gameState.currentZone.taxRate * 100))%")
-                .font(.system(size: 12, design: .monospaced))
-                .foregroundColor(.white.opacity(0.5))
+        VStack(alignment: .leading, spacing: LTSpacing.sm) {
+            LTSectionTitle(
+                overline: "Arbetsmarknaden",
+                title: "Skifta upp tempot i \(gameState.currentZone.name)",
+                tint: LTPalette.neonGreen
+            )
+            .padding(.top, 60)
+
+            HStack(spacing: LTSpacing.xs) {
+                LTStatPill(
+                    icon: gameState.currentZone.zoneIcon,
+                    text: gameState.currentZone.name,
+                    tint: gameState.currentZone.color
+                )
+                LTStatPill(
+                    icon: "percent",
+                    text: "Skatt \(Int(gameState.currentZone.taxRate * 100))%",
+                    tint: .orange
+                )
+                LTStatPill(
+                    icon: "arrow.up.right",
+                    text: "x\(String(format: "%.1f", gameState.currentZone.workMultiplier))",
+                    tint: .cyan
+                )
+            }
+
+            Text("Planera lågrisk för stabilitet och ta högrisk när du vill jaga större nettolön.")
+                .font(LTFont.body(11))
+                .foregroundColor(.white.opacity(0.55))
+                .fixedSize(horizontal: false, vertical: true)
         }
-        .frame(maxWidth: .infinity)
+        .padding(LTSpacing.lg)
+        .ltCard(
+            color: LTPalette.neonGreen,
+            opacity: 0.06,
+            radius: LTRadius.md,
+            borderOpacity: 0.22,
+            shadowColor: LTPalette.neonGreen.opacity(0.15),
+            shadowRadius: 10
+        )
+        .padding(.horizontal)
     }
 
     // MARK: Health Income Section
 
     private var healthIncomeSection: some View {
         VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("DIN INKOMST IDAG")
-                        .font(.system(size: 11, weight: .bold, design: .monospaced))
-                        .foregroundColor(.green.opacity(0.8))
-                    Text(income.jobTitle)
-                        .font(.system(size: 16, weight: .bold, design: .monospaced))
-                        .foregroundColor(.white)
-                    Text("Din hälsa ger dig inkomst, desto bättre du mår, desto mer tjänar du, men räcker det..?")
-                        .font(.system(size: 10, design: .monospaced))
-                        .foregroundColor(.white.opacity(0.35))
-                        .italic()
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal)
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: LTSpacing.xs) {
+                    LTSectionTitle(
+                        overline: "Din inkomst idag",
+                        title: income.jobTitle,
+                        tint: .green
+                    )
+                    Text("Bättre hälsa ger högre dagsinkomst. Optimera steg, sömn och träning för jämn tillväxt.")
+                        .font(LTFont.body(10))
+                        .foregroundColor(.white.opacity(0.45))
+                        .fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer()
                 VStack(alignment: .trailing, spacing: 2) {
                     Text(TimeEngine.shortFormatted(income.todayBreakdown.total))
-                        .font(.system(size: 22, weight: .black, design: .monospaced))
+                        .font(LTFont.value(22))
                         .foregroundColor(.green)
-                    Text("tjänat via hälsa")
-                        .font(.system(size: 9, design: .monospaced))
+                    Text("intjänat via hälsa")
+                        .font(LTFont.caption(9))
                         .foregroundColor(.white.opacity(0.4))
                 }
             }
@@ -382,9 +406,14 @@ struct WorkView: View {
             .frame(maxWidth: .infinity, alignment: .trailing)
         }
         .padding(LTSpacing.lg)
-        .background(.ultraThinMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: LTRadius.md))
-        .overlay(RoundedRectangle(cornerRadius: LTRadius.md).stroke(Color.green.opacity(0.2), lineWidth: 1))
+        .ltCard(
+            color: .green,
+            opacity: 0.07,
+            radius: LTRadius.md,
+            borderOpacity: 0.24,
+            shadowColor: .green.opacity(0.12),
+            shadowRadius: 8
+        )
         .padding(.horizontal)
     }
 
@@ -393,21 +422,19 @@ struct WorkView: View {
     private var jobsSection: some View {
         VStack(spacing: 16) {
             // Mini-jobs section (arcade-style instant jobs)
-            VStack(spacing: 8) {
+            VStack(spacing: 10) {
                 HStack(spacing: 5) {
-                    Image(systemName: "gamecontroller.fill")
-                        .font(.system(size: 9))
-                        .foregroundColor(.purple)
-                    Text("AKTIVA JOBB")
-                        .font(.system(size: 11, weight: .bold, design: .monospaced))
-                        .foregroundColor(.purple.opacity(0.8))
-                        .tracking(2)
+                    LTSectionTitle(
+                        overline: "Aktiva jobb",
+                        title: "Snabba uppdrag med direkt resultat",
+                        tint: .purple
+                    )
                     Spacer()
-                    Text("Spela via Dashboard → Arbete")
-                        .font(.system(size: 8, design: .monospaced))
+                    Text("Arcade")
+                        .font(LTFont.caption(9))
                         .foregroundColor(.white.opacity(0.25))
                 }
-                .padding(.horizontal)
+                .padding(.horizontal, 2)
 
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 10) {
@@ -416,20 +443,25 @@ struct WorkView: View {
                         miniJobChip(icon: "bolt.circle.fill",      name: "Sprängexperten",   desc: "Defusera bomben")  { showBomb = true }
                         miniJobChip(icon: "timer",                 name: "Tidskalibratorn",  desc: "Kalibreringen")    { showTiming = true }
                     }
-                    .padding(.horizontal)
+                    .padding(.horizontal, 2)
                 }
             }
-            .padding(.vertical, 10)
-            .background(Color.purple.opacity(0.05))
-            .clipShape(RoundedRectangle(cornerRadius: 12))
-            .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.purple.opacity(0.12), lineWidth: 1))
+            .padding(LTSpacing.md)
+            .ltCard(
+                color: .purple,
+                opacity: 0.06,
+                radius: LTRadius.md,
+                borderOpacity: 0.18,
+                shadowColor: .purple.opacity(0.10),
+                shadowRadius: 8
+            )
             .padding(.horizontal)
 
-            // Regular jobs
-            Text("TILLGÄNGLIGA JOBB")
-                .font(.system(size: 11, weight: .bold, design: .monospaced))
-                .foregroundColor(.white.opacity(0.4))
-                .frame(maxWidth: .infinity, alignment: .leading)
+            LTSectionTitle(
+                overline: "Tillgängliga jobb",
+                title: "\(availableJobs.count) roller upplåsta i din zon",
+                tint: .cyan
+            )
                 .padding(.horizontal)
 
             ForEach(availableJobs) { job in
@@ -451,9 +483,11 @@ struct WorkView: View {
 
     private var incomeDetailsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("INKOMSTDETALJER")
-                .font(.system(size: 11, weight: .bold, design: .monospaced))
-                .foregroundColor(.white.opacity(0.4))
+            LTSectionTitle(
+                overline: "Inkomstdetaljer",
+                title: "Vad som påverkar din nettolön",
+                tint: .white
+            )
 
             DetailRow(
                 label: "Steg idag",
@@ -502,9 +536,7 @@ struct WorkView: View {
             }
         }
         .padding()
-        .background(Color.white.opacity(0.04))
-        .clipShape(RoundedRectangle(cornerRadius: LTRadius.sm))
-        .overlay(RoundedRectangle(cornerRadius: LTRadius.sm).stroke(Color.white.opacity(0.08), lineWidth: 1))
+        .ltCard(radius: LTRadius.sm, borderOpacity: 0.14)
         .padding(.horizontal)
     }
 
@@ -512,25 +544,25 @@ struct WorkView: View {
         Button { action() } label: {
             VStack(spacing: 6) {
                 ZStack {
-                    Circle()
+                    RoundedRectangle(cornerRadius: 10)
                         .fill(Color.purple.opacity(0.18))
-                        .frame(width: 36, height: 36)
+                        .frame(width: 42, height: 42)
                         .shadow(color: .purple.opacity(0.4), radius: 5)
                     Image(systemName: icon)
-                        .font(.system(size: 14))
+                        .font(.system(size: 15, weight: .bold))
                         .foregroundColor(.purple)
                 }
                 Text(name)
-                    .font(.system(size: 8, weight: .bold, design: .monospaced))
+                    .font(.system(size: 9, weight: .bold, design: .monospaced))
                     .foregroundColor(.white.opacity(0.8))
                     .lineLimit(1)
                 Text(desc)
-                    .font(.system(size: 7, design: .monospaced))
+                    .font(.system(size: 8, design: .monospaced))
                     .foregroundColor(.white.opacity(0.3))
                     .lineLimit(1)
             }
-            .frame(width: 80)
-            .padding(.vertical, 8)
+            .frame(width: 94)
+            .padding(.vertical, 10)
             .background(Color.white.opacity(0.04))
             .clipShape(RoundedRectangle(cornerRadius: 10))
             .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.purple.opacity(0.2), lineWidth: 1))
