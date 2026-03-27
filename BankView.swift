@@ -242,12 +242,15 @@ class BankManager: ObservableObject {
         } else {
             UserDefaults.standard.removeObject(forKey: loanKey)
         }
-        saveSavings()
+        // Saving loan state must not reset savings interest timestamp.
+        saveSavings(updateTimestamp: false)
     }
 
-    private func saveSavings() {
+    private func saveSavings(updateTimestamp: Bool = true) {
         UserDefaults.standard.set(savingsBalance, forKey: savingsKey)
-        UserDefaults.standard.set(Date(), forKey: savingsDateKey)
+        if updateTimestamp {
+            UserDefaults.standard.set(Date(), forKey: savingsDateKey)
+        }
     }
 }
 

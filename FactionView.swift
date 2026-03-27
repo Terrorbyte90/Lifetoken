@@ -39,6 +39,9 @@ struct FactionView: View {
         )
         .navigationTitle("FRAKTIONER")
         .navigationBarTitleDisplayMode(.inline)
+        .onAppear {
+            manager.claimPendingPayoutsIfAny()
+        }
     }
 
     private var headerSection: some View {
