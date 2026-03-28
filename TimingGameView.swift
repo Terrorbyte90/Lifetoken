@@ -110,6 +110,14 @@ struct TimingGameView: View {
                     .tracking(4)
             }
 
+            LTInfoCallout(
+                title: "Precision",
+                message: "Tryck när nålen passerar den markerade zonen vid 12. Smalare zon ger högre svårighet men bättre belöning.",
+                icon: "scope",
+                tint: .cyan
+            )
+            .padding(.horizontal, 40)
+
             // Preview dial
             dialView(size: 220, interactive: false)
 
@@ -184,6 +192,15 @@ struct TimingGameView: View {
             .padding(.horizontal, 28)
             .padding(.top, 60)
             .padding(.bottom, 16)
+
+            LTInfoCallout(
+                title: "Timing",
+                message: "Håll rytmen mellan rundorna. Flera stabila träffar ger bättre snitt än enstaka perfekta klick.",
+                icon: "metronome.fill",
+                tint: .cyan
+            )
+            .padding(.horizontal, 24)
+            .padding(.bottom, 10)
 
             // Träfflabel — PERFEKT / BRA / NÄRA / MISS
             ZStack {
@@ -365,6 +382,14 @@ struct TimingGameView: View {
             Text("Snitt: ±\(Int(avgDev * 1000))ms")
                 .font(.system(size: 13, design: .monospaced))
                 .foregroundColor(Color(white: 0.45))
+
+            LTInfoCallout(
+                title: "Resultat",
+                message: earned > 0 ? "Utbetalningen baseras på ditt genomsnittliga avstånd från träffzonen över alla rundor." : "Snittprecisionen nådde inte lönekravet. Träna på jämn tajming i stället för snabba chansningar.",
+                icon: earned > 0 ? "waveform.path.ecg" : "xmark.circle.fill",
+                tint: earned > 0 ? .cyan : .red
+            )
+            .padding(.horizontal, 32)
 
             // Payout
             if earned > 0 {

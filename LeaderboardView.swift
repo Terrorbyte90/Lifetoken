@@ -4,6 +4,8 @@ struct LeaderboardView: View {
     @State private var entries: [LeaderboardEntry] = []
     @State private var isLoading = false
     @State private var lastUpdated: Date? = nil
+    @State private var dataSourceLabel: String = "Server"
+    @State private var loadErrorMessage: String? = nil
 
     struct LeaderboardEntry: Identifiable, Codable {
         let id: String
@@ -14,32 +16,60 @@ struct LeaderboardView: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: LTSpacing.md) {
-                if let updated = lastUpdated {
-                    Text("Uppdaterad: \(updated.formatted(.dateTime.hour().minute()))")
-                        .font(.system(size: 11))
-                        .foregroundStyle(.secondary)
-                }
+        ZStack {
+            LTScreenBackground(style: .social).ignoresSafeArea()
 
-                if isLoading {
-                    HStack {
-                        Spacer()
-                        ProgressView()
-                        Spacer()
+            ScrollView {
+                VStack(alignment: .leading, spacing: LTSpacing.md) {
+                    LTInfoCallout(
+                        title: "Zonrankning",
+                        message: "Visar topp 20 i \(GameState.shared.currentZone.name.capitalized). Källa: \(dataSourceLabel). Endast ditt saldo visas öppet.",
+                        icon: "chart.bar.fill",
+                        tint: .green
+                    )
+
+                    HStack(spacing: LTSpacing.sm) {
+                        if let updated = lastUpdated {
+                            LTStatPill(icon: "clock.fill", text: updated.formatted(.dateTime.hour().minute()), tint: .white.opacity(0.8))
+                        }
+                        LTStatPill(icon: "externaldrive.connected.to.line.below.fill", text: dataSourceLabel, tint: dataSourceLabel == "Server" ? .green : .orange)
                     }
-                    .padding(LTSpacing.xl)
-                } else if entries.isEmpty {
-                    Text("Ingen data tillgänglig.")
-                        .foregroundStyle(.secondary)
-                        .padding(LTSpacing.xl)
-                } else {
-                    ForEach(entries) { entry in
-                        leaderboardRow(entry)
+
+                    if let loadErrorMessage {
+                        LTInfoCallout(
+                            title: "Anslutning",
+                            message: loadErrorMessage,
+                            icon: "wifi.exclamationmark",
+                            tint: .orange
+                        )
+                    }
+
+                    if isLoading {
+                        VStack(spacing: LTSpacing.sm) {
+                            ForEach(0..<5, id: \.self) { _ in
+                                RoundedRectangle(cornerRadius: LTRadius.xs)
+                                    .fill(Color.white.opacity(0.05))
+                                    .frame(height: 52)
+                                    .overlay(LTShimmerView().clipShape(RoundedRectangle(cornerRadius: LTRadius.xs)))
+                            }
+                        }
+                        .padding(.top, LTSpacing.xs)
+                    } else if entries.isEmpty {
+                        LTEmptyStateCard(
+                            icon: "person.3.sequence.fill",
+                            title: "Ingen topplista tillgänglig",
+                            message: "Kunde inte hämta ranking för din zon just nu. Dra ner för att uppdatera när anslutningen är tillbaka.",
+                            tint: .white
+                        )
+                    } else {
+                        ForEach(entries) { entry in
+                            leaderboardRow(entry)
+                        }
                     }
                 }
+                .padding(LTSpacing.lg)
+                .padding(.bottom, LTSpacing.scrollBottom)
             }
-            .padding(LTSpacing.lg)
         }
         .navigationTitle("Topplista")
         .task { await fetchLeaderboard() }
@@ -74,8 +104,7 @@ struct LeaderboardView: View {
         }
         .padding(.vertical, LTSpacing.sm)
         .padding(.horizontal, LTSpacing.md)
-        .background(Color.white.opacity(0.04))
-        .clipShape(RoundedRectangle(cornerRadius: LTRadius.xs))
+        .ltCard(color: entry.rank <= 3 ? LTPalette.gold : .white, opacity: 0.05, radius: LTRadius.xs, borderOpacity: 0.16)
     }
 
     private func formatBalance(_ seconds: Double) -> String {
@@ -99,6 +128,8 @@ struct LeaderboardView: View {
                     rank: index + 1
                 )
             }
+            loadErrorMessage = nil
+            dataSourceLabel = "Server"
             lastUpdated = .now
             if let data = try? JSONEncoder().encode(entries) {
                 UserDefaults.standard.set(data, forKey: "cachedLeaderboard_\(zone)")
@@ -107,6 +138,13 @@ struct LeaderboardView: View {
             if let cached = UserDefaults.standard.data(forKey: "cachedLeaderboard_\(zone)"),
                let decoded = try? JSONDecoder().decode([LeaderboardEntry].self, from: cached) {
                 entries = decoded
+                dataSourceLabel = "Cache"
+                loadErrorMessage = "Visar senast sparad topplista eftersom servern inte svarade."
+                lastUpdated = .now
+            } else {
+                entries = []
+                dataSourceLabel = "Ingen data"
+                loadErrorMessage = "Kunde inte nå servern och ingen cache hittades."
             }
         }
     }

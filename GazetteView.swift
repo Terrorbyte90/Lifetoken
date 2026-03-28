@@ -6,51 +6,66 @@ struct GazetteView: View {
     @State private var showShareSheet = false
 
     private var todaysEvents: [GameEvent] {
-        engine.recentEvents.filter {
-            Calendar.current.isDateInToday($0.occurredAt)
-        }
+        engine.recentEvents
+            .filter { Calendar.current.isDateInToday($0.occurredAt) }
+            .sorted { $0.occurredAt > $1.occurredAt }
     }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: LTSpacing.xl) {
-                // Header
-                VStack(alignment: .leading, spacing: LTSpacing.xs) {
-                    Text("LIFETOKEN GAZETTE")
-                        .font(LTFont.displayTitle())
-                        .foregroundStyle(LTPalette.neonGreen)
-                    Text(Date.now.formatted(.dateTime.day().month(.wide).year()))
-                        .font(LTFont.body())
-                        .foregroundStyle(.secondary)
-                    Rectangle().frame(height: 1).foregroundStyle(LTPalette.neonGreen)
-                }
+        ZStack {
+            LTScreenBackground(style: .neutral).ignoresSafeArea()
 
-                if todaysEvents.isEmpty {
-                    Text("Inga händelser att rapportera idag. Klockan tickar.")
-                        .font(LTFont.body())
-                        .foregroundStyle(.secondary)
-                        .padding(.vertical, LTSpacing.xl)
-                } else {
-                    ForEach(todaysEvents, id: \.eventID) { event in
-                        GazetteArticleRow(event: event)
-                    }
-                }
-
-                // Share button
-                if let topEvent = todaysEvents.first {
-                    Button {
-                        renderAndShare(event: topEvent)
-                    } label: {
-                        Label("Dela dagens Gazette", systemImage: "square.and.arrow.up")
-                            .font(LTFont.body())
+            ScrollView {
+                VStack(alignment: .leading, spacing: LTSpacing.xl) {
+                    // Header
+                    VStack(alignment: .leading, spacing: LTSpacing.xs) {
+                        Text("LIFETOKEN GAZETTE")
+                            .font(LTFont.displayTitle())
                             .foregroundStyle(LTPalette.neonGreen)
-                            .frame(maxWidth: .infinity)
-                            .padding(LTSpacing.md)
-                            .overlay(RoundedRectangle(cornerRadius: LTRadius.sm).stroke(LTPalette.neonGreen))
+                        Text(Date.now.formatted(.dateTime.day().month(.wide).year()))
+                            .font(LTFont.body())
+                            .foregroundStyle(.secondary)
+                        Rectangle().frame(height: 1).foregroundStyle(LTPalette.neonGreen)
+                    }
+
+                    LTInfoCallout(
+                        title: "Dagens rapport",
+                        message: "Gazette visar händelser från idag i din världstid. Senaste händelser ligger högst upp.",
+                        icon: "newspaper.fill",
+                        tint: LTPalette.neonGreen
+                    )
+
+                    if todaysEvents.isEmpty {
+                        LTEmptyStateCard(
+                            icon: "clock.badge.questionmark",
+                            title: "Inga händelser ännu",
+                            message: "När spelhändelser inträffar idag visas de här med tid och zon.",
+                            tint: LTPalette.neonGreen
+                        )
+                    } else {
+                        ForEach(todaysEvents, id: \.eventID) { event in
+                            GazetteArticleRow(event: event)
+                        }
+                    }
+
+                    // Share button
+                    if let topEvent = todaysEvents.first {
+                        Button {
+                            renderAndShare(event: topEvent)
+                        } label: {
+                            Label("Dela dagens Gazette", systemImage: "square.and.arrow.up")
+                                .font(LTFont.body())
+                                .foregroundStyle(LTPalette.neonGreen)
+                                .frame(maxWidth: .infinity)
+                                .padding(LTSpacing.md)
+                                .overlay(RoundedRectangle(cornerRadius: LTRadius.sm).stroke(LTPalette.neonGreen))
+                        }
+                        .padding(.top, LTSpacing.sm)
                     }
                 }
+                .padding(LTSpacing.lg)
+                .padding(.bottom, LTSpacing.scrollBottom)
             }
-            .padding(LTSpacing.lg)
         }
         .navigationTitle("Gazette")
         .sheet(isPresented: $showShareSheet) {
@@ -81,14 +96,33 @@ struct GazetteArticleRow: View {
     let event: GameEvent
     var body: some View {
         VStack(alignment: .leading, spacing: LTSpacing.sm) {
-            Text(event.headlineTemplate.uppercased())
-                .font(.system(size: 15, weight: .black))
-                .foregroundStyle(.white)
-            Text(event.occurredAt.formatted(.dateTime.hour().minute()))
-                .font(LTFont.body())
-                .foregroundStyle(.secondary)
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: LTSpacing.xs) {
+                    Text(event.headlineTemplate.uppercased())
+                        .font(.system(size: 15, weight: .black))
+                        .foregroundStyle(.white)
+                    HStack(spacing: LTSpacing.sm) {
+                        LTStatPill(
+                            icon: "clock.fill",
+                            text: event.occurredAt.formatted(.dateTime.hour().minute()),
+                            tint: .white.opacity(0.8)
+                        )
+                        LTStatPill(
+                            icon: "location.fill",
+                            text: event.zoneID.capitalized,
+                            tint: LTPalette.neonGreen
+                        )
+                    }
+                }
+                Spacer(minLength: LTSpacing.md)
+                Text(event.occurredAt, style: .relative)
+                    .font(.system(size: 10, design: .monospaced))
+                    .foregroundStyle(.secondary)
+            }
             Rectangle().frame(height: 0.5).foregroundStyle(.secondary.opacity(0.3))
         }
+        .padding(LTSpacing.md)
+        .ltCard(color: LTPalette.neonGreen, opacity: 0.04, radius: LTRadius.sm, borderOpacity: 0.15)
     }
 }
 

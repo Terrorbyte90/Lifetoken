@@ -22,6 +22,14 @@ struct YatzyLobbyView: View {
                 header
                 VStack(spacing: 24) {
                     modeSelectorCard
+                    LTInfoCallout(
+                        title: gameMode == .vsAI ? "AI-läge" : "Online-läge",
+                        message: gameMode == .vsAI
+                            ? "AI kör högsta svårighetsnivå och spelar utan fusk."
+                            : "Online hämtar motståndare från samma zon. Om ingen är online används fallback enligt valet nedan.",
+                        icon: gameMode == .vsAI ? "cpu.fill" : "wifi",
+                        tint: gameMode == .vsAI ? .accentGreen : .cyan
+                    )
                     playerNamesCard
                     betCard
                     startButton
@@ -82,7 +90,7 @@ struct YatzyLobbyView: View {
                 modeButton(title: "Mot AI",     subtitle: "Spela mot AI", icon: "cpu",      mode: .vsAI)
                 HStack(spacing: 10) {
                     modeButton(title: "Online 1v1", subtitle: "Samma zon",   icon: "wifi",     mode: .onlineOneVsOne)
-                    modeButton(title: "Online 3P",  subtitle: "Tre spelare", icon: "person.3", mode: .onlineThreePlayer)
+                    modeButton(title: "Online 3P",  subtitle: "Beta", icon: "person.3", mode: .onlineThreePlayer)
                 }
             }
         }
@@ -138,7 +146,12 @@ struct YatzyLobbyView: View {
             case .onlineOneVsOne:
                 let opponents = zoneMembers.filter { $0.username != player1Name }
                 if opponents.isEmpty {
-                    opponentRow(name: "Online-AI", subtitle: "Inga spelare online i din zon", isOnline: false, isAI: true)
+                    LTEmptyStateCard(
+                        icon: "person.crop.circle.badge.exclamationmark",
+                        title: "Ingen online i din zon",
+                        message: "Starta ändå för att möta Online-AI, eller aktivera slumpmässig motståndare.",
+                        tint: .cyan
+                    )
                 } else {
                     onlinePlayerPickerSection(opponents: opponents)
                 }
@@ -197,6 +210,13 @@ struct YatzyLobbyView: View {
 
     private func onlinePlayerPickerSection(opponents: [ServerUser]) -> some View {
         VStack(alignment: .leading, spacing: 8) {
+            LTInfoCallout(
+                title: "Motståndare",
+                message: "Välj en specifik spelare eller låt appen välja slumpmässigt bland online-spelare i zonen.",
+                icon: "person.2.circle.fill",
+                tint: .cyan
+            )
+
             Button {
                 withAnimation(.spring(response: 0.3)) {
                     useRandomOpponent.toggle()
@@ -336,6 +356,13 @@ struct YatzyLobbyView: View {
             .padding(12)
             .background(Color.white.opacity(0.04))
             .clipShape(RoundedRectangle(cornerRadius: 10))
+
+            LTInfoCallout(
+                title: "Insatsregel",
+                message: "Insatsen låses när matchen startar. Vid seger får du din insats tillbaka plus motståndarens insats.",
+                icon: "banknote.fill",
+                tint: .goldYatzy
+            )
         }
         .padding(18)
         .background(.ultraThinMaterial)

@@ -18,6 +18,18 @@ struct YatzyGameOverView: View {
                 Spacer(minLength: 60)
                 resultHeader.padding(.bottom, 32)
                 finalScoreCard.padding(.horizontal, 20).padding(.bottom, 24)
+                LTInfoCallout(
+                    title: "Utbetalning",
+                    message: isTie
+                        ? "Oavgjort returnerar insatsen till samtliga spelare."
+                        : (winnerIndex == 0
+                            ? "Du vann matchen och tar hem motståndarnas insatser."
+                            : "Du förlorade matchen och din insats drogs vid avslut."),
+                    icon: isTie ? "equal.circle.fill" : (winnerIndex == 0 ? "trophy.fill" : "arrow.down.circle.fill"),
+                    tint: resultColor
+                )
+                .padding(.horizontal, 20)
+                .padding(.bottom, 16)
                 actionButtonsGameOver.padding(.horizontal, 20)
                 Spacer(minLength: 40)
             }
