@@ -11,11 +11,17 @@ struct ZoneLoreView: View {
 
     var body: some View {
         ZStack {
-            Color.black.ignoresSafeArea()
+            LTScreenBackground(style: .zone).ignoresSafeArea()
 
             if let lore {
                 ScrollView(showsIndicators: false) {
                     VStack(alignment: .leading, spacing: LTSpacing.lg) {
+                        LTInfoCallout(
+                            title: "Zonarkiv",
+                            message: "Här hittar du atmosfär, historik och lokala kontakter för din nuvarande zon.",
+                            icon: "books.vertical.fill",
+                            tint: .cyan
+                        )
                         ambientSection(lore)
                         npcSection(lore.zonalNPC)
                         eventsSection(lore)
@@ -26,9 +32,13 @@ struct ZoneLoreView: View {
                     .padding(.top, LTSpacing.lg)
                 }
             } else {
-                Text("Lore ej tillgänglig för denna zon.")
-                    .font(LTFont.body(14))
-                    .foregroundColor(.white.opacity(0.4))
+                LTEmptyStateCard(
+                    icon: "book.closed.fill",
+                    title: "Ingen lore tillgänglig",
+                    message: "Den här zonen saknar ännu arkivdata. Prova igen efter nästa uppdatering.",
+                    tint: .white
+                )
+                .padding(.horizontal, LTSpacing.horizontal)
             }
         }
         .navigationTitle(lore.map { "LORE: \($0.zoneID.uppercased())" } ?? "LORE")

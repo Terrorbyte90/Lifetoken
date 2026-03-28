@@ -62,6 +62,14 @@ struct LendSheetView: View {
                     }
                 }
 
+                LTInfoCallout(
+                    title: "Risk & avkastning",
+                    message: "Högre ränta kan ge bättre avkastning men låg pålitlighet ökar risken att förlora utlånad tid.",
+                    icon: "chart.line.uptrend.xyaxis",
+                    tint: npc.reliability > 0.8 ? .green : .orange
+                )
+                .padding(.horizontal, LTSpacing.horizontal)
+
                 VStack(spacing: LTSpacing.sm) {
                     HStack {
                         Text("Belopp")
@@ -239,11 +247,13 @@ struct TransferSheetView: View {
                 }
                 .padding(.horizontal, LTSpacing.horizontal)
 
-                Text("Obs: Zonens skatt (\(Int(GameState.shared.currentZone.taxRate * 100))%) appliceras.")
-                    .font(LTFont.body(11))
-                    .foregroundColor(.yellow.opacity(0.6))
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, LTSpacing.horizontal)
+                LTInfoCallout(
+                    title: "Avgifter",
+                    message: "Zonskatt på \(Int(GameState.shared.currentZone.taxRate * 100))% dras på överföringen enligt din nuvarande zonregel.",
+                    icon: "percent",
+                    tint: .yellow
+                )
+                .padding(.horizontal, LTSpacing.horizontal)
 
                 Button {
                     hapticNotif.notificationOccurred(.success)

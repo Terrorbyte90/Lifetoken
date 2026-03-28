@@ -163,6 +163,7 @@ struct MissionsView: View {
 
     private var claimedCount: Int { missionsManager.missions.filter { $0.isClaimed }.count }
     private var totalCount: Int { missionsManager.missions.count }
+    private var readyCount: Int { missionsManager.missions.filter { $0.isReady }.count }
 
     var body: some View {
         ZStack {
@@ -237,6 +238,21 @@ struct MissionsView: View {
             .padding(.horizontal, LTSpacing.horizontal)
             .opacity(headerVisible ? 1 : 0)
             .offset(y: headerVisible ? 0 : 8)
+
+            HStack(spacing: LTSpacing.sm) {
+                LTStatPill(icon: "checkmark.circle.fill", text: "\(claimedCount) klara", tint: .green)
+                LTStatPill(icon: "gift.fill", text: "\(readyCount) att hämta", tint: LTPalette.gold)
+            }
+            .padding(.top, LTSpacing.xs)
+
+            LTInfoCallout(
+                title: "Uppdragssystem",
+                message: "Filtrera per kategori och hämta belöningar direkt när ett uppdrag är redo. Redo-uppdrag sorteras överst.",
+                icon: "list.bullet.clipboard.fill",
+                tint: .cyan
+            )
+            .padding(.horizontal, LTSpacing.horizontal)
+            .padding(.top, LTSpacing.xs)
         }
         .padding(.bottom, LTSpacing.md)
     }
@@ -290,16 +306,13 @@ struct MissionsView: View {
     }
 
     private var emptyState: some View {
-        VStack(spacing: LTSpacing.lg) {
-            Image(systemName: "checkmark.seal.fill")
-                .font(.system(size: 40))
-                .foregroundColor(.white.opacity(0.12))
-            Text("Inga uppdrag i den här kategorin")
-                .font(LTFont.body(13))
-                .foregroundColor(.white.opacity(0.25))
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.top, 60)
+        LTEmptyStateCard(
+            icon: "checkmark.seal.fill",
+            title: "Inga uppdrag i vald kategori",
+            message: "Byt filter eller fortsätt spela så låses fler uppdrag upp.",
+            tint: .white
+        )
+        .padding(.top, 36)
     }
 }
 
