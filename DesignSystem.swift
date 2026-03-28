@@ -128,14 +128,16 @@ struct LTCardModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
             .background(
-                ZStack {
-                    Color.white.opacity(opacity)
-                    LinearGradient(
-                        colors: [Color.white.opacity(0.04), .clear],
-                        startPoint: .topLeading,
-                        endPoint: .center
+                RoundedRectangle(cornerRadius: radius)
+                    .fill(Color.white.opacity(opacity))
+                    .overlay(
+                        LinearGradient(
+                            colors: [Color.white.opacity(0.05), .clear, Color.black.opacity(0.08)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                        .clipShape(RoundedRectangle(cornerRadius: radius))
                     )
-                }
             )
             .clipShape(RoundedRectangle(cornerRadius: radius))
             .overlay(
@@ -155,7 +157,7 @@ struct LTAccentCardModifier: ViewModifier {
         content
             .background(
                 LinearGradient(
-                    colors: [color.opacity(0.14), color.opacity(0.04)],
+                    colors: [color.opacity(0.18), color.opacity(0.05), Color.black.opacity(0.12)],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
                 )
@@ -386,5 +388,70 @@ struct LTStatPill: View {
             Capsule()
                 .stroke(tint.opacity(0.28), lineWidth: 1)
         )
+    }
+}
+
+struct LTInfoCallout: View {
+    let title: String
+    let message: String
+    var icon: String = "info.circle.fill"
+    var tint: Color = .cyan
+
+    var bodyView: some View {
+        HStack(alignment: .top, spacing: LTSpacing.sm) {
+            Image(systemName: icon)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundColor(tint)
+                .padding(.top, 2)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title.uppercased())
+                    .font(LTFont.label(9))
+                    .foregroundColor(tint.opacity(0.85))
+                    .tracking(1.5)
+                Text(message)
+                    .font(LTFont.body(10))
+                    .foregroundColor(.white.opacity(0.65))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, LTSpacing.md)
+        .padding(.vertical, LTSpacing.sm + 1)
+        .background(tint.opacity(0.08))
+        .clipShape(RoundedRectangle(cornerRadius: LTRadius.xs))
+        .overlay(
+            RoundedRectangle(cornerRadius: LTRadius.xs)
+                .stroke(tint.opacity(0.22), lineWidth: 1)
+        )
+    }
+
+    var body: some View { bodyView }
+}
+
+struct LTEmptyStateCard: View {
+    let icon: String
+    let title: String
+    let message: String
+    var tint: Color = .white
+
+    var body: some View {
+        VStack(spacing: LTSpacing.sm) {
+            Image(systemName: icon)
+                .font(.system(size: 24, weight: .semibold))
+                .foregroundColor(tint.opacity(0.65))
+            Text(title)
+                .font(LTFont.heading(12))
+                .foregroundColor(.white.opacity(0.85))
+                .multilineTextAlignment(.center)
+            Text(message)
+                .font(LTFont.body(10))
+                .foregroundColor(.white.opacity(0.5))
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, LTSpacing.xl)
+        .padding(.horizontal, LTSpacing.lg)
+        .ltCard(color: tint, opacity: 0.05, radius: LTRadius.md, borderOpacity: 0.16)
     }
 }

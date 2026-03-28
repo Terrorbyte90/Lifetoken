@@ -189,6 +189,15 @@ struct CasinoHubView: View {
                     .padding(.horizontal, 36)
                     .padding(.bottom, 32)
 
+                LTInfoCallout(
+                    title: "Entréregel",
+                    message: "I lägre zoner krävs muta för tillgång till kasinot. När du växer i zoner får du direktaccess.",
+                    icon: "person.crop.rectangle.badge.exclamationmark",
+                    tint: .yellow
+                )
+                .padding(.horizontal, 24)
+                .padding(.bottom, 20)
+
                 // Mutningssektion
                 let bribeAmt = engine.balance * 0.05
 
@@ -395,6 +404,13 @@ struct CasinoHubView: View {
                     )
                 }
             }
+
+            LTInfoCallout(
+                title: "Kasinointel",
+                message: "Högre rykte ger bättre bemötande och kan indirekt förbättra dina val i zonens ekonomisystem.",
+                icon: "brain.head.profile",
+                tint: .mint
+            )
         }
         .padding(12)
         .background(Color.white.opacity(0.04))

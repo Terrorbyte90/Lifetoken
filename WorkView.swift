@@ -329,6 +329,13 @@ struct WorkView: View {
                 .font(LTFont.body(11))
                 .foregroundColor(.white.opacity(0.55))
                 .fixedSize(horizontal: false, vertical: true)
+
+            LTInfoCallout(
+                title: "Hur jobb funkar",
+                message: "Ett jobb löper i realtid och betalas ut automatiskt när tiden gått ut. Du kan alltid avbryta ett aktivt jobb utan extra avgift.",
+                icon: "clock.arrow.trianglehead.2.counterclockwise.rotate.90",
+                tint: .cyan
+            )
         }
         .padding(LTSpacing.lg)
         .ltCard(
@@ -404,6 +411,15 @@ struct WorkView: View {
                 }
             }
             .frame(maxWidth: .infinity, alignment: .trailing)
+
+            LTInfoCallout(
+                title: inflation.isCritical ? "Inflationen är kritisk" : "Inflation påverkar netto",
+                message: inflation.isCritical
+                    ? "Din zon äter upp mer av din tid än normalt. Prioritera återbetalningar och stabil inkomst innan du tar hög risk."
+                    : "Håll koll på daglig inflation när du planerar lån, investeringar och zonflytt.",
+                icon: inflation.isCritical ? "exclamationmark.triangle.fill" : "chart.line.uptrend.xyaxis",
+                tint: inflation.isCritical ? .red : .orange
+            )
         }
         .padding(LTSpacing.lg)
         .ltCard(
@@ -445,6 +461,13 @@ struct WorkView: View {
                     }
                     .padding(.horizontal, 2)
                 }
+
+                LTInfoCallout(
+                    title: "Snabbspel",
+                    message: "Arcade-jobb ger direkt utfall. Högre svårighet höjer både belöning och risk för böter.",
+                    icon: "gamecontroller.fill",
+                    tint: .purple
+                )
             }
             .padding(LTSpacing.md)
             .ltCard(
@@ -464,18 +487,28 @@ struct WorkView: View {
             )
                 .padding(.horizontal)
 
-            ForEach(availableJobs) { job in
-                JobCard(
-                    job: job,
-                    zone: gameState.currentZone,
-                    isDisabled: workManager.activeJob != nil,
-                    inflationMultiplier: inflation.currentMultiplier
-                ) {
-                    selectedJob = job
-                    showConfirm = true
+            if availableJobs.isEmpty {
+                LTEmptyStateCard(
+                    icon: "briefcase.fill",
+                    title: "Inga jobb i din zon ännu",
+                    message: "Öka ditt saldo och fortsätt utvecklas i zonen för att låsa upp fler roller.",
+                    tint: .cyan
+                )
+                .padding(.horizontal)
+            } else {
+                ForEach(availableJobs) { job in
+                    JobCard(
+                        job: job,
+                        zone: gameState.currentZone,
+                        isDisabled: workManager.activeJob != nil,
+                        inflationMultiplier: inflation.currentMultiplier
+                    ) {
+                        selectedJob = job
+                        showConfirm = true
+                    }
                 }
+                .padding(.horizontal)
             }
-            .padding(.horizontal)
         }
     }
 
@@ -534,6 +567,13 @@ struct WorkView: View {
                     description: "Aktuell takt — sänker köpkraften på din sparade tid"
                 )
             }
+
+            LTInfoCallout(
+                title: "Tips",
+                message: "Sikta på jämna rutiner: stabil hälsolön + låg skuldrisk slår korta toppar över tid.",
+                icon: "lightbulb.fill",
+                tint: .mint
+            )
         }
         .padding()
         .ltCard(radius: LTRadius.sm, borderOpacity: 0.14)

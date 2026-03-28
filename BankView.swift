@@ -556,6 +556,13 @@ struct BankView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 2)
 
+            LTInfoCallout(
+                title: "Lånestrategi",
+                message: "Ta bara lån för tydliga mål. Om du inte kan täcka totalen i god tid ökar risken för negativ ryktespåverkan.",
+                icon: "exclamationmark.triangle.fill",
+                tint: .orange
+            )
+
             VStack(spacing: 0) {
                 HStack {
                     Image(systemName: "building.columns.fill")
@@ -741,6 +748,13 @@ struct BankView: View {
             .padding(LTSpacing.lg)
             .ltAccentCard(color: .green)
 
+            LTInfoCallout(
+                title: "Investeringar",
+                message: "Beloppet låses under vald löptid. Håll alltid en buffert kvar för lån och dagliga utgifter.",
+                icon: "chart.pie.fill",
+                tint: .green
+            )
+
             VStack(spacing: 0) {
                 HStack {
                     Image(systemName: "plus.circle.fill")
@@ -896,6 +910,13 @@ struct BankView: View {
                     .foregroundColor(.white.opacity(0.45))
             }
 
+            LTInfoCallout(
+                title: "Sparränta",
+                message: "Sparkontot växer över tid även när du inte spelar aktivt. Små, regelbundna insättningar ger stabil effekt.",
+                icon: "leaf.fill",
+                tint: .green
+            )
+
             HStack(spacing: 8) {
                 Button {
                     _ = bankManager.depositToSavings(max(600, depositAmount))
@@ -937,6 +958,13 @@ struct BankView: View {
                 .foregroundColor(.white.opacity(0.58))
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 2)
+
+            LTInfoCallout(
+                title: "Privatlån",
+                message: "Olika långivare ger olika ränta och pålitlighet. Välj inte bara högst belopp, välj bästa riskprofil.",
+                icon: "person.2.crop.square.stack.fill",
+                tint: Color(red: 1.0, green: 0.82, blue: 0.18)
+            )
 
             // Inkomstinfo — visar basen för maxlåneberäkning
             HStack(spacing: LTSpacing.sm) {
@@ -1289,16 +1317,13 @@ struct BankView: View {
     private var historikSection: some View {
         VStack(spacing: LTSpacing.sm) {
             if transactionHistory.isEmpty {
-                VStack(spacing: LTSpacing.md) {
-                    Image(systemName: "clock.badge.xmark")
-                        .font(.system(size: 32))
-                        .foregroundColor(.white.opacity(0.15))
-                    Text("Ingen transaktionshistorik ännu.")
-                        .font(LTFont.body(12))
-                        .foregroundColor(.white.opacity(0.3))
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, LTSpacing.xxxl + LTSpacing.sm)
+                LTEmptyStateCard(
+                    icon: "clock.badge.xmark",
+                    title: "Ingen transaktionshistorik ännu",
+                    message: "När du lånar, investerar eller flyttar tid mellan konton visas allt här.",
+                    tint: .purple
+                )
+                .padding(.vertical, LTSpacing.xl)
             } else {
                 ForEach(transactionHistory) { tx in
                     HStack {

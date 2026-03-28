@@ -40,6 +40,13 @@ struct ZoneVisual: View {
             Color.black.ignoresSafeArea()
             ScrollView(showsIndicators: false) {
                 LazyVStack(spacing: 14) {
+                    LTInfoCallout(
+                        title: "Zonöversikt",
+                        message: "Uppgradering är alltid frivillig. Jämför krav, inträde och långsiktig buffert innan du flyttar.",
+                        icon: "map.fill",
+                        tint: .cyan
+                    )
+
                     ForEach(zones.indices, id: \.self) { index in
                         ZoneCardView(
                             zone: zones[index],
@@ -205,6 +212,13 @@ struct ZoneCardView: View {
 
             // Migrationsknapp (endast för nästa zon)
             if isNext {
+                LTInfoCallout(
+                    title: "Frivillig zonflytt",
+                    message: "Du uppgraderas aldrig automatiskt. Flytta först när du klarar både inträde och stabil buffert.",
+                    icon: "arrow.triangle.swap",
+                    tint: zone.color
+                )
+
                 Button {
                     showMigration = true
                 } label: {
@@ -338,6 +352,13 @@ struct MigrationConfirmView: View {
                             .font(LTFont.displayHero(28))
                             .foregroundColor(zone.color)
                             .neonGlow(zone.color, intensity: 0.4)
+
+                        LTInfoCallout(
+                            title: "Viktigt",
+                            message: "Kontrollera både upplåsningskrav, inträdesavgift och buffert innan du bekräftar flytten.",
+                            icon: "exclamationmark.shield.fill",
+                            tint: .yellow
+                        )
 
                         let unlockRequired = zone.unlockRequirementSeconds
                         let stabilityRequired = zone.entryCostSeconds + zone.fallThresholdSeconds
