@@ -64,6 +64,13 @@ class TimeEngine: ObservableObject {
     /// Prevents the next server sync from rolling back a manual balance reset
     var skipServerCorrection: Bool = false
 
+    private func setTemporaryServerCorrectionSkip(seconds: TimeInterval = 20) {
+        skipServerCorrection = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + seconds) { [weak self] in
+            self?.skipServerCorrection = false
+        }
+    }
+
     // NTP servers to query
     private let ntpServers = ["time.apple.com", "time.cloudflare.com", "pool.ntp.org"]
 
@@ -86,7 +93,7 @@ class TimeEngine: ObservableObject {
         let targetBalance: TimeInterval = 10 * 86400 // 864000 seconds
         applyBalanceState(targetBalance)
         cheatingDetected = false
-        skipServerCorrection = true
+        setTemporaryServerCorrectionSkip()
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
             Task { await ServerSync.shared.syncBalance(targetBalance) }
         }
@@ -337,9 +344,15 @@ class TimeEngine: ObservableObject {
             self.applyBalanceState(seconds)
             self.isTimedOut = false
             self.cheatingDetected = false
-            self.skipServerCorrection = true
+            self.setTemporaryServerCorrectionSkip()
         }
         Task { await ServerSync.shared.syncBalance(seconds) }
+    }
+
+    func clearServerCorrectionSkip() {
+        withMainThread {
+            self.skipServerCorrection = false
+        }
     }
 
     // MARK: - Formatting

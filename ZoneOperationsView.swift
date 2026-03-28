@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ZoneOperationsView: View {
     @ObservedObject private var gameState = GameState.shared
+    @ObservedObject private var zoneManager = ZoneManager.shared
     @ObservedObject private var reputation = ZoneReputationManager.shared
     @ObservedObject private var governance = GovernanceManager.shared
     @ObservedObject private var garden = GardenManager.shared
@@ -26,6 +27,7 @@ struct ZoneOperationsView: View {
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 14) {
                         headerCard
+                        upgradeStatusCard
                         zoneActionsCard
                         governanceCard
                         gardenCard
@@ -85,6 +87,44 @@ struct ZoneOperationsView: View {
         }
         .padding(14)
         .ltAccentCard(color: gameState.currentZone.color)
+    }
+
+    private var upgradeStatusCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            LTSectionTitle(overline: "Zonstatus", title: "Uppgradering är alltid frivillig", tint: .blue)
+
+            if let next = zoneManager.availableUpgrade {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Nästa zon är upplåst: \(next.name)")
+                        .font(LTFont.heading(12))
+                        .foregroundColor(.white)
+                    Text("Du väljer själv när du uppgraderar. Gå till Zonkarta för att läsa krav, kostnad och effekter innan flytt.")
+                        .font(LTFont.body(10))
+                        .foregroundColor(.white.opacity(0.62))
+                    HStack(spacing: 8) {
+                        LTStatPill(
+                            icon: "lock.open.fill",
+                            text: "Upplåst vid \(TimeEngine.shortFormatted(next.unlockRequirementSeconds))",
+                            tint: .green
+                        )
+                        LTStatPill(
+                            icon: "door.left.hand.open",
+                            text: "Inträde \(TimeEngine.shortFormatted(next.entryCostSeconds))",
+                            tint: .yellow
+                        )
+                    }
+                }
+                .padding(10)
+                .background(Color.blue.opacity(0.10))
+                .clipShape(RoundedRectangle(cornerRadius: 9))
+            } else {
+                Text("Din nästa zon låses upp när ditt saldo når rätt nivå. Ingen automatisk uppgradering sker.")
+                    .font(LTFont.body(10))
+                    .foregroundColor(.white.opacity(0.58))
+            }
+        }
+        .padding(14)
+        .ltCard(color: .blue, opacity: 0.06, radius: LTRadius.md, borderOpacity: 0.16)
     }
 
     private var zoneActionsCard: some View {

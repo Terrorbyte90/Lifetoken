@@ -3,6 +3,7 @@ import SwiftUI
 struct FactionView: View {
     @StateObject private var manager = FactionManager.shared
     @ObservedObject private var server = ServerSync.shared
+    @ObservedObject private var engine = TimeEngine.shared
 
     @State private var newFactionName = ""
     @State private var distributeTarget = ""
@@ -41,6 +42,10 @@ struct FactionView: View {
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             manager.claimPendingPayoutsIfAny()
+            contributeAmount = min(contributeAmount, max(600, min(21600, engine.balance)))
+            if let faction = manager.currentFaction {
+                distributeAmount = min(distributeAmount, max(600, min(21600, Double(faction.treasurySeconds))))
+            }
         }
     }
 
@@ -49,6 +54,12 @@ struct FactionView: View {
             Text("Hierarki: Leader / Officer / Member")
                 .font(LTFont.body(10))
                 .foregroundColor(.white.opacity(0.55))
+            Text("Leader + Officer kan godkänna ansökningar och dela ut från fraktionsbanken.")
+                .font(LTFont.body(10))
+                .foregroundColor(.white.opacity(0.45))
+            Text(server.isOnline ? "Server: ansluten" : "Server: offline (lokal fallback aktiv)")
+                .font(LTFont.caption(9))
+                .foregroundColor(server.isOnline ? .green : .orange)
             if !manager.feedbackMessage.isEmpty {
                 Text(manager.feedbackMessage)
                     .font(LTFont.caption(9))
@@ -65,6 +76,9 @@ struct FactionView: View {
                 .font(LTFont.label(10))
                 .foregroundColor(.white.opacity(0.35))
                 .tracking(2)
+            Text("Namn: 3-28 tecken.")
+                .font(LTFont.caption(9))
+                .foregroundColor(.white.opacity(0.5))
             TextField("Namn", text: $newFactionName)
                 .textInputAutocapitalization(.words)
                 .padding(10)
@@ -154,7 +168,12 @@ struct FactionView: View {
     }
 
     private func factionBankCard(_ faction: Faction) -> some View {
-        VStack(alignment: .leading, spacing: 9) {
+        let contributeMax = max(600, min(21600, engine.balance))
+        let distributeMax = max(600, min(21600, Double(faction.treasurySeconds)))
+        let canContribute = engine.balance >= 600
+        let canDistribute = manager.canDistributeFunds && faction.treasurySeconds >= 600
+
+        return VStack(alignment: .leading, spacing: 9) {
             Text("FRAKTIONSBANK")
                 .font(LTFont.label(10))
                 .foregroundColor(.white.opacity(0.35))
@@ -162,23 +181,27 @@ struct FactionView: View {
             Text("Saldo: \(TimeEngine.shortFormatted(Double(faction.treasurySeconds)))")
                 .font(LTFont.value(20))
                 .foregroundColor(.yellow)
+            Text("Alla medlemmar kan sätta in tid. Endast Leader/Officer kan dela ut tid till medlemmar.")
+                .font(LTFont.body(10))
+                .foregroundColor(.white.opacity(0.52))
 
             HStack {
                 Text("Insättning: \(TimeEngine.shortFormatted(contributeAmount))")
                     .font(LTFont.body(10))
                 Spacer()
             }
-            Slider(value: $contributeAmount, in: 600...21600, step: 600)
+            Slider(value: $contributeAmount, in: 600...contributeMax, step: 600)
                 .tint(.green)
             Button("Sätt in tid i fraktionsbanken") {
-                manager.contribute(seconds: Int(contributeAmount), to: faction.id)
+                manager.contribute(seconds: Int(min(contributeAmount, engine.balance)), to: faction.id)
             }
             .font(LTFont.body(10))
-            .foregroundColor(.black)
+            .foregroundColor(canContribute ? .black : .white.opacity(0.4))
             .padding(.horizontal, 10)
             .padding(.vertical, 8)
-            .background(.green)
+            .background(canContribute ? .green : Color.white.opacity(0.08))
             .clipShape(RoundedRectangle(cornerRadius: 8))
+            .disabled(!canContribute)
 
             if manager.canDistributeFunds {
                 Divider().background(Color.white.opacity(0.1))
@@ -195,18 +218,19 @@ struct FactionView: View {
                         .font(LTFont.body(10))
                     Spacer()
                 }
-                Slider(value: $distributeAmount, in: 600...21600, step: 600)
+                Slider(value: $distributeAmount, in: 600...distributeMax, step: 600)
                     .tint(.orange)
                 Button("Dela ut tid") {
-                    manager.distribute(seconds: Int(distributeAmount), to: distributeTarget)
+                    manager.distribute(seconds: Int(min(distributeAmount, Double(faction.treasurySeconds))), to: distributeTarget)
                     distributeTarget = ""
                 }
                 .font(LTFont.body(10))
-                .foregroundColor(.black)
+                .foregroundColor(canDistribute ? .black : .white.opacity(0.4))
                 .padding(.horizontal, 10)
                 .padding(.vertical, 8)
-                .background(.orange)
+                .background(canDistribute ? .orange : Color.white.opacity(0.08))
                 .clipShape(RoundedRectangle(cornerRadius: 8))
+                .disabled(!canDistribute)
             }
         }
         .padding(12)

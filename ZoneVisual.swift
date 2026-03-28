@@ -182,23 +182,23 @@ struct ZoneCardView: View {
                 )
 
                 if isNext {
-                    // Visa inträde och skatt för nästa zon
+                    // Visa upplåsningskrav och inträde för nästa zon
                     statCell(
-                        icon: "arrow.right.circle",
-                        label: "INTRÄDE",
-                        value: TimeEngine.shortFormatted(zone.entryCostSeconds),
+                        icon: "lock.open.fill",
+                        label: "UPPLÅSNING",
+                        value: TimeEngine.shortFormatted(zone.unlockRequirementSeconds),
                         color: zone.color
                     )
                     statCell(
-                        icon: "percent",
-                        label: "SKATT",
-                        value: "\(Int(zone.taxRate * 100))%",
-                        color: .orange
+                        icon: "door.left.hand.open",
+                        label: "INTRÄDE",
+                        value: TimeEngine.shortFormatted(zone.entryCostSeconds),
+                        color: .yellow
                     )
                 } else if !isRevealed {
                     // Låst — dolda värden
+                    lockedStatCell(icon: "lock.fill", label: "UPPLÅSNING")
                     lockedStatCell(icon: "lock.fill", label: "INTRÄDE")
-                    lockedStatCell(icon: "lock.fill", label: "SKATT")
                 }
                 // Passerade och nuvarande zon: inga intradeskostnader visas
             }
@@ -211,7 +211,7 @@ struct ZoneCardView: View {
                     HStack(spacing: LTSpacing.sm) {
                         Image(systemName: "arrow.right.circle.fill")
                             .font(.system(size: 13))
-                        Text("TA DIG HIT — \(TimeEngine.shortFormatted(zone.entryCostSeconds))")
+                        Text("FRIVILLIG UPPGRADERING")
                             .font(LTFont.label(11))
                     }
                     .foregroundColor(zone.color)
@@ -321,7 +321,7 @@ struct MigrationConfirmView: View {
                     .buttonStyle(LTPressEffect())
                     .accessibilityLabel("Stäng migreringsvy")
                     Spacer()
-                    Text("FLYTTA HIT")
+                    Text("FRIVILLIG UPPGRADERING")
                         .font(LTFont.heading(16))
                         .foregroundColor(.white)
                     Spacer()
@@ -339,20 +339,25 @@ struct MigrationConfirmView: View {
                             .foregroundColor(zone.color)
                             .neonGlow(zone.color, intensity: 0.4)
 
-                        let minRequired = zone.entryCostSeconds + zone.fallThresholdSeconds
-                        let canAfford   = engine.balance >= minRequired
+                        let unlockRequired = zone.unlockRequirementSeconds
+                        let stabilityRequired = zone.entryCostSeconds + zone.fallThresholdSeconds
+                        let minRequired = max(unlockRequired, stabilityRequired)
+                        let hasUnlock = engine.balance >= unlockRequired
+                        let hasStability = engine.balance >= stabilityRequired
+                        let canAfford = hasUnlock && hasStability
 
                         // Kostnader
                         VStack(alignment: .leading, spacing: LTSpacing.md) {
-                            Text("KOSTNADER")
+                            Text("KRAV")
                                 .font(LTFont.label(9))
                                 .foregroundColor(.white.opacity(0.3))
                                 .tracking(3)
+                            migrationRow(label: "Upplåsning kräver", value: TimeEngine.shortFormatted(unlockRequired), color: hasUnlock ? .green : .red)
                             migrationRow(label: "Inträdesavgift", value: TimeEngine.shortFormatted(zone.entryCostSeconds), color: .orange)
                             migrationRow(label: "Buffert krävs",  value: TimeEngine.shortFormatted(zone.fallThresholdSeconds), color: .yellow)
                             Divider().background(Color.white.opacity(0.1))
-                            migrationRow(label: "Totalt behövs", value: TimeEngine.shortFormatted(minRequired), color: canAfford ? .green : .red)
-                            migrationRow(label: "Ditt saldo",    value: TimeEngine.shortFormatted(engine.balance), color: canAfford ? .green : .red)
+                            migrationRow(label: "Minst behöver du", value: TimeEngine.shortFormatted(minRequired), color: canAfford ? .green : .red)
+                            migrationRow(label: "Ditt saldo",       value: TimeEngine.shortFormatted(engine.balance), color: canAfford ? .green : .red)
                             Divider().background(Color.white.opacity(0.1))
                             migrationRow(label: "Ny skattesats",    value: "\(Int(zone.taxRate * 100))%", color: .yellow)
                             migrationRow(label: "Ny inflation/dag", value: String(format: "%.1f%%", zone.inflationRatePerDay * 100), color: .orange)
@@ -408,6 +413,12 @@ struct MigrationConfirmView: View {
                             .multilineTextAlignment(.center)
                             .padding(.horizontal, LTSpacing.xxl)
 
+                        Text("Uppgradering sker aldrig automatiskt. Du väljer själv när du flyttar zon.")
+                            .font(LTFont.body(11))
+                            .foregroundColor(.white.opacity(0.65))
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, LTSpacing.horizontal)
+
                         // Migreringsknapp
                         Button {
                             hapticNotif.notificationOccurred(canAfford ? .success : .error)
@@ -423,7 +434,7 @@ struct MigrationConfirmView: View {
                                 }
                             }
                         } label: {
-                            Text(canAfford ? "FLY TILL \(zone.name.uppercased())" : "OTILLRÄCKLIGA MEDEL")
+                            Text(canAfford ? "UPPGRADERA TILL \(zone.name.uppercased())" : "KRAV EJ UPPFYLLDA")
                                 .font(LTFont.heading(15))
                                 .foregroundColor(canAfford ? .black : .white.opacity(0.35))
                                 .frame(maxWidth: .infinity)
@@ -435,8 +446,8 @@ struct MigrationConfirmView: View {
                         .buttonStyle(LTPressEffect())
                         .disabled(!canAfford)
                         .padding(.horizontal, LTSpacing.horizontal)
-                        .accessibilityLabel(canAfford ? "Fly till \(zone.name)" : "Otillräckliga medel")
-                        .accessibilityHint(canAfford ? "Debiterar inträdesavgift" : "Du behöver \(TimeEngine.shortFormatted(minRequired)) totalt")
+                        .accessibilityLabel(canAfford ? "Uppgradera till \(zone.name)" : "Krav ej uppfyllda")
+                        .accessibilityHint(canAfford ? "Debiterar inträdesavgift och flyttar zon" : "Du behöver minst \(TimeEngine.shortFormatted(minRequired))")
 
                         Spacer(minLength: LTSpacing.xxxl + LTSpacing.xl)
                     }
