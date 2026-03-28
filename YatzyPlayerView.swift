@@ -82,6 +82,14 @@ struct MultiDieView: View {
                 .frame(width: size, height: size)
 
             DieDotView(value: max(1, min(6, value)), size: size)
+
+            if held {
+                Image(systemName: "lock.fill")
+                    .font(.system(size: size * 0.18, weight: .bold))
+                    .foregroundColor(Color.accentGreen.opacity(0.95))
+                    .padding(size * 0.10)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+            }
         }
         .rotationEffect(.degrees(rotationAngle))
         .scaleEffect(held ? 1.08 : scale)
@@ -98,6 +106,8 @@ struct MultiDieView: View {
                 }
             }
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Tärning \(value), \(held ? "hållen" : "fri").")
     }
 
     private var heldGradient: [Color] {

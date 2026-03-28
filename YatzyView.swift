@@ -384,6 +384,14 @@ struct YatzyView: View {
                         .foregroundColor(LTPalette.danger.opacity(0.7))
                 }
 
+                LTInfoCallout(
+                    title: "Spelupplägg",
+                    message: "Du spelar 16 rundor mot en svår AI. Bygg poäng i övre sektionen tidigt för att säkra +50 bonus.",
+                    icon: "brain.head.profile",
+                    tint: .cyan
+                )
+                .padding(.horizontal, LTSpacing.horizontal)
+
                 // Quick-pick bets
                 HStack(spacing: LTSpacing.sm) {
                     ForEach([900.0, 1800.0, 3600.0, 7200.0], id: \.self) { v in
@@ -463,6 +471,16 @@ struct YatzyView: View {
                     Spacer()
                     scorePill(label: "AI", score: aiTotalScore, upper: aiUpperScore, color: .red)
                 }
+                .padding(.horizontal, LTSpacing.horizontal)
+
+                LTInfoCallout(
+                    title: isPlayerTurn ? "Din tur" : "AI tur",
+                    message: isPlayerTurn
+                        ? "Kasta upp till tre gånger och håll tärningar mellan kasten för bättre kombinationer."
+                        : "AI analyserar sannolikheter och väljer kategori automatiskt när turen är klar.",
+                    icon: isPlayerTurn ? "hand.tap.fill" : "cpu.fill",
+                    tint: isPlayerTurn ? .green : .red
+                )
                 .padding(.horizontal, LTSpacing.horizontal)
 
                 // Bonusindikator

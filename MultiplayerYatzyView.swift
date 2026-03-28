@@ -124,6 +124,16 @@ struct MultiplayerYatzyView: View {
                 .offset(y: engine.handoffReady ? 0 : 20)
                 .opacity(engine.handoffReady ? 1 : 0)
                 .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.1), value: engine.handoffReady)
+
+                LTInfoCallout(
+                    title: isAI ? "AI tur" : "Spelarbyte",
+                    message: isAI
+                        ? "AI spelar automatiskt med högsta svårighetsnivå."
+                        : "Lämna över enheten till nästa spelare innan rundan fortsätter.",
+                    icon: isAI ? "cpu.fill" : "person.2.fill",
+                    tint: color
+                )
+                .padding(.horizontal, 28)
             }
             Spacer()
             Button {
