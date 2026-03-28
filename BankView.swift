@@ -1020,6 +1020,8 @@ struct BankView: View {
         let maxAmount   = dailyIncome * lender.maxMultiplier
         let reliPct     = Int(lender.reliability * 100)
         let ratePct     = lender.dailyRate * 100
+        let meetsMinimum = maxAmount >= 3600
+        let canOpenApplication = bankManager.activeLoan == nil && meetsMinimum
 
         return VStack(spacing: 0) {
             // Kortets övre del — personinfo och badges
@@ -1099,6 +1101,15 @@ struct BankView: View {
                     )
                 }
                 .padding(.bottom, LTSpacing.sm)
+
+                if !meetsMinimum {
+                    Text("Kräver högre hälsolön för minsta ansökan på 1h.")
+                        .font(LTFont.body(9))
+                        .foregroundColor(.orange.opacity(0.85))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, LTSpacing.md)
+                        .padding(.bottom, LTSpacing.sm)
+                }
             }
 
             // Ansökningsknapp
@@ -1111,23 +1122,21 @@ struct BankView: View {
                 HStack(spacing: LTSpacing.xs + 2) {
                     Image(systemName: "doc.text.fill")
                         .font(.system(size: 11))
-                    Text(bankManager.activeLoan != nil ? "LÅN AKTIVT" : "ANSÖK OM LÅN")
+                    Text(bankManager.activeLoan != nil ? "LÅN AKTIVT" : (meetsMinimum ? "ANSÖK OM LÅN" : "HÄLSOLÖN FÖR LÅG"))
                         .font(LTFont.heading(12))
                         .tracking(1)
                 }
-                .foregroundColor(bankManager.activeLoan != nil ? .white.opacity(0.3) : .black)
+                .foregroundColor(canOpenApplication ? .black : .white.opacity(0.3))
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 13)
                 .background(
-                    bankManager.activeLoan != nil
-                        ? Color.white.opacity(0.07)
-                        : lender.accentColor
+                    canOpenApplication ? lender.accentColor : Color.white.opacity(0.07)
                 )
             }
-            .disabled(bankManager.activeLoan != nil)
+            .disabled(!canOpenApplication)
             .buttonStyle(LTPressEffect())
             .accessibilityLabel("Ansök om lån från \(lender.name)")
-            .accessibilityHint(bankManager.activeLoan != nil ? "Du har redan ett aktivt lån" : "Öppnar låneformulär")
+            .accessibilityHint(canOpenApplication ? "Öppnar låneformulär" : "Kräver högre hälsolön eller att aktivt lån avslutas")
         }
         .background(
             RoundedRectangle(cornerRadius: LTRadius.lg)
@@ -1183,6 +1192,7 @@ struct BankView: View {
         let dailyIncome = incomeMgr.projectedDailyIncome
         let maxAmount   = dailyIncome * lender.maxMultiplier
         let sliderMax   = max(3601, maxAmount)
+        let canSubmit = maxAmount >= 3600 && bankManager.activeLoan == nil
 
         return NavigationStack {
             ZStack {
@@ -1220,6 +1230,15 @@ struct BankView: View {
                                 )
                         )
 
+                        if !canSubmit {
+                            LTInfoCallout(
+                                title: "Lånet är låst",
+                                message: "Din maxgräns är under 1h just nu. Öka hälsolönen och försök igen.",
+                                icon: "lock.fill",
+                                tint: .orange
+                            )
+                        }
+
                         // Lånebeloppsväljare
                         VStack(spacing: LTSpacing.sm) {
                             HStack {
@@ -1240,6 +1259,7 @@ struct BankView: View {
                                 step: 3600
                             )
                             .tint(lender.accentColor)
+                            .disabled(!canSubmit)
                         }
                         .padding(LTSpacing.lg)
                         .ltCard(radius: LTRadius.md)
@@ -1283,15 +1303,16 @@ struct BankView: View {
                             showPrivateLoanSheet = false
                             showPrivateLoanResult = true
                         } label: {
-                            Text("SKICKA ANSÖKAN")
+                            Text(canSubmit ? "SKICKA ANSÖKAN" : "LÅS UPP KRAV FÖRST")
                                 .font(LTFont.heading(14))
-                                .foregroundColor(.black)
+                                .foregroundColor(canSubmit ? .black : .white.opacity(0.4))
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 15)
-                                .background(lender.accentColor)
+                                .background(canSubmit ? lender.accentColor : Color.white.opacity(0.08))
                                 .clipShape(RoundedRectangle(cornerRadius: LTRadius.sm))
                         }
                         .buttonStyle(LTPressEffect())
+                        .disabled(!canSubmit)
                         .accessibilityLabel("Skicka låneansökan till \(lender.name)")
                     }
                     .padding(.horizontal, LTSpacing.horizontal)

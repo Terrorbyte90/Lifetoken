@@ -180,7 +180,8 @@ struct FactionView: View {
         let contributeMax = max(600, min(21600, engine.balance))
         let distributeMax = max(600, min(21600, Double(faction.treasurySeconds)))
         let canContribute = engine.balance >= 600
-        let canDistribute = manager.canDistributeFunds && faction.treasurySeconds >= 600
+        let hasDistributionTarget = !distributeTarget.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        let canDistribute = manager.canDistributeFunds && faction.treasurySeconds >= 600 && hasDistributionTarget
 
         return VStack(alignment: .leading, spacing: 9) {
             Text("FRAKTIONSBANK")
@@ -228,6 +229,11 @@ struct FactionView: View {
                     .padding(9)
                     .background(Color.white.opacity(0.07))
                     .clipShape(RoundedRectangle(cornerRadius: 8))
+                if !hasDistributionTarget {
+                    Text("Ange mottagarens användarnamn för att låsa upp utdelning.")
+                        .font(LTFont.caption(9))
+                        .foregroundColor(.white.opacity(0.45))
+                }
                 HStack {
                     Text("Belopp: \(TimeEngine.shortFormatted(distributeAmount))")
                         .font(LTFont.body(10))
@@ -236,7 +242,8 @@ struct FactionView: View {
                 Slider(value: $distributeAmount, in: 600...distributeMax, step: 600)
                     .tint(.orange)
                 Button("Dela ut tid") {
-                    manager.distribute(seconds: Int(min(distributeAmount, Double(faction.treasurySeconds))), to: distributeTarget)
+                    let target = distributeTarget.trimmingCharacters(in: .whitespacesAndNewlines)
+                    manager.distribute(seconds: Int(min(distributeAmount, Double(faction.treasurySeconds))), to: target)
                     distributeTarget = ""
                 }
                 .font(LTFont.body(10))

@@ -134,7 +134,11 @@ class NightMarketManager: ObservableObject {
         var cal = Calendar(identifier: .gregorian)
         cal.timeZone = Self.stockholmTZ
         let hour = cal.component(.hour, from: Date())
+        let wasOpen = isOpen
         isOpen = hour < 5
+        if !wasOpen && isOpen && !offers.isEmpty {
+            generateNightOffers()
+        }
     }
 
     private func startCheckTimer() {
@@ -299,6 +303,19 @@ class NightMarketManager: ObservableObject {
         comps.hour = 0; comps.minute = 0; comps.second = 0
         let nextMidnight = cal.date(from: comps) ?? now
         return nextMidnight.timeIntervalSince(now)
+    }
+
+    var secondsUntilClose: TimeInterval {
+        guard isOpen else { return 0 }
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = Self.stockholmTZ
+        let now = Date()
+        var comps = cal.dateComponents([.year, .month, .day], from: now)
+        comps.hour = 5
+        comps.minute = 0
+        comps.second = 0
+        let closeDate = cal.date(from: comps) ?? now
+        return max(0, closeDate.timeIntervalSince(now))
     }
 }
 
@@ -526,6 +543,16 @@ struct NightMarketView: View {
                     .tracking(1)
                 Spacer()
             }
+
+            let closeSecs = Int(max(0, market.secondsUntilClose))
+            let closeH = closeSecs / 3600
+            let closeM = (closeSecs % 3600) / 60
+            let closeS = closeSecs % 60
+            Text(String(format: "Stänger om %02d:%02d:%02d", closeH, closeM, closeS))
+                .font(LTFont.caption(8))
+                .foregroundColor(.white.opacity(0.6))
+                .contentTransition(.numericText())
+                .animation(LTAnimation.fadeFast, value: closeS)
 
             HStack(spacing: 10) {
                 Text("Rykte \(market.currentZoneReputation)/50")

@@ -260,7 +260,6 @@ struct WorkView: View {
                 }
             }
         }
-        .onDisappear { tickTimer.upstream.connect().cancel() }
         .fullScreenCover(isPresented: $showPipe)   { PipeGameView(difficulty: 0) }
         .fullScreenCover(isPresented: $showSort)   { SortingGameView(difficulty: 0) }
         .fullScreenCover(isPresented: $showBomb)   { BombDefuseView(difficulty: 0) }
@@ -486,6 +485,16 @@ struct WorkView: View {
                 tint: .cyan
             )
                 .padding(.horizontal)
+
+            LTInfoCallout(
+                title: "Jobbflöde",
+                message: workManager.activeJob == nil
+                    ? "Du kan ha ett långtidsjobb aktivt åt gången. Starta jobb och låt det löpa i bakgrunden."
+                    : "Du har redan ett aktivt långtidsjobb. Slutför eller avbryt innan du startar ett nytt.",
+                icon: "briefcase.fill",
+                tint: .cyan
+            )
+            .padding(.horizontal)
 
             if availableJobs.isEmpty {
                 LTEmptyStateCard(
