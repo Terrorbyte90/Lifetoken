@@ -46,7 +46,7 @@ struct ZoneProfile: Equatable {
         workMultiplier: 1.0,
         drainRate: 1.0,
         inflationRatePerDay: 0.006,
-        description: "Du börjar i ruinerna.",
+        description: "Startzonen med låg kostnad men minimala bonusar.",
         index: 0
     )
 
@@ -70,7 +70,7 @@ struct ZoneProfile: Equatable {
         workMultiplier: 1.3,
         drainRate: 1.0,
         inflationRatePerDay: 0.008,
-        description: "Knappt uppåt.",
+        description: "Första steget upp med små passiva bonusar och låg inträdeskostnad.",
         index: 1
     )
 
@@ -94,7 +94,7 @@ struct ZoneProfile: Equatable {
         workMultiplier: 1.6,
         drainRate: 1.0,
         inflationRatePerDay: 0.010,
-        description: "Grå, tung, oförlåtande.",
+        description: "Högre arbetseffekt och första boost-slot, men hårdare ekonomi.",
         index: 2
     )
 
@@ -118,7 +118,7 @@ struct ZoneProfile: Equatable {
         workMultiplier: 2.0,
         drainRate: 1.0,
         inflationRatePerDay: 0.012,
-        description: "Ser inte vart du är på väg.",
+        description: "Mer passiv tid och bättre lön, men svårare att hålla balansen.",
         index: 3
     )
 
@@ -142,7 +142,7 @@ struct ZoneProfile: Equatable {
         workMultiplier: 2.5,
         drainRate: 1.0,
         inflationRatePerDay: 0.014,
-        description: "Ljuset skymtar.",
+        description: "Mellanzon med tydligt bättre intäkter men ökande dagliga kostnader.",
         index: 4
     )
 
@@ -166,7 +166,7 @@ struct ZoneProfile: Equatable {
         workMultiplier: 3.0,
         drainRate: 1.0,
         inflationRatePerDay: 0.017,
-        description: "Varken här eller där.",
+        description: "Ger app-rabatt och bättre boosters. Första riktiga säkerhetszonen.",
         index: 5
     )
 
@@ -190,7 +190,7 @@ struct ZoneProfile: Equatable {
         workMultiplier: 3.8,
         drainRate: 1.0,
         inflationRatePerDay: 0.020,
-        description: "De flesta fastnar här.",
+        description: "Många fastnar här: stabil bonusnivå men tuff progression.",
         index: 6
     )
 
@@ -214,7 +214,7 @@ struct ZoneProfile: Equatable {
         workMultiplier: 4.8,
         drainRate: 1.0,
         inflationRatePerDay: 0.024,
-        description: "Du rör dig äntligen.",
+        description: "Starkare multipliers och bättre passiv tid inför sena spelet.",
         index: 7
     )
 
@@ -238,7 +238,7 @@ struct ZoneProfile: Equatable {
         workMultiplier: 6.0,
         drainRate: 1.0,
         inflationRatePerDay: 0.029,
-        description: "Kasinodörren öppnas.",
+        description: "Här låser du upp kasinot och fler skyddssystem.",
         index: 8
     )
 
@@ -262,7 +262,7 @@ struct ZoneProfile: Equatable {
         workMultiplier: 7.5,
         drainRate: 1.0,
         inflationRatePerDay: 0.035,
-        description: "Välkommen till eliten.",
+        description: "Elitnivå med hög avkastning, men skatt och kostnader ökar snabbt.",
         index: 9
     )
 
@@ -286,7 +286,7 @@ struct ZoneProfile: Equatable {
         workMultiplier: 9.0,
         drainRate: 1.0,
         inflationRatePerDay: 0.040,
-        description: "Du ser ner på andra nu.",
+        description: "Avancerad zon med starka bonusar för aktiva spelare.",
         index: 10
     )
 
@@ -310,7 +310,7 @@ struct ZoneProfile: Equatable {
         workMultiplier: 11.0,
         drainRate: 1.0,
         inflationRatePerDay: 0.009,
-        description: "De rika gömmer sig här.",
+        description: "Mycket hög inträdeskostnad men kraftfulla skydd och robust ekonomi.",
         index: 11
     )
 
@@ -334,7 +334,7 @@ struct ZoneProfile: Equatable {
         workMultiplier: 13.0,
         drainRate: 1.0,
         inflationRatePerDay: 0.010,
-        description: "Nästan ouppnåeligt.",
+        description: "Nästan slutspel: mycket hög avkastning och hög risk.",
         index: 12
     )
 
@@ -358,7 +358,7 @@ struct ZoneProfile: Equatable {
         workMultiplier: 16.0,
         drainRate: 1.0,
         inflationRatePerDay: 0.011,
-        description: "Ingen når hit utan att offra allt.",
+        description: "Slutzonen med maximal bonus, maximal kostnad och hårdaste kraven.",
         index: 13
     )
 

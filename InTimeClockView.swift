@@ -15,9 +15,16 @@ struct InTimeClockView: View {
     // MARK: Adaptiv neon-färg
     private var displayColor: Color {
         if balance <= 0    { return LTPalette.danger }
-        if balance < 3600  { return LTPalette.danger }
-        if balance < 21600 { return LTPalette.warning }
+        if balance < 7200  { return LTPalette.danger }
+        if balance < 43200 { return LTPalette.warning }
         return LTPalette.neonGreen
+    }
+
+    private var statusText: String {
+        if balance <= 0 { return "Slut på tid" }
+        if balance < 7200 { return "Kritiskt läge" }
+        if balance < 43200 { return "Varning" }
+        return "Stabil balans"
     }
 
     // MARK: Tidsdekomposition
@@ -58,6 +65,8 @@ struct InTimeClockView: View {
                 withAnimation(.easeInOut(duration: 0.15)) { isPulsing = false }
             }
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Tid kvar: \(TimeEngine.shortFormatted(max(0, balance))). Status: \(statusText).")
     }
 
     // MARK: - Siffercell med neon-glow
