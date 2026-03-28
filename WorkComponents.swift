@@ -223,6 +223,13 @@ struct ActiveJobCard: View {
                             .font(.system(size: 10, design: .monospaced))
                             .foregroundColor(.white.opacity(0.35))
                     }
+
+                    LTInfoCallout(
+                        title: "Pågående jobb",
+                        message: "Du kan låta jobbet ticka i bakgrunden. Avbryt bara om planen ändrats, annars tappar du möjlig intäkt.",
+                        icon: "timer",
+                        tint: .green
+                    )
                 }
             }
             .padding(18)
@@ -305,6 +312,14 @@ struct JobConfirmSheet: View {
             .padding(14)
             .background(Color.white.opacity(0.05))
             .clipShape(RoundedRectangle(cornerRadius: 12))
+            .padding(.horizontal, 24)
+
+            LTInfoCallout(
+                title: "Bekräfta uppdrag",
+                message: "Nettolön är efter zonskatt. Hög risk kan ge negativa händelser, så välj jobb efter din nuvarande buffert.",
+                icon: "info.circle.fill",
+                tint: job.riskPercentage > 0.15 ? .orange : .green
+            )
             .padding(.horizontal, 24)
 
             HStack(spacing: LTSpacing.md) {

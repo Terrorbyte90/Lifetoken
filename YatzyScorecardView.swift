@@ -13,6 +13,11 @@ struct YatzyScorecardView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            scorecardGuide
+                .padding(.horizontal, 10)
+                .padding(.top, 10)
+                .padding(.bottom, 6)
+
             // Header row
             headerRow
 
@@ -52,6 +57,17 @@ struct YatzyScorecardView: View {
     }
 
     // MARK: - Header
+
+    private var scorecardGuide: some View {
+        LTInfoCallout(
+            title: isCurrentPlayerAI ? "AI beräknar" : "Välj kategori",
+            message: isCurrentPlayerAI
+                ? "AI väljer automatiskt bästa tillgängliga kategori för sin tur."
+                : "Gröna värden visar möjlig poäng med nuvarande tärningar. Tryck på en rad för att låsa poängen.",
+            icon: isCurrentPlayerAI ? "cpu.fill" : "tablecells.fill",
+            tint: isCurrentPlayerAI ? .orange : .accentGreen
+        )
+    }
 
     private var headerRow: some View {
         HStack(spacing: 0) {
