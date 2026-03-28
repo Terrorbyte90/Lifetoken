@@ -4,10 +4,33 @@ struct GazetteView: View {
     @StateObject private var engine = EventEngine.shared
     @State private var shareImage: UIImage? = nil
     @State private var showShareSheet = false
+    private let stockholmTZ = TimeZone(identifier: "Europe/Stockholm") ?? .current
+
+    private var stockholmCalendar: Calendar {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = stockholmTZ
+        return cal
+    }
+
+    private var stockholmDateLabel: String {
+        let fmt = DateFormatter()
+        fmt.timeZone = stockholmTZ
+        fmt.locale = Locale(identifier: "sv_SE")
+        fmt.dateFormat = "d MMMM yyyy"
+        return fmt.string(from: Date())
+    }
+
+    private func stockholmTimeLabel(_ date: Date) -> String {
+        let fmt = DateFormatter()
+        fmt.timeZone = stockholmTZ
+        fmt.locale = Locale(identifier: "sv_SE")
+        fmt.dateFormat = "HH:mm"
+        return fmt.string(from: date)
+    }
 
     private var todaysEvents: [GameEvent] {
         engine.recentEvents
-            .filter { Calendar.current.isDateInToday($0.occurredAt) }
+            .filter { stockholmCalendar.isDate($0.occurredAt, inSameDayAs: Date()) }
             .sorted { $0.occurredAt > $1.occurredAt }
     }
 
@@ -22,10 +45,25 @@ struct GazetteView: View {
                         Text("LIFETOKEN GAZETTE")
                             .font(LTFont.displayTitle())
                             .foregroundStyle(LTPalette.neonGreen)
-                        Text(Date.now.formatted(.dateTime.day().month(.wide).year()))
+                        Text(stockholmDateLabel)
                             .font(LTFont.body())
                             .foregroundStyle(.secondary)
                         Rectangle().frame(height: 1).foregroundStyle(LTPalette.neonGreen)
+                    }
+
+                    HStack(spacing: LTSpacing.sm) {
+                        LTStatPill(
+                            icon: "newspaper.fill",
+                            text: "\(todaysEvents.count) händelser",
+                            tint: LTPalette.neonGreen
+                        )
+                        if let latest = todaysEvents.first {
+                            LTStatPill(
+                                icon: "clock.fill",
+                                text: stockholmTimeLabel(latest.occurredAt),
+                                tint: .white.opacity(0.8)
+                            )
+                        }
                     }
 
                     LTInfoCallout(
@@ -78,7 +116,7 @@ struct GazetteView: View {
     private func renderAndShare(event: GameEvent) {
         let card = GazetteShareCard(
             headline: event.headlineTemplate,
-            ingress: "Händelsen inträffade i \(event.zoneID.capitalized) klockan \(event.occurredAt.formatted(.dateTime.hour().minute())).",
+            ingress: "Händelsen inträffade i \(event.zoneID.capitalized) klockan \(stockholmTimeLabel(event.occurredAt)) (svensk tid).",
             playerName: GameState.shared.username,
             date: event.occurredAt,
             accentColor: LTPalette.neonGreen

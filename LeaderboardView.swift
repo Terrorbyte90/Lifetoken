@@ -15,6 +15,11 @@ struct LeaderboardView: View {
         let rank: Int
     }
 
+    private var myEntry: LeaderboardEntry? {
+        let myUsername = UserDefaults.standard.string(forKey: "username") ?? ""
+        return entries.first(where: { $0.username == myUsername })
+    }
+
     var body: some View {
         ZStack {
             LTScreenBackground(style: .social).ignoresSafeArea()
@@ -41,6 +46,15 @@ struct LeaderboardView: View {
                             message: loadErrorMessage,
                             icon: "wifi.exclamationmark",
                             tint: .orange
+                        )
+                    }
+
+                    if !isLoading, let myEntry {
+                        LTInfoCallout(
+                            title: "Din placering",
+                            message: "Du ligger på plats #\(myEntry.rank) i \(GameState.shared.currentZone.name).",
+                            icon: "person.crop.circle.badge.checkmark",
+                            tint: .cyan
                         )
                     }
 
@@ -117,6 +131,7 @@ struct LeaderboardView: View {
         isLoading = true
         defer { isLoading = false }
         let zone = GameState.shared.currentZone.name
+        let cacheTimestampKey = "cachedLeaderboardTS_\(zone)"
         do {
             let users = try await ServerSync.shared.fetchZoneLeaderboard(zone: zone, limit: 20)
             entries = users.enumerated().map { index, user in
@@ -133,6 +148,7 @@ struct LeaderboardView: View {
             lastUpdated = .now
             if let data = try? JSONEncoder().encode(entries) {
                 UserDefaults.standard.set(data, forKey: "cachedLeaderboard_\(zone)")
+                UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: cacheTimestampKey)
             }
         } catch {
             if let cached = UserDefaults.standard.data(forKey: "cachedLeaderboard_\(zone)"),
@@ -140,11 +156,13 @@ struct LeaderboardView: View {
                 entries = decoded
                 dataSourceLabel = "Cache"
                 loadErrorMessage = "Visar senast sparad topplista eftersom servern inte svarade."
-                lastUpdated = .now
+                let ts = UserDefaults.standard.double(forKey: cacheTimestampKey)
+                lastUpdated = ts > 0 ? Date(timeIntervalSince1970: ts) : nil
             } else {
                 entries = []
                 dataSourceLabel = "Ingen data"
                 loadErrorMessage = "Kunde inte nå servern och ingen cache hittades."
+                lastUpdated = nil
             }
         }
     }
