@@ -319,6 +319,10 @@ struct ZoneOperationsView: View {
     private func gardenPlotRow(_ plot: GardenPlot) -> some View {
         let crop = garden.crop(for: plot)
         let canHarvest = garden.canHarvest(plot: plot)
+        let growthRemaining: TimeInterval = {
+            guard let crop, let plantedAt = plot.plantedAt else { return 0 }
+            return max(0, crop.growthSeconds - Date().timeIntervalSince(plantedAt))
+        }()
         return HStack {
             VStack(alignment: .leading, spacing: 2) {
                 Text(plot.id.replacingOccurrences(of: "_", with: " ").uppercased())
@@ -351,14 +355,27 @@ struct ZoneOperationsView: View {
                 .font(LTFont.body(10))
                 .foregroundColor(.green)
             } else {
-                Text("Växer...")
-                    .font(LTFont.body(10))
-                    .foregroundColor(.orange)
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text("Växer...")
+                        .font(LTFont.body(10))
+                        .foregroundColor(.orange)
+                    Text(formatGardenRemaining(growthRemaining))
+                        .font(LTFont.caption(9))
+                        .foregroundColor(.white.opacity(0.45))
+                }
             }
         }
         .padding(10)
         .background(Color.white.opacity(0.05))
         .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+
+    private func formatGardenRemaining(_ seconds: TimeInterval) -> String {
+        let total = Int(max(0, seconds))
+        let h = total / 3600
+        let m = (total % 3600) / 60
+        if h > 0 { return "\(h)h \(m)m kvar" }
+        return "\(m)m kvar"
     }
 
     private var plantPickerSheet: some View {
