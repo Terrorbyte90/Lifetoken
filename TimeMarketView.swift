@@ -170,6 +170,14 @@ struct TimeMarketView: View {
         return allItems
     }
 
+    private var unlockedItemsCount: Int {
+        displayItems.filter { gameState.currentZone.index >= $0.requiredZoneIndex }.count
+    }
+
+    private var purchasedItemsCount: Int {
+        displayItems.filter { market.purchasedIds.contains($0.id) }.count
+    }
+
     @MainActor
     private var marketPriceFactor: Double {
         let repFactor = reputation.priceMultiplier(for: gameState.currentZone.name)
@@ -195,6 +203,9 @@ struct TimeMarketView: View {
                     marketHeader
                     categoryRow
                         .padding(.bottom, 12)
+                    marketSummaryRow
+                        .padding(.horizontal, 14)
+                        .padding(.bottom, 10)
                     itemsList
                     Spacer(minLength: 100)
                 }
@@ -332,6 +343,22 @@ struct TimeMarketView: View {
     }
 
     // MARK: - Items List
+
+    private var marketSummaryRow: some View {
+        HStack(spacing: 8) {
+            LTStatPill(
+                icon: "lock.open.fill",
+                text: "Upplåsta \(unlockedItemsCount)/\(displayItems.count)",
+                tint: .cyan
+            )
+            LTStatPill(
+                icon: "checkmark.circle.fill",
+                text: "Köpta \(purchasedItemsCount)",
+                tint: .green
+            )
+            Spacer()
+        }
+    }
 
     private var itemsList: some View {
         LazyVStack(spacing: 10) {

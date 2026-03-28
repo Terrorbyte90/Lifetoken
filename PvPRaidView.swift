@@ -453,6 +453,19 @@ struct PvPRaidView: View {
         max(15, raidStakeLimit(for: gameState.currentZone) / 60)
     }
 
+    private var raidTargets: [ServerUser] {
+        server.zoneMembers.filter { $0.username != gameState.username }
+    }
+
+    private var selectedTargetOnCooldown: Bool {
+        guard let selectedTarget else { return false }
+        return manager.isOnCooldown(selectedTarget)
+    }
+
+    private var canStartRaid: Bool {
+        selectedTarget != nil && !selectedTargetOnCooldown
+    }
+
     private var selectedRiskProfile: RaidRiskProfile? {
         guard let selectedTarget else { return nil }
         return manager.evaluateRisk(target: selectedTarget, stake: stakeMinutes * 60)
@@ -514,7 +527,7 @@ struct PvPRaidView: View {
 
                 VStack(alignment: .leading, spacing: LTSpacing.sm) {
                     sectionHeader("VÄLJ OFFER")
-                    if server.zoneMembers.isEmpty {
+                    if raidTargets.isEmpty {
                         LTEmptyStateCard(
                             icon: "person.2.slash",
                             title: "Inga spelare i zonen",
@@ -522,7 +535,7 @@ struct PvPRaidView: View {
                             tint: .white
                         )
                     } else {
-                        ForEach(server.zoneMembers.filter { $0.username != gameState.username }) { member in
+                        ForEach(raidTargets) { member in
                             targetRow(member)
                         }
                     }
@@ -553,6 +566,18 @@ struct PvPRaidView: View {
                     riskCard(risk)
                 }
 
+                if let selectedTarget, selectedTargetOnCooldown {
+                    let remaining = manager.cooldownRemaining(for: selectedTarget)
+                    let h = Int(remaining) / 3600
+                    let m = (Int(remaining) % 3600) / 60
+                    LTInfoCallout(
+                        title: "Cooldown aktiv",
+                        message: "\(selectedTarget.username) kan inte rånas just nu. Vänta \(h)h \(m)m.",
+                        icon: "hourglass.badge.exclamationmark",
+                        tint: .orange
+                    )
+                }
+
                 historySection
 
                 Button {
@@ -578,17 +603,17 @@ struct PvPRaidView: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, LTSpacing.lg)
                     .background(
-                        selectedTarget != nil
+                        canStartRaid
                             ? LTPalette.danger
                             : Color(red: 0.3, green: 0.3, blue: 0.35)
                     )
                     .clipShape(RoundedRectangle(cornerRadius: LTRadius.sm))
-                    .shadow(color: selectedTarget != nil ? LTPalette.danger.opacity(0.4) : .clear, radius: 12)
+                    .shadow(color: canStartRaid ? LTPalette.danger.opacity(0.4) : .clear, radius: 12)
                 }
-                .disabled(selectedTarget == nil)
+                .disabled(!canStartRaid)
                 .buttonStyle(LTPressEffect())
                 .accessibilityLabel("Starta rånet")
-                .accessibilityHint(selectedTarget == nil ? "Välj ett offer först" : "Startar reaktionstestet mot \(selectedTarget?.username ?? "")")
+                .accessibilityHint(canStartRaid ? "Startar reaktionstestet mot \(selectedTarget?.username ?? "")" : "Välj ett tillgängligt offer utan cooldown")
 
                 Spacer(minLength: LTSpacing.xxxl + LTSpacing.lg)
             }

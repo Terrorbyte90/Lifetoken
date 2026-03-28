@@ -759,6 +759,17 @@ struct SocialView: View {
     private var chatSection: some View {
         let zoneMessages = social.currentZoneMessages
         return VStack(spacing: 0) {
+            LTInfoCallout(
+                title: "Zonchatt",
+                message: serverSync.isOnline
+                    ? "Meddelanden skickas direkt till zonen när du är online."
+                    : "Offline-läge: dina meddelanden synkas automatiskt när anslutningen är tillbaka.",
+                icon: "bubble.left.and.bubble.right.fill",
+                tint: serverSync.isOnline ? .cyan : .orange
+            )
+            .padding(.horizontal)
+            .padding(.top, 8)
+
             ScrollViewReader { proxy in
                 ScrollView(showsIndicators: false) {
                     LazyVStack(spacing: 8) {
@@ -816,7 +827,7 @@ struct SocialView: View {
     }
 
     private func sendChat() {
-        let trimmed = chatInput.trimmingCharacters(in: .whitespaces)
+        let trimmed = chatInput.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
         social.sendMessage(trimmed)
         chatInput = ""
