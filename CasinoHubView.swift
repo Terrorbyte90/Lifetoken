@@ -309,6 +309,15 @@ struct CasinoHubView: View {
                     .padding(.horizontal, 16)
                     .padding(.bottom, 14)
 
+                LTInfoCallout(
+                    title: "Spela smart",
+                    message: "Börja med lägre insatser när din buffert är liten. Sätt en tidsgräns per session och lämna bordet när du nått den.",
+                    icon: "hourglass.badge.plus",
+                    tint: .yellow
+                )
+                .padding(.horizontal, 16)
+                .padding(.bottom, 14)
+
                 // Spelkort-rutnät
                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 14) {
                     gameCard(
@@ -532,6 +541,9 @@ struct CasinoHubView: View {
                 .font(.system(size: 8, weight: .bold, design: .monospaced))
                 .foregroundColor(.red.opacity(0.5))
                 .tracking(3)
+            Text("Riskera bara tid du har råd att förlora")
+                .font(.system(size: 10, design: .monospaced))
+                .foregroundColor(.white.opacity(0.4))
                 .padding(.bottom, 20)
         }
         .frame(maxWidth: .infinity)

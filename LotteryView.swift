@@ -287,6 +287,13 @@ struct LotteryView: View {
                 .tracking(3)
                 .padding(.horizontal, LTSpacing.xs)
 
+            LTInfoCallout(
+                title: "Lotteristrategi",
+                message: "Varje lott kostar 1h. Högre volym ökar dina odds, men tiden dras direkt och återbetalas inte.",
+                icon: "ticket.fill",
+                tint: .purple
+            )
+
             HStack {
                 Image(systemName: "ticket.fill")
                     .foregroundColor(lottery.ticketsBought > 0 ? .purple : .white.opacity(0.2))
@@ -443,6 +450,13 @@ struct LotteryView: View {
                 .font(LTFont.label(9))
                 .foregroundColor(.white.opacity(0.25))
                 .tracking(3)
+
+            LTInfoCallout(
+                title: "Veckodragning",
+                message: "Knappen simulerar veckans utfall direkt med samma odds som backend-logiken.",
+                icon: "calendar.badge.clock",
+                tint: .mint
+            )
 
             Button {
                 hapticMedium.impactOccurred()

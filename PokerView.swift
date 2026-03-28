@@ -31,6 +31,15 @@ struct PokerView: View {
     private var buyIn: TimeInterval      { 3600 * gameState.currentZone.workMultiplier }
     private var smallBlind: TimeInterval { buyIn * 0.05 }
     private var bigBlind: TimeInterval   { smallBlind * 2.0 }
+    private var roundHint: String {
+        switch round {
+        case 0: return "Pre-flop: värdera startkort och undvik stora höjningar med svag hand."
+        case 1: return "Flop: jämför din hand med potten innan du fortsätter aggressivt."
+        case 2: return "Turn: spela tajtare, stora misstag blir dyra här."
+        case 3: return "River: fatta beslut efter pot odds, inte känsla."
+        default: return "Ny hand snart. Håll koll på stack och buy-in."
+        }
+    }
 
     // Mörkgrön bords-bakgrund
     private let tableColor = Color(red: 0.03, green: 0.14, blue: 0.06)
@@ -89,6 +98,8 @@ struct PokerView: View {
                         handRankLabel
 
                         statusLabel
+
+                        strategyCallout
 
                         playerHandSection
 
@@ -246,6 +257,16 @@ struct PokerView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 8))
             }
         }
+    }
+
+    private var strategyCallout: some View {
+        LTInfoCallout(
+            title: "Rondguide",
+            message: roundHint,
+            icon: "brain.head.profile",
+            tint: .mint
+        )
+        .padding(.horizontal)
     }
 
     // Spelarens hand nertill, ordentlig storlek
@@ -446,8 +467,7 @@ struct PokerView: View {
     }
 
     func playerFold() {
-        pot += playerBet
-        resultMessage = "Du la. AI vinner potten: \(TimeEngine.shortFormatted(pot))"
+        resultMessage = "Du la dig. AI vinner potten: \(TimeEngine.shortFormatted(pot))"
         gamePhase = .gameOver
         showResult = true
     }
