@@ -59,6 +59,15 @@ struct CrashView: View {
                     .padding(.horizontal)
                     .padding(.top, 8)
 
+                LTInfoCallout(
+                    title: "Crashguide",
+                    message: "Ju längre du väntar desto högre möjlig vinst, men raketen kan krascha när som helst.",
+                    icon: "chart.line.uptrend.xyaxis",
+                    tint: .orange
+                )
+                .padding(.horizontal)
+                .padding(.top, 8)
+
                 Spacer()
 
                 // Graf + multiplikatordisplay
@@ -182,31 +191,42 @@ struct CrashView: View {
     // MARK: - Historikrad med smådots
 
     private var historyRow: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 6) {
-                Text("HISTORIK")
-                    .font(.system(size: 8, weight: .black, design: .monospaced))
-                    .foregroundColor(.white.opacity(0.25))
-                    .tracking(3)
-                ForEach(Array(history.suffix(12).reversed().enumerated()), id: \.offset) { _, pt in
-                    VStack(spacing: 2) {
-                        // Liten dot vars färg indikerar kraschpunkten
-                        Circle()
-                            .fill(historyDotColor(pt))
-                            .frame(width: 6, height: 6)
-                            .shadow(color: historyDotColor(pt).opacity(0.6), radius: 3)
-                        Text(String(format: "%.2fx", pt))
-                            .font(.system(size: 9, weight: .bold, design: .monospaced))
-                            .foregroundColor(historyDotColor(pt))
+        Group {
+            if history.isEmpty {
+                LTEmptyStateCard(
+                    icon: "clock.arrow.circlepath",
+                    title: "Ingen historik ännu",
+                    message: "Starta en runda för att se senaste kraschpunkter här.",
+                    tint: .white
+                )
+            } else {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 6) {
+                        Text("HISTORIK")
+                            .font(.system(size: 8, weight: .black, design: .monospaced))
+                            .foregroundColor(.white.opacity(0.25))
+                            .tracking(3)
+                        ForEach(Array(history.suffix(12).reversed().enumerated()), id: \.offset) { _, pt in
+                            VStack(spacing: 2) {
+                                // Liten dot vars färg indikerar kraschpunkten
+                                Circle()
+                                    .fill(historyDotColor(pt))
+                                    .frame(width: 6, height: 6)
+                                    .shadow(color: historyDotColor(pt).opacity(0.6), radius: 3)
+                                Text(String(format: "%.2fx", pt))
+                                    .font(.system(size: 9, weight: .bold, design: .monospaced))
+                                    .foregroundColor(historyDotColor(pt))
+                            }
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 4)
+                            .background(Color.white.opacity(0.04))
+                            .clipShape(RoundedRectangle(cornerRadius: 6))
+                        }
                     }
-                    .padding(.horizontal, 5)
-                    .padding(.vertical, 4)
-                    .background(Color.white.opacity(0.04))
-                    .clipShape(RoundedRectangle(cornerRadius: 6))
                 }
+                .frame(height: 36)
             }
         }
-        .frame(height: 36)
     }
 
     private func historyDotColor(_ pt: Double) -> Color {
@@ -340,6 +360,13 @@ struct CrashView: View {
                     }
                 }
             }
+
+            LTInfoCallout(
+                title: "Cash out",
+                message: "Tryck ut tidigt för säkrare utfall. Väntar du längre ökar vinsten men också risken för total förlust.",
+                icon: "exclamationmark.arrow.trianglehead.2.clockwise.rotate.90",
+                tint: .red
+            )
 
             Button { startRound() } label: {
                 HStack(spacing: 10) {

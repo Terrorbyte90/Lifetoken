@@ -313,6 +313,15 @@ struct StepBetView: View {
                     .padding(.horizontal, LTSpacing.lg)
                     .padding(.top, LTSpacing.sm)
 
+                    LTInfoCallout(
+                        title: "Duelregler",
+                        message: "Stegduell spelas mellan två personer. Högst steg vid deadline vinner insatsen.",
+                        icon: "figure.walk.motion",
+                        tint: LTPalette.neonGreen
+                    )
+                    .padding(.horizontal, LTSpacing.lg)
+                    .padding(.top, LTSpacing.xs)
+
                     // Flik-bar
                     HStack(spacing: 0) {
                         tabBtn("AKTIVA",     tag: 0, count: manager.activeBets.count)
@@ -753,17 +762,13 @@ struct StepBetView: View {
     }
 
     private func emptyState(text: String) -> some View {
-        VStack(spacing: LTSpacing.md) {
-            Image(systemName: "figure.walk.circle")
-                .font(.system(size: 36))
-                .foregroundColor(Color(red: 0.3, green: 0.3, blue: 0.4))
-            Text(text)
-                .font(LTFont.body(13))
-                .foregroundColor(Color(red: 0.4, green: 0.4, blue: 0.45))
-                .multilineTextAlignment(.center)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.top, 60)
+        LTEmptyStateCard(
+            icon: "figure.walk.circle",
+            title: "Inget att visa just nu",
+            message: text,
+            tint: .white
+        )
+        .padding(.top, 30)
     }
 }
 
@@ -799,9 +804,12 @@ struct CreateChallengeSheet: View {
                         VStack(alignment: .leading, spacing: LTSpacing.sm) {
                             sectionHeader("VÄLJ MOTSTÅNDARE")
                             if server.zoneMembers.isEmpty {
-                                Text("Inga spelare i din zon just nu.")
-                                    .font(LTFont.body(12))
-                                    .foregroundColor(Color(red: 0.4, green: 0.4, blue: 0.45))
+                                LTEmptyStateCard(
+                                    icon: "person.2.slash",
+                                    title: "Inga spelare i zonen",
+                                    message: "När en spelare i din zon är online kan du skicka utmaning här.",
+                                    tint: .white
+                                )
                             } else {
                                 ForEach(server.zoneMembers.filter { $0.username != gameState.username }) { member in
                                     opponentRow(member)

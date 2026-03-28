@@ -31,6 +31,15 @@ struct AccountSettingsView: View {
                                 infoRow(icon: "arrow.triangle.2.circlepath", label: "Senaste sync",
                                         value: lastSync.formatted(.relative(presentation: .named)))
                             }
+
+                            LTInfoCallout(
+                                title: "Synk",
+                                message: server.isOnline
+                                    ? "Kontot är online och senaste ändringar synkas mot servern."
+                                    : "Offline-läge aktivt. Lokala ändringar skickas när anslutningen är tillbaka.",
+                                icon: server.isOnline ? "checkmark.icloud.fill" : "icloud.slash.fill",
+                                tint: server.isOnline ? .green : .orange
+                            )
                         }
 
                         Divider().background(Color.white.opacity(0.08))
@@ -48,6 +57,13 @@ struct AccountSettingsView: View {
                                 .font(.system(size: 11, design: .monospaced))
                                 .foregroundColor(.white.opacity(0.4))
                                 .lineSpacing(4)
+
+                            LTInfoCallout(
+                                title: "Dataskydd",
+                                message: "Hälsodata bearbetas lokalt i appen och används bara för spelmekanik kopplad till tidsinkomst.",
+                                icon: "lock.shield.fill",
+                                tint: .cyan
+                            )
                         }
 
                         Divider().background(Color.white.opacity(0.08))
@@ -60,6 +76,13 @@ struct AccountSettingsView: View {
                                 .font(.system(size: 11, design: .monospaced))
                                 .foregroundColor(.white.opacity(0.4))
                                 .lineSpacing(4)
+
+                            LTInfoCallout(
+                                title: "Observera",
+                                message: "Kontoradering är permanent. Säkerställ att du verkligen vill ta bort all serverdata innan du fortsätter.",
+                                icon: "exclamationmark.triangle.fill",
+                                tint: .red
+                            )
 
                             Button {
                                 showDeleteConfirm = true
