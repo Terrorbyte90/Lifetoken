@@ -31,11 +31,20 @@ struct AdminPanelView: View {
                         Image(systemName: "arrow.clockwise")
                             .font(.system(size: 12))
                             .foregroundColor(.green)
-                    }
+                        }
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 10)
                 .background(Color.red.opacity(0.08))
+
+                LTInfoCallout(
+                    title: "Adminläge",
+                    message: "Ändringar här slår direkt på användarens konto. Kontrollera alltid värden innan du skickar.",
+                    icon: "shield.lefthalf.filled.badge.checkmark",
+                    tint: .red
+                )
+                .padding(.horizontal, 12)
+                .padding(.top, 8)
 
                 Divider().background(Color.red.opacity(0.3))
 
@@ -46,10 +55,23 @@ struct AdminPanelView: View {
                     Spacer()
                 } else if let err = vm.errorMessage {
                     Spacer()
-                    Text(err)
-                        .font(.system(size: 12, design: .monospaced))
-                        .foregroundColor(.red)
-                        .padding()
+                    LTEmptyStateCard(
+                        icon: "exclamationmark.triangle.fill",
+                        title: "Kunde inte läsa admin-data",
+                        message: err,
+                        tint: .red
+                    )
+                    .padding(.horizontal, 12)
+                    Spacer()
+                } else if vm.users.isEmpty {
+                    Spacer()
+                    LTEmptyStateCard(
+                        icon: "person.3",
+                        title: "Inga spelare hittades",
+                        message: "Försök ladda om när fler användare har synkats mot servern.",
+                        tint: .white
+                    )
+                    .padding(.horizontal, 12)
                     Spacer()
                 } else {
                     ScrollView(showsIndicators: false) {

@@ -189,6 +189,14 @@ struct InvestmentView: View {
                     .ltAccentCard(color: .green)
                     .padding(.horizontal, LTSpacing.horizontal)
 
+                    LTInfoCallout(
+                        title: "Investeringsrisk",
+                        message: "Högre avkastning kräver längre bindningstid. Behåll en buffert för oväntade utgifter och lån.",
+                        icon: "chart.bar.doc.horizontal.fill",
+                        tint: .green
+                    )
+                    .padding(.horizontal, LTSpacing.horizontal)
+
                     // New investment form
                     VStack(spacing: 0) {
                         HStack {
@@ -330,6 +338,14 @@ struct InvestmentView: View {
                                 .padding(.horizontal, LTSpacing.horizontal)
                             }
                         }
+                    } else {
+                        LTEmptyStateCard(
+                            icon: "chart.line.downtrend.xyaxis",
+                            title: "Inga aktiva investeringar",
+                            message: "Starta en investering ovan för att börja bygga passiv tillväxt.",
+                            tint: .green
+                        )
+                        .padding(.horizontal, LTSpacing.horizontal)
                     }
 
                     Spacer(minLength: LTSpacing.scrollBottom)

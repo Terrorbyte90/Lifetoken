@@ -121,6 +121,7 @@ struct DashboardView: View {
                     )
                     .padding(.horizontal)
                     salaryCard
+                    dashboardGuidanceCard
                     pvpSection
                     zoneChatCard
                     missionsCard
@@ -378,6 +379,16 @@ struct DashboardView: View {
         .padding(.horizontal)
     }
 
+    private var dashboardGuidanceCard: some View {
+        LTInfoCallout(
+            title: "Snabbplan",
+            message: "Bygg buffert först, välj zonflytt frivilligt och använd PvP när du aktivt vill ta högre risk.",
+            icon: "map.circle.fill",
+            tint: .cyan
+        )
+        .padding(.horizontal)
+    }
+
     // MARK: - Topplista
 
     private let topListCycleTexts = [
@@ -468,11 +479,12 @@ struct DashboardView: View {
             }
 
             if zoneMessages.isEmpty {
-                Text("Ingen har skrivit ännu. Var den första.")
-                    .font(.system(size: 10, design: .monospaced))
-                    .foregroundColor(.white.opacity(0.2))
-                    .italic()
-                    .padding(.vertical, 4)
+                LTEmptyStateCard(
+                    icon: "bubble.left.and.exclamationmark.bubble.right",
+                    title: "Zonchatten är tom",
+                    message: "Skriv första meddelandet för att starta samtalet i din zon.",
+                    tint: .cyan
+                )
             } else {
                 ForEach(zoneMessages.suffix(5)) { msg in
                     HStack(alignment: .top, spacing: 5) {
@@ -599,6 +611,13 @@ struct DashboardView: View {
                 }
                 .buttonStyle(.plain)
             }
+
+            LTInfoCallout(
+                title: "PvP",
+                message: "Steg-duell spelas mellan två personer. Rån har högre risk och kan påverka zonens rykte.",
+                icon: "person.2.fill",
+                tint: .orange
+            )
         }
         .padding(.horizontal)
     }

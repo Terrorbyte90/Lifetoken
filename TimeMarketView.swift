@@ -276,6 +276,15 @@ struct TimeMarketView: View {
                     .overlay(Capsule().stroke(Color.orange.opacity(0.3), lineWidth: 1))
                 }
                 .padding(.bottom, 16)
+
+                LTInfoCallout(
+                    title: "Dynamiska priser",
+                    message: "Prisfaktorn påverkas av zonens rykte och aktiva regler. Bättre rykte kan ge tydlig rabatt.",
+                    icon: "tag.fill",
+                    tint: .orange
+                )
+                .padding(.horizontal, 16)
+                .padding(.bottom, 10)
             }
 
             Divider().background(Color.white.opacity(0.06))
@@ -326,19 +335,29 @@ struct TimeMarketView: View {
 
     private var itemsList: some View {
         LazyVStack(spacing: 10) {
-            ForEach(displayItems) { item in
-                MarketItemCard(
-                    item: item,
-                    zone: gameState.currentZone,
-                    balance: engine.balance,
-                    effectivePrice: adjustedPrice(for: item),
-                    pricingFactor: marketPriceFactor,
-                    isPurchased: market.purchasedIds.contains(item.id),
-                    isJustBought: lastPurchasedId == item.id
-                ) {
-                    handlePurchase(item)
+            if displayItems.isEmpty {
+                LTEmptyStateCard(
+                    icon: "tray",
+                    title: "Inga varor i denna kategori",
+                    message: "Byt kategori för att se fler köpbara objekt.",
+                    tint: .white
+                )
+                .padding(.top, LTSpacing.lg)
+            } else {
+                ForEach(displayItems) { item in
+                    MarketItemCard(
+                        item: item,
+                        zone: gameState.currentZone,
+                        balance: engine.balance,
+                        effectivePrice: adjustedPrice(for: item),
+                        pricingFactor: marketPriceFactor,
+                        isPurchased: market.purchasedIds.contains(item.id),
+                        isJustBought: lastPurchasedId == item.id
+                    ) {
+                        handlePurchase(item)
+                    }
+                    .transition(.opacity.combined(with: .scale(scale: 0.96)))
                 }
-                .transition(.opacity.combined(with: .scale(scale: 0.96)))
             }
         }
         .padding(.horizontal, 14)

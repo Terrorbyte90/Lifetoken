@@ -85,6 +85,14 @@ struct RouletteGameView: View {
 
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 20) {
+                        LTInfoCallout(
+                            title: "Rouletteguide",
+                            message: "Europeisk roulette har 37 fickor. Nummer ger hög utdelning men lägre träffchans än färg/jämn-udda.",
+                            icon: "info.circle.fill",
+                            tint: .yellow
+                        )
+                        .padding(.horizontal)
+
                         wheelSection
                         historyRow
                         betTypeGrid
@@ -294,6 +302,14 @@ struct RouletteGameView: View {
                         .padding(.horizontal)
                     }
                 }
+            } else {
+                LTEmptyStateCard(
+                    icon: "clock.arrow.circlepath",
+                    title: "Ingen historik ännu",
+                    message: "Spela en runda för att börja bygga historik över senaste utfall.",
+                    tint: .white
+                )
+                .padding(.horizontal)
             }
         }
     }
@@ -451,6 +467,14 @@ struct RouletteGameView: View {
                     }
                 }
             }
+            .padding(.horizontal)
+
+            LTInfoCallout(
+                title: "Bankroll",
+                message: "Sänk insatsen när du jagar stabilitet. Höj först när du har buffert för flera förluster i rad.",
+                icon: "chart.bar.fill",
+                tint: .orange
+            )
             .padding(.horizontal)
         }
     }

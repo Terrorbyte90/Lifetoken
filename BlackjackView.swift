@@ -200,6 +200,14 @@ struct BlackjackView: View {
 
             VStack(spacing: 0) {
                 headerBar
+                LTInfoCallout(
+                    title: "Blackjacktips",
+                    message: "Målet är att slå dealern utan att gå över 21. Split och double används bäst när handen är stark.",
+                    icon: "suit.spade.fill",
+                    tint: .yellow
+                )
+                .padding(.horizontal)
+                .padding(.top, 10)
                 Spacer()
                 dealerSection.padding(.top, 8)
                 Spacer()
@@ -426,6 +434,14 @@ struct BlackjackView: View {
                 step: 60
             )
             .tint(Color(red: 0.7, green: 0.6, blue: 0.1))
+            .padding(.horizontal)
+
+            LTInfoCallout(
+                title: "Insatsnivå",
+                message: "Anpassa insatsen efter din buffert. En längre session kräver utrymme för varians.",
+                icon: "banknote.fill",
+                tint: .green
+            )
             .padding(.horizontal)
 
             Button { startGame() } label: {

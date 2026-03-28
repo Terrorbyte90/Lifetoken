@@ -515,7 +515,12 @@ struct PvPRaidView: View {
                 VStack(alignment: .leading, spacing: LTSpacing.sm) {
                     sectionHeader("VÄLJ OFFER")
                     if server.zoneMembers.isEmpty {
-                        emptyState("Inga spelare i din zon.")
+                        LTEmptyStateCard(
+                            icon: "person.2.slash",
+                            title: "Inga spelare i zonen",
+                            message: "Du kan bara råna spelare som är tillgängliga i din nuvarande zon.",
+                            tint: .white
+                        )
                     } else {
                         ForEach(server.zoneMembers.filter { $0.username != gameState.username }) { member in
                             targetRow(member)
@@ -984,19 +989,28 @@ struct PvPRaidView: View {
     // MARK: - Sub-vyer
 
     private var warningBanner: some View {
-        HStack(spacing: LTSpacing.sm) {
-            Image(systemName: "bolt.fill")
-                .foregroundColor(LTPalette.danger)
-                .accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Din tid eller ditt liv.")
-                    .font(LTFont.heading(12))
-                    .foregroundColor(.white)
-                Text("Reagera snabbare än motståndaren. Vinner du → stjäl deras tid. Förlorar du → de tar din insats. Backfire → du förlorar mer.")
-                    .font(LTFont.body(10))
-                    .foregroundColor(Color(red: 0.6, green: 0.6, blue: 0.65))
-                    .lineSpacing(2)
+        VStack(alignment: .leading, spacing: LTSpacing.sm) {
+            HStack(spacing: LTSpacing.sm) {
+                Image(systemName: "bolt.fill")
+                    .foregroundColor(LTPalette.danger)
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Din tid eller ditt liv.")
+                        .font(LTFont.heading(12))
+                        .foregroundColor(.white)
+                    Text("Reagera snabbare än motståndaren. Vinner du → stjäl deras tid. Förlorar du → de tar din insats. Backfire → du förlorar mer.")
+                        .font(LTFont.body(10))
+                        .foregroundColor(Color(red: 0.6, green: 0.6, blue: 0.65))
+                        .lineSpacing(2)
+                }
             }
+
+            LTInfoCallout(
+                title: "Risk",
+                message: "Rån är högvolatil PvP. Välj insats efter buffert och ta hänsyn till målets skyddsnivå.",
+                icon: "exclamationmark.triangle.fill",
+                tint: .orange
+            )
         }
         .padding(LTSpacing.md)
         .ltAccentCard(color: LTPalette.danger, radius: LTRadius.sm)
@@ -1079,9 +1093,12 @@ struct PvPRaidView: View {
         VStack(alignment: .leading, spacing: LTSpacing.sm) {
             sectionHeader("HISTORIK")
             if manager.history.isEmpty {
-                Text("Inga råd ännu.")
-                    .font(LTFont.body(11))
-                    .foregroundColor(Color(red: 0.35, green: 0.35, blue: 0.4))
+                LTEmptyStateCard(
+                    icon: "clock.arrow.circlepath",
+                    title: "Ingen rånhistorik ännu",
+                    message: "När du har genomfört rån visas senaste utfall och status här.",
+                    tint: .white
+                )
             } else {
                 ForEach(manager.history.prefix(5)) { r in
                     HStack {
