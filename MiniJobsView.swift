@@ -153,6 +153,13 @@ struct MiniJobsView: View {
                 .font(LTFont.body(10))
                 .foregroundColor(.white.opacity(0.5))
 
+            LTInfoCallout(
+                title: "Snabbguide",
+                message: "Öppna ett kort, välj svårighet och starta. Belöning visas som uppskattad nettotid efter zonens regler.",
+                icon: "list.bullet.clipboard.fill",
+                tint: .cyan
+            )
+
             HStack(spacing: LTSpacing.xs) {
                 LTStatPill(
                     icon: gameState.currentZone.zoneIcon,
@@ -344,6 +351,15 @@ private struct MiniJobCard: View {
                     .padding(10)
                     .background(Color.white.opacity(0.04))
                     .clipShape(RoundedRectangle(cornerRadius: LTRadius.xs))
+
+                    LTInfoCallout(
+                        title: "Risknivå",
+                        message: hasPenalty
+                            ? "Misslyckande i denna aktivitet ger tidsböter. Välj svårighet efter hur säker du är."
+                            : "Denna aktivitet har ingen bötesrisk, men högre nivå kräver bättre precision.",
+                        icon: hasPenalty ? "exclamationmark.shield.fill" : "checkmark.shield.fill",
+                        tint: hasPenalty ? .orange : .green
+                    )
 
                     Button(action: startPressed) {
                         HStack(spacing: LTSpacing.sm) {

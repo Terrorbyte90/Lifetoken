@@ -65,6 +65,12 @@ struct FactionView: View {
                     .font(LTFont.caption(9))
                     .foregroundColor(.orange)
             }
+            LTInfoCallout(
+                title: "Rollöversikt",
+                message: "Alla kan sätta in tid i fraktionsbanken. Leader och Officer kan dessutom godkänna ansökningar och dela ut tid.",
+                icon: "person.3.sequence.fill",
+                tint: .purple
+            )
         }
         .padding(12)
         .ltCard(radius: LTRadius.sm)
@@ -107,9 +113,12 @@ struct FactionView: View {
                 .foregroundColor(.white.opacity(0.35))
                 .tracking(2)
             if manager.factions.isEmpty {
-                Text("Inga fraktioner ännu.")
-                    .font(LTFont.body(10))
-                    .foregroundColor(.white.opacity(0.5))
+                LTEmptyStateCard(
+                    icon: "person.3.sequence",
+                    title: "Inga fraktioner ännu",
+                    message: "Skapa den första fraktionen och bygg upp ett gemensamt konto tillsammans.",
+                    tint: .purple
+                )
             } else {
                 ForEach(manager.factions) { faction in
                     HStack {
@@ -184,6 +193,12 @@ struct FactionView: View {
             Text("Alla medlemmar kan sätta in tid. Endast Leader/Officer kan dela ut tid till medlemmar.")
                 .font(LTFont.body(10))
                 .foregroundColor(.white.opacity(0.52))
+            LTInfoCallout(
+                title: "Fraktionsbank",
+                message: "Alla överföringar loggas i bankhistoriken. Dela ut tid först när fraktionen har buffert för drift.",
+                icon: "building.columns.fill",
+                tint: .yellow
+            )
 
             HStack {
                 Text("Insättning: \(TimeEngine.shortFormatted(contributeAmount))")
@@ -279,9 +294,12 @@ struct FactionView: View {
                 .foregroundColor(.white.opacity(0.35))
                 .tracking(2)
             if faction.joinRequests.isEmpty {
-                Text("Inga väntande ansökningar.")
-                    .font(LTFont.body(10))
-                    .foregroundColor(.white.opacity(0.5))
+                LTEmptyStateCard(
+                    icon: "person.crop.circle.badge.questionmark",
+                    title: "Inga väntande ansökningar",
+                    message: "När spelare ansöker om medlemskap dyker de upp här.",
+                    tint: .cyan
+                )
             } else {
                 ForEach(faction.joinRequests, id: \.self) { username in
                     HStack {
@@ -315,9 +333,12 @@ struct FactionView: View {
                 .foregroundColor(.white.opacity(0.35))
                 .tracking(2)
             if faction.ledger.isEmpty {
-                Text("Ingen aktivitet ännu.")
-                    .font(LTFont.body(10))
-                    .foregroundColor(.white.opacity(0.5))
+                LTEmptyStateCard(
+                    icon: "list.clipboard",
+                    title: "Ingen aktivitet ännu",
+                    message: "Insättningar och utdelningar i fraktionsbanken visas här.",
+                    tint: .white
+                )
             } else {
                 ForEach(faction.ledger.prefix(10)) { item in
                     HStack {

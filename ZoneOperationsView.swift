@@ -84,6 +84,12 @@ struct ZoneOperationsView: View {
             Text("Högre rykte ger bättre zonpriser, fler dialogvägar och mjukare NPC-respons.")
                 .font(LTFont.body(10))
                 .foregroundColor(.white.opacity(0.5))
+            LTInfoCallout(
+                title: "Rykte",
+                message: "Rykte bygger du över tid genom stabil ekonomi, återbetalningar i tid och smart riskhantering i zonen.",
+                icon: "chart.line.uptrend.xyaxis.circle.fill",
+                tint: .mint
+            )
         }
         .padding(14)
         .ltAccentCard(color: gameState.currentZone.color)
@@ -155,6 +161,13 @@ struct ZoneOperationsView: View {
                     actionChip(icon: "moon.stars.fill", text: "Nattmarknad", color: .orange)
                 }
             }
+
+            LTInfoCallout(
+                title: "Snabbnavigering",
+                message: "Använd zoncentralen som nav: planera ekonomi i banken, koordinera i fraktion och följ zonstatus här.",
+                icon: "point.3.connected.trianglepath.dotted",
+                tint: .cyan
+            )
         }
         .padding(14)
         .ltCard(color: .cyan, opacity: 0.06, radius: LTRadius.md, borderOpacity: 0.16)
@@ -267,6 +280,12 @@ struct ZoneOperationsView: View {
                         Text("Endast toppspelare i högsta zonerna kan lägga regel-förslag.")
                             .font(LTFont.body(10))
                             .foregroundColor(.white.opacity(0.55))
+                        LTInfoCallout(
+                            title: "Lås upp zonstyre",
+                            message: "När du når högre zoner och bygger inflytande kan du lägga egna förslag som påverkar hela ekonomin.",
+                            icon: "building.columns.fill",
+                            tint: .yellow
+                        )
                     }
                 }
             }
@@ -281,9 +300,12 @@ struct ZoneOperationsView: View {
             LTSectionTitle(overline: "Trädgård", title: "Odla i realtid och skörda senare", tint: .green)
 
             if !garden.isUnlocked(for: gameState.currentZone) {
-                Text("Låses upp från zon 9. Fortsätt klättra.")
-                    .font(LTFont.body(10))
-                    .foregroundColor(.white.opacity(0.55))
+                LTEmptyStateCard(
+                    icon: "leaf.circle",
+                    title: "Trädgården är låst",
+                    message: "Låses upp från zon 9. Fortsätt klättra för att odla grödor med verklig tidstillväxt.",
+                    tint: .green
+                )
             } else {
                 ForEach(garden.plots) { plot in
                     gardenPlotRow(plot)

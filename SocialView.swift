@@ -407,6 +407,15 @@ struct SocialView: View {
             }
             .accessibilityElement(children: .combine)
             .accessibilityLabel("\(serverSync.isOnline ? "Server online" : "Offline"). Zon: \(gameState.currentZone.name)")
+
+            LTInfoCallout(
+                title: "Synkstatus",
+                message: serverSync.isOnline
+                    ? "Du är ansluten. Sociala actions skickas direkt till servern."
+                    : "Offline-läge aktivt. Dina handlingar sparas lokalt och synkas när anslutningen är tillbaka.",
+                icon: serverSync.isOnline ? "checkmark.icloud.fill" : "icloud.slash.fill",
+                tint: serverSync.isOnline ? .green : .orange
+            )
         }
         .padding(.horizontal, LTSpacing.horizontal)
         .padding(.top, 60)
@@ -477,16 +486,13 @@ struct SocialView: View {
                 }
 
                 if onlineInZone.isEmpty {
-                    VStack(spacing: 12) {
-                        Image(systemName: "person.2.slash")
-                            .font(.system(size: 40))
-                            .foregroundColor(.white.opacity(0.2))
-                        Text("Ingen i denna zon just nu.")
-                            .font(.system(size: 13, design: .monospaced))
-                            .foregroundColor(.white.opacity(0.3))
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.top, 40)
+                    LTEmptyStateCard(
+                        icon: "person.2.slash",
+                        title: "Ingen spelare online i zonen",
+                        message: "Testa igen om en stund eller använd chatten för att lämna ett meddelande till zonen.",
+                        tint: .white
+                    )
+                    .padding(.top, 14)
                 }
 
                 Spacer(minLength: 80)
@@ -539,6 +545,13 @@ struct SocialView: View {
                 }
                 .buttonStyle(LTPressEffect())
                 .accessibilityLabel("Utmana en spelare på steg")
+
+                LTInfoCallout(
+                    title: "2 spelare",
+                    message: "Stegduell körs mellan exakt två personer: du och en utmanad spelare.",
+                    icon: "figure.walk.motion",
+                    tint: LTPalette.neonGreen
+                )
             } else {
                 // Visa aktiva dueller (max 2 för översikt)
                 ForEach(stepBetManager.activeBets.prefix(2)) { bet in
@@ -613,6 +626,13 @@ struct SocialView: View {
                 }
                 .buttonStyle(LTPressEffect())
                 .accessibilityLabel("Starta ett rån")
+
+                LTInfoCallout(
+                    title: "Rån är risk",
+                    message: "Vid misslyckat rån kan du förlora tid och påverka zonens rykte negativt. Välj mål med omsorg.",
+                    icon: "shield.lefthalf.filled.badge.exclamationmark",
+                    tint: LTPalette.danger
+                )
             } else {
                 // Pågående rån
                 if let active = raidManager.activeRaid {
@@ -742,9 +762,19 @@ struct SocialView: View {
             ScrollViewReader { proxy in
                 ScrollView(showsIndicators: false) {
                     LazyVStack(spacing: 8) {
-                        ForEach(zoneMessages) { msg in
-                            ChatBubble(message: msg)
-                                .id(msg.id)
+                        if zoneMessages.isEmpty {
+                            LTEmptyStateCard(
+                                icon: "bubble.left.and.exclamationmark.bubble.right",
+                                title: "Chatten är tom",
+                                message: "Skriv första meddelandet i zonen för att starta samtalet.",
+                                tint: .cyan
+                            )
+                            .padding(.top, 24)
+                        } else {
+                            ForEach(zoneMessages) { msg in
+                                ChatBubble(message: msg)
+                                    .id(msg.id)
+                            }
                         }
                     }
                     .padding()

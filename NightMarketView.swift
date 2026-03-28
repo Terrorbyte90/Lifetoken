@@ -544,6 +544,13 @@ struct NightMarketView: View {
                     .clipShape(Capsule())
                 Spacer()
             }
+
+            LTInfoCallout(
+                title: "Nattregel",
+                message: "Priserna uppdateras dynamiskt av rykte, efterfrågan och aktiva regler i ekonomin.",
+                icon: "moon.stars.fill",
+                tint: .mint
+            )
         }
         .padding(.horizontal, LTSpacing.md)
         .padding(.vertical, LTSpacing.sm + 2)
@@ -600,6 +607,15 @@ struct NightMarketView: View {
                 .font(LTFont.body(10))
                 .foregroundColor(Color(red: 0.32, green: 0.22, blue: 0.42))
                 .padding(.bottom, LTSpacing.xxl)
+
+            LTInfoCallout(
+                title: "Schema",
+                message: "Nattmarknaden öppnar 00:00 och stänger 05:00 svensk tid. Planera köp innan stängning.",
+                icon: "clock.badge.exclamationmark",
+                tint: .purple
+            )
+            .padding(.horizontal)
+            .padding(.bottom, LTSpacing.lg)
 
             let secs = market.secondsUntilOpen
             if secs > 0 {
@@ -879,14 +895,13 @@ struct NightMarketView: View {
             }
 
             if market.purchaseHistory.isEmpty {
-                HStack {
-                    Spacer()
-                    Text("Inga transaktioner registrerade.")
-                        .font(LTFont.body(10))
-                        .foregroundColor(Color(red: 0.30, green: 0.22, blue: 0.35))
-                    Spacer()
-                }
-                .padding(.vertical, LTSpacing.lg)
+                LTEmptyStateCard(
+                    icon: "clock.arrow.circlepath",
+                    title: "Inga transaktioner ännu",
+                    message: "Dina senaste köp och utfall från nattmarknaden visas här.",
+                    tint: .purple
+                )
+                .padding(.vertical, LTSpacing.sm)
             } else {
                 VStack(spacing: LTSpacing.xs + 2) {
                     ForEach(market.purchaseHistory.prefix(5)) { p in
