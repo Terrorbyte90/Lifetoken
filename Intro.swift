@@ -291,6 +291,9 @@ struct OnboardingView: View {
             Text("Ditt namn följer dig tills du dör.")
                 .font(.system(size: 13, weight: .regular, design: .monospaced))
                 .foregroundColor(.white.opacity(0.38))
+            Text("3-30 tecken. Endast bokstäver och siffror.")
+                .font(.system(size: 12, weight: .regular, design: .monospaced))
+                .foregroundColor(.white.opacity(0.28))
 
             // Input-fält med neon-underline
             VStack(alignment: .leading, spacing: 0) {
@@ -298,10 +301,15 @@ struct OnboardingView: View {
                     .font(.system(size: 22, weight: .bold, design: .monospaced))
                     .foregroundColor(.white)
                     .tint(LTPalette.neonGreen)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled(true)
                     .padding(.vertical, LTSpacing.md)
                     .padding(.horizontal, LTSpacing.sm)
                     .focused($nameFocused)
                     .onAppear { nameFocused = true }
+                    .onChange(of: playerName) { _, _ in
+                        if !nameError.isEmpty { nameError = "" }
+                    }
                     .submitLabel(.done)
                     .accessibilityLabel("Ange ditt spelarnamn")
 
@@ -367,7 +375,7 @@ struct OnboardingView: View {
                 textColor: .black
             ) { nextStep() }
         } else {
-            let nameReady = !playerName.trimmingCharacters(in: .whitespaces).isEmpty
+            let nameReady = isValidServerUsername(playerName.trimmingCharacters(in: .whitespacesAndNewlines))
             actionButton(
                 label: "STARTA LIVET",
                 color: nameReady ? LTPalette.neonGreen : Color.white.opacity(0.12),
@@ -434,16 +442,22 @@ struct OnboardingView: View {
         }
     }
 
+    private func isValidServerUsername(_ value: String) -> Bool {
+        guard (3...30).contains(value.count) else { return false }
+        return value.range(of: "^[A-Za-z0-9]{3,30}$", options: .regularExpression) != nil
+    }
+
     private func commitName() {
-        let name = playerName.trimmingCharacters(in: .whitespaces)
+        let name = playerName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !name.isEmpty else {
             withAnimation(LTAnimation.springFast) { nameError = "Skriv ett namn." }
             return
         }
-        guard name.count >= 2 else {
-            withAnimation(LTAnimation.springFast) { nameError = "För kort. Minst 2 tecken." }
+        guard isValidServerUsername(name) else {
+            withAnimation(LTAnimation.springFast) { nameError = "Namnet måste vara 3-30 tecken och endast innehålla bokstäver/siffror." }
             return
         }
+        nameError = ""
         let notif = UINotificationFeedbackGenerator()
         notif.notificationOccurred(.success)
         UserDefaults.standard.set(name, forKey: "username")

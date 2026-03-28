@@ -130,6 +130,8 @@ class ServerSync: ObservableObject, @unchecked Sendable {
     private var websocketPingTimer: Timer?
     private var hasLiveChannel = false
     private let maxAttemptsPerOrigin = 3
+    private let balanceDriftCorrectionThreshold: TimeInterval = 5
+    private var periodicSyncInFlight = false
 
     private struct DeferredRequest: Codable, Identifiable {
         let id: String
@@ -255,6 +257,79 @@ class ServerSync: ObservableObject, @unchecked Sendable {
         return hash.compactMap { String(format: "%02x", $0) }.joined()
     }
 
+    private func stableDeviceId() -> String {
+        if let existing = keychainLoad(key: deviceIdKey), !existing.isEmpty {
+            return existing
+        }
+        let generated = UIDevice.current.identifierForVendor?.uuidString ?? UUID().uuidString
+        keychainSave(key: deviceIdKey, value: generated)
+        return generated
+    }
+
+    private func isValidServerUsername(_ value: String) -> Bool {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard (3...30).contains(trimmed.count) else { return false }
+        return trimmed.range(of: "^[A-Za-z0-9]{3,30}$", options: .regularExpression) != nil
+    }
+
+    private func sanitizedUsername(from raw: String, deviceId: String) -> String {
+        let filtered = raw.unicodeScalars.filter { CharacterSet.alphanumerics.contains($0) }
+        var candidate = String(String.UnicodeScalarView(filtered))
+        if candidate.count < 3 {
+            let suffix = String(deviceId.filter { $0.isLetter || $0.isNumber }.prefix(6))
+            candidate += suffix
+        }
+        if candidate.count < 3 {
+            candidate += "999"
+        }
+        if candidate.count > 30 {
+            candidate = String(candidate.prefix(30))
+        }
+        return candidate
+    }
+
+    private func resolvedServerUsername() async -> String? {
+        let raw = UserDefaults.standard.string(forKey: "username")?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        guard !raw.isEmpty else { return nil }
+
+        if isValidServerUsername(raw) {
+            UserDefaults.standard.set(raw, forKey: serverUsernameKey)
+            return raw
+        }
+
+        if let cached = UserDefaults.standard.string(forKey: serverUsernameKey),
+           isValidServerUsername(cached) {
+            await MainActor.run {
+                if GameState.shared.username != cached {
+                    GameState.shared.username = cached
+                }
+                UserDefaults.standard.set(cached, forKey: "username")
+            }
+            return cached
+        }
+
+        let deviceId = await MainActor.run { self.stableDeviceId() }
+        let sanitized = sanitizedUsername(from: raw, deviceId: deviceId)
+        UserDefaults.standard.set(sanitized, forKey: serverUsernameKey)
+        await MainActor.run {
+            if GameState.shared.username != sanitized {
+                GameState.shared.username = sanitized
+            }
+            UserDefaults.standard.set(sanitized, forKey: "username")
+        }
+        return sanitized
+    }
+
+    private func shouldApplyServerCorrection(
+        serverBalance: TimeInterval,
+        localBalance: TimeInterval,
+        isAdminOverride: Bool
+    ) -> Bool {
+        if isAdminOverride { return true }
+        if TimeEngine.shared.skipServerCorrection { return false }
+        return abs(serverBalance - localBalance) >= balanceDriftCorrectionThreshold
+    }
+
     @Published var isOnline: Bool = false
     @Published var lastSyncDate: Date? = nil
     @Published var zoneMembers: [ServerUser] = []
@@ -271,6 +346,8 @@ class ServerSync: ObservableObject, @unchecked Sendable {
     // MARK: - Keychain token storage
     private let tokenKey = "lt_server_token"
     private let userIdKey = "lt_server_userid"
+    private let deviceIdKey = "lt_server_deviceid"
+    private let serverUsernameKey = "lt_server_username"
 
     var token: String? {
         get { keychainLoad(key: tokenKey) }
@@ -292,10 +369,9 @@ class ServerSync: ObservableObject, @unchecked Sendable {
 
     /// Called on app launch — always authenticates and checks connectivity
     func startup() async {
-        let storedUsername = UserDefaults.standard.string(forKey: "username") ?? ""
-        if !storedUsername.isEmpty {
+        if let authUsername = await resolvedServerUsername() {
             // Always try to auth on startup (handles stale tokens and first launch)
-            await loginOrRegister(username: storedUsername)
+            await loginOrRegister(username: authUsername)
             // Pull server's stored balance so admin changes propagate immediately
             await fetchServerBalance()
             await refreshAdminStatus()
@@ -324,9 +400,8 @@ class ServerSync: ObservableObject, @unchecked Sendable {
                         self.connectionMode = self.hasLiveChannel ? "live" : "polling"
                     }
                     // Re-auth if we somehow have no token
-                    let storedUsername = UserDefaults.standard.string(forKey: "username") ?? ""
-                    if self.token == nil && !storedUsername.isEmpty {
-                        await self.loginOrRegister(username: storedUsername)
+                    if self.token == nil, let authUsername = await self.resolvedServerUsername() {
+                        await self.loginOrRegister(username: authUsername)
                     }
                     await self.refreshAdminStatus()
                     await self.startRealtimeUpdates()
@@ -347,8 +422,15 @@ class ServerSync: ObservableObject, @unchecked Sendable {
         DispatchQueue.main.async {
             self.syncTimer?.invalidate()
             self.syncTimer = Timer.scheduledTimer(withTimeInterval: 10, repeats: true) { [weak self] _ in
+                guard let self = self else { return }
+                guard !self.periodicSyncInFlight else { return }
+                self.periodicSyncInFlight = true
                 Task {
-                    guard let self = self else { return }
+                    defer {
+                        DispatchQueue.main.async {
+                            self.periodicSyncInFlight = false
+                        }
+                    }
                     await self.fetchServerBalance()
                     let balance = await self.currentLocalBalance()
                     await self.syncBalance(balance)
@@ -402,9 +484,11 @@ class ServerSync: ObservableObject, @unchecked Sendable {
     }
 
     func loginOrRegister(username: String) async {
-        let deviceId = await MainActor.run { UIDevice.current.identifierForVendor?.uuidString ?? UUID().uuidString }
+        let trimmedUsername = username.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedUsername.isEmpty else { return }
+        let deviceId = await MainActor.run { self.stableDeviceId() }
         do {
-                let resp = try await register(username: username, deviceId: deviceId)
+                let resp = try await register(username: trimmedUsername, deviceId: deviceId)
                 token = resp.token
                 userId = resp.userId
                 DispatchQueue.main.async {
@@ -415,7 +499,7 @@ class ServerSync: ObservableObject, @unchecked Sendable {
             } catch {
             // Register failed (user may already exist) — try login as fallback
             do {
-                let resp = try await login(username: username, deviceId: deviceId)
+                let resp = try await login(username: trimmedUsername, deviceId: deviceId)
                 token = resp.token
                 userId = resp.userId
                 DispatchQueue.main.async {
@@ -446,9 +530,19 @@ class ServerSync: ObservableObject, @unchecked Sendable {
             await MainActor.run {
                 self.isOnline = true
                 self.lastSyncDate = Date()
-                // Applicera bara server-balansen om admin explicit har ändrat den
-                if let adj = resp.adjustedBalance, resp.adminOverride == true {
-                    TimeEngine.shared.applyServerBalance(adj)
+                if let adj = resp.adjustedBalance {
+                    let localBalance = TimeEngine.shared.balance
+                    let isAdminOverride = resp.adminOverride == true
+                    if self.shouldApplyServerCorrection(
+                        serverBalance: adj,
+                        localBalance: localBalance,
+                        isAdminOverride: isAdminOverride
+                    ) {
+                        TimeEngine.shared.applyServerBalance(adj)
+                    }
+                }
+                if TimeEngine.shared.skipServerCorrection {
+                    TimeEngine.shared.clearServerCorrectionSkip()
                 }
                 // Anti-cheat handled server-side silently
             }
@@ -475,14 +569,21 @@ class ServerSync: ObservableObject, @unchecked Sendable {
                 guard let serverBalance = serverBalance else { return }
                 let isAdminOverride = (json["adminOverride"] as? Bool) ?? (json["admin_override"] as? Bool) ?? false
                 await MainActor.run {
-                    if isAdminOverride || !TimeEngine.shared.skipServerCorrection {
+                    let localBalance = TimeEngine.shared.balance
+                    if self.shouldApplyServerCorrection(
+                        serverBalance: serverBalance,
+                        localBalance: localBalance,
+                        isAdminOverride: isAdminOverride
+                    ) {
                         TimeEngine.shared.applyServerBalance(serverBalance)
                     }
                     self.isOnline = true
                     self.lastSyncDate = Date()
                 }
             }
-        } catch { /* endpoint may not exist on all server versions */ }
+        } catch {
+            DispatchQueue.main.async { self.isOnline = false }
+        }
     }
 
     func fetchServerTime() async -> TimeInterval? {
@@ -747,6 +848,12 @@ class ServerSync: ObservableObject, @unchecked Sendable {
         return nil
     }
 
+    private func refreshAuthIfPossible() async -> Bool {
+        guard let authUsername = await resolvedServerUsername() else { return false }
+        await loginOrRegister(username: authUsername)
+        return token != nil
+    }
+
     private func requestData(
         method: String,
         path: String,
@@ -754,7 +861,11 @@ class ServerSync: ObservableObject, @unchecked Sendable {
         requireAuth: Bool,
         allowHTTPErrorResponseData: Bool = false
     ) async throws -> Data {
+        if requireAuth, token == nil {
+            _ = await refreshAuthIfPossible()
+        }
         var lastError: Error = URLError(.cannotConnectToHost)
+        var didReauthenticate = false
 
         for origin in orderedOrigins() {
             guard let url = secureURL(from: origin + "/api" + path) else { continue }
@@ -777,6 +888,14 @@ class ServerSync: ObservableObject, @unchecked Sendable {
                     let (data, response) = try await serverSession.data(for: req)
                     guard let http = response as? HTTPURLResponse else {
                         throw URLError(.badServerResponse)
+                    }
+
+                    if http.statusCode == 401, requireAuth, !didReauthenticate {
+                        let refreshed = await refreshAuthIfPossible()
+                        if refreshed {
+                            didReauthenticate = true
+                            continue
+                        }
                     }
 
                     if shouldRetry(statusCode: http.statusCode), attempt < maxAttemptsPerOrigin {

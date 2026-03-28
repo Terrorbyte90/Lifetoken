@@ -398,7 +398,7 @@ struct WorkView: View {
                         .font(.system(size: 10, weight: .bold, design: .monospaced))
                         .foregroundColor(.red)
                 } else if inflation.isWarning {
-                    Text("Inflation: \(inflation.percentageString) — uppgradera zon!")
+                    Text("Inflation: \(inflation.percentageString) — högre zon kan sänka den (frivilligt)")
                         .font(.system(size: 10, design: .monospaced))
                         .foregroundColor(.orange)
                 }
@@ -523,7 +523,7 @@ struct WorkView: View {
                 color: inflation.isCritical ? .red : .orange,
                 description: inflation.isCritical
                     ? "KRITISK — din tid förlorar värde snabbare än du tjänar"
-                    : "Daglig kostnad — uppgradera zon för att sänka inflationen"
+                    : "Daglig kostnad — högre zon kan sänka inflationen"
             )
             if inflation.isWarning {
                 Divider().background(Color.white.opacity(0.06))

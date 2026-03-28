@@ -614,7 +614,7 @@ struct DashboardView: View {
                 Text("INFLATION AKTIV")
                     .font(.system(size: 10, weight: .black, design: .monospaced))
                     .foregroundColor(.orange)
-                Text("\(inflation.percentageString) — Migrera till högre zon")
+                Text("\(inflation.percentageString) — Frivillig migrering till högre zon kan hjälpa")
                     .font(.system(size: 10, design: .monospaced))
                     .foregroundColor(.orange.opacity(0.7))
             }

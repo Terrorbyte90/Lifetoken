@@ -325,6 +325,7 @@ struct BankView: View {
     @State private var showLoanConfirm       = false
     @State private var showInvestConfirm     = false
     @State private var transactionHistory: [BankTransaction] = []
+    @State private var savingsTransferAmount: TimeInterval = 3600
 
     // Privatlån-state
     @State private var selectedLender: PrivateLender? = nil
@@ -437,9 +438,14 @@ struct BankView: View {
             if investAmount > investUpperBound {
                 investAmount = max(3600, (investUpperBound / 3600).rounded(.down) * 3600)
             }
+            let transferCeiling = max(600, max(engine.balance, bankManager.savingsBalance))
+            savingsTransferAmount = min(savingsTransferAmount, transferCeiling)
         }
         .onAppear {
             transactionHistory = TransactionLedger.shared.transactions
+            if savingsTransferAmount > max(3600, engine.balance) {
+                savingsTransferAmount = max(600, min(3600, engine.balance))
+            }
         }
         .onChange(of: selectedTab) { _, tab in
             hapticLight.impactOccurred()
@@ -543,6 +549,12 @@ struct BankView: View {
             let zone    = gameState.currentZone
             let maxLoan = BankManager.maxLoan(for: zone)
             let rate    = bankManager.effectiveLoanRate(for: zone) * 100
+
+            Text("Tidslån ger snabb likviditet men räntan tickar dag för dag. Sen återbetalning kan sänka rykte i zonen.")
+                .font(LTFont.body(10))
+                .foregroundColor(.white.opacity(0.58))
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 2)
 
             VStack(spacing: 0) {
                 HStack {
@@ -703,15 +715,15 @@ struct BankView: View {
 
             HStack(spacing: 0) {
                 VStack(alignment: .leading, spacing: LTSpacing.xs) {
-                    Text("DAGLIG RÄNTA")
+                    Text("INVESTERINGSMARKNAD")
                         .font(LTFont.label(9))
                         .foregroundColor(.white.opacity(0.4))
                         .tracking(2)
-                    Text(String(format: "%.2f%%", rate * 100))
+                    Text(String(format: "%.2f%% / dag", rate * 100))
                         .font(LTFont.value(34))
                         .foregroundColor(.green)
                         .contentTransition(.numericText())
-                    Text("Marknaden kan krascha (5% risk/vecka)")
+                    Text("Risk finns: marknadskrasch kan slå ut vinst")
                         .font(LTFont.body(9))
                         .foregroundColor(.red.opacity(0.7))
                 }
@@ -843,7 +855,13 @@ struct BankView: View {
     }
 
     private var savingsAccountCard: some View {
-        VStack(spacing: 10) {
+        let transferUpperBound = max(600, max(engine.balance, bankManager.savingsBalance))
+        let canDeposit = engine.balance >= 600
+        let canWithdraw = bankManager.savingsBalance >= 600
+        let depositAmount = min(savingsTransferAmount, engine.balance)
+        let withdrawAmount = min(savingsTransferAmount, bankManager.savingsBalance)
+
+        return VStack(spacing: 10) {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("PERSONLIGT KONTO")
@@ -861,32 +879,49 @@ struct BankView: View {
                     .foregroundColor(.white.opacity(0.5))
             }
 
+            VStack(alignment: .leading, spacing: 6) {
+                HStack {
+                    Text("Belopp")
+                        .font(LTFont.body(10))
+                        .foregroundColor(.white.opacity(0.45))
+                    Spacer()
+                    Text(TimeEngine.shortFormatted(savingsTransferAmount))
+                        .font(LTFont.heading(12))
+                        .foregroundColor(.yellow)
+                }
+                Slider(value: $savingsTransferAmount, in: 600...transferUpperBound, step: 600)
+                    .tint(.green)
+                Text("Välj ett belopp och sätt in/ta ut manuellt. Minsta transaktion: 10 minuter.")
+                    .font(LTFont.body(9))
+                    .foregroundColor(.white.opacity(0.45))
+            }
+
             HStack(spacing: 8) {
                 Button {
-                    let amount = min(engine.balance * 0.25, 7200)
-                    _ = bankManager.depositToSavings(max(600, amount))
+                    _ = bankManager.depositToSavings(max(600, depositAmount))
                 } label: {
                     Text("Sätt in")
                         .font(LTFont.body(11))
-                        .foregroundColor(.black)
+                        .foregroundColor(canDeposit ? .black : .white.opacity(0.4))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 9)
-                        .background(.green)
+                        .background(canDeposit ? .green : Color.white.opacity(0.08))
                         .clipShape(RoundedRectangle(cornerRadius: 8))
                 }
+                .disabled(!canDeposit)
 
                 Button {
-                    let amount = min(bankManager.savingsBalance, 7200)
-                    _ = bankManager.withdrawFromSavings(max(600, amount))
+                    _ = bankManager.withdrawFromSavings(max(600, withdrawAmount))
                 } label: {
                     Text("Ta ut")
                         .font(LTFont.body(11))
-                        .foregroundColor(.black)
+                        .foregroundColor(canWithdraw ? .black : .white.opacity(0.4))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 9)
-                        .background(.yellow)
+                        .background(canWithdraw ? .yellow : Color.white.opacity(0.08))
                         .clipShape(RoundedRectangle(cornerRadius: 8))
                 }
+                .disabled(!canWithdraw)
             }
         }
         .padding(12)
@@ -897,6 +932,12 @@ struct BankView: View {
 
     private var privatlanSection: some View {
         VStack(spacing: LTSpacing.md) {
+            Text("Privatlån går snabbt men villkoren varierar. Maxbeloppet baseras på din hälsolön och långivarens risknivå.")
+                .font(LTFont.body(10))
+                .foregroundColor(.white.opacity(0.58))
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 2)
+
             // Inkomstinfo — visar basen för maxlåneberäkning
             HStack(spacing: LTSpacing.sm) {
                 Image(systemName: "heart.fill")

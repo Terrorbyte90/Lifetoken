@@ -135,6 +135,10 @@ final class FactionManager: ObservableObject {
             setFeedback("Fraktionsnamn saknas.")
             return
         }
+        guard (3...28).contains(trimmed.count) else {
+            setFeedback("Fraktionsnamn måste vara 3-28 tecken.")
+            return
+        }
         guard currentFaction == nil else {
             setFeedback("Du är redan med i en fraktion.")
             return
@@ -191,11 +195,20 @@ final class FactionManager: ObservableObject {
               let idx = factions.firstIndex(where: { $0.id == currentFactionID }) else { return }
         guard factions[idx].joinRequests.contains(where: { usernamesMatch($0, username) }) else { return }
         guard factions[idx].members.count < Faction.maxMembers else { return }
+        if factions.contains(where: { faction in
+            faction.id != currentFactionID && faction.members.contains(where: { usernamesMatch($0.username, username) })
+        }) {
+            factions[idx].joinRequests.removeAll { usernamesMatch($0, username) }
+            saveCache()
+            setFeedback("\(username) är redan med i en annan fraktion.")
+            return
+        }
         factions[idx].joinRequests.removeAll { usernamesMatch($0, username) }
         factions[idx].members.append(
             FactionMember(id: UUID().uuidString, username: username, role: .member, joinedAt: Date())
         )
         saveCache()
+        setFeedback("\(username) är nu medlem i \(factions[idx].name).")
     }
 
     func rejectJoin(username: String) {
@@ -203,6 +216,7 @@ final class FactionManager: ObservableObject {
               let idx = factions.firstIndex(where: { $0.id == currentFactionID }) else { return }
         factions[idx].joinRequests.removeAll { usernamesMatch($0, username) }
         saveCache()
+        setFeedback("Ansökan från \(username) avslogs.")
     }
 
     func leaveCurrentFaction() {
