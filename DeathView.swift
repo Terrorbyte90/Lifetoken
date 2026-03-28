@@ -95,6 +95,7 @@ struct LockedScreen: View {
     @State private var countdown = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
     @State private var glitchOffset: CGFloat = 0
     @State private var opacity: Double = 0
+    @State private var glitchTimer: Timer? = nil
 
     private let deathMessages = [
         "Din tid rann ut.\nSystemet bryr sig inte.",
@@ -203,24 +204,30 @@ struct LockedScreen: View {
         }
         .onAppear {
             message = deathMessages.randomElement()!
-            timeRemaining = engine.timeUntilRebirth
+            timeRemaining = max(0, engine.timeUntilRebirth)
             withAnimation(.easeIn(duration: 1.5)) { opacity = 1 }
             startGlitch()
         }
         .onReceive(countdown) { _ in
-            timeRemaining = engine.timeUntilRebirth
+            timeRemaining = max(0, engine.timeUntilRebirth)
+        }
+        .onDisappear {
+            glitchTimer?.invalidate()
+            glitchTimer = nil
         }
     }
 
     private var formattedCountdown: String {
-        let h = Int(timeRemaining) / 3600
-        let m = Int(timeRemaining) % 3600 / 60
-        let s = Int(timeRemaining) % 60
+        let remaining = Int(max(0, timeRemaining))
+        let h = remaining / 3600
+        let m = remaining % 3600 / 60
+        let s = remaining % 60
         return String(format: "%02d:%02d:%02d", h, m, s)
     }
 
     private func startGlitch() {
-        Timer.scheduledTimer(withTimeInterval: 3, repeats: true) { _ in
+        glitchTimer?.invalidate()
+        glitchTimer = Timer.scheduledTimer(withTimeInterval: 3, repeats: true) { _ in
             withAnimation(.easeInOut(duration: 0.08)) { glitchOffset = CGFloat.random(in: -4...4) }
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                 withAnimation(.easeInOut(duration: 0.08)) { glitchOffset = 0 }

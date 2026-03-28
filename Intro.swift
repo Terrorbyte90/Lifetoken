@@ -295,6 +295,13 @@ struct OnboardingView: View {
                 .font(.system(size: 12, weight: .regular, design: .monospaced))
                 .foregroundColor(.white.opacity(0.28))
 
+            LTInfoCallout(
+                title: "Namnregler",
+                message: "Specialtecken och mellanslag tillåts inte för att namn ska synka stabilt mellan klient och server.",
+                icon: "person.text.rectangle",
+                tint: LTPalette.neonGreen
+            )
+
             // Input-fält med neon-underline
             VStack(alignment: .leading, spacing: 0) {
                 TextField("", text: $playerName)
@@ -355,6 +362,12 @@ struct OnboardingView: View {
                 .font(LTFont.caption(9))
                 .foregroundColor(.white.opacity(0.18))
                 .tracking(2)
+
+            Text(stepHelpText)
+                .font(LTFont.body(10))
+                .foregroundColor(.white.opacity(0.34))
+                .multilineTextAlignment(.center)
+                .lineSpacing(2)
         }
     }
 
@@ -422,6 +435,15 @@ struct OnboardingView: View {
         case 5: return LTPalette.gold
         case 6: return LTPalette.neonGreen
         default: return .white
+        }
+    }
+
+    private var stepHelpText: String {
+        switch step {
+        case 0: return "Tips: håll en tidsbuffert innan du satsar eller lånar."
+        case 3: return "Zonuppgradering är frivillig och görs manuellt i zon-vyn."
+        case 6: return "Ditt namn visas i topplistor, sociala flöden och fraktioner."
+        default: return "Läs stegen noga för att förstå hur du tjänar och skyddar tid."
         }
     }
 
