@@ -141,6 +141,14 @@ struct SortingGameView: View {
                     .tracking(4)
             }
 
+            LTInfoCallout(
+                title: "Mål",
+                message: "Sortera objektet som ligger lägst på skärmen till rätt behållare. Långa kombokedjor höjer tempot och förbättrar slutlönen.",
+                icon: "tray.full.fill",
+                tint: Color(red:0.9,green:0.55,blue:0.1)
+            )
+            .padding(.horizontal, 24)
+
             // Category preview
             VStack(spacing: 8) {
                 Text("BEHÅLLARE:")
@@ -258,6 +266,16 @@ struct SortingGameView: View {
                 }
                 .padding(.horizontal, 18)
                 .padding(.top, 54)
+                .zIndex(10)
+
+                LTInfoCallout(
+                    title: "Kontroll",
+                    message: "Tryck på behållaren som matchar objektets ikon/färg. Missar eller sena objekt bryter din kombo.",
+                    icon: "hand.tap.fill",
+                    tint: Color(red:0.9,green:0.55,blue:0.1)
+                )
+                .padding(.horizontal, 18)
+                .padding(.top, 8)
                 .zIndex(10)
 
                 // ── Fallande objekt — glödande kapslar ──────────────────
@@ -386,6 +404,14 @@ struct SortingGameView: View {
                         .foregroundColor(.yellow)
                 }
             }
+
+            LTInfoCallout(
+                title: "Skiftanalys",
+                message: won ? "Stabil precision genom hela passet gav full eller delvis ersättning." : "För hög felprocent gav böter. Fokusera på säkra träffar före tempo.",
+                icon: won ? "chart.bar.fill" : "exclamationmark.bubble.fill",
+                tint: won ? Color(red:0.9,green:0.55,blue:0.1) : .red
+            )
+            .padding(.horizontal, 24)
 
             if earned > 0 {
                 Text("+\(TimeEngine.shortFormatted(earned))")

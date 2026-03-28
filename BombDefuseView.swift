@@ -158,11 +158,19 @@ struct BombDefuseView: View {
                     .tracking(4)
             }
 
+            LTInfoCallout(
+                title: "Uppdrag",
+                message: "Memorera ledtråden snabbt. Du kan bara klippa en tråd, och bonus kräver minst 3 sekunder kvar på timern.",
+                icon: "brain.head.profile",
+                tint: .red
+            )
+            .padding(.horizontal, 32)
+
             VStack(alignment: .leading, spacing: 10) {
-                warnRow("Ledtråden visas \(Int(clueShowTime[difficultyIndex]))s sedan försvinner den.")
-                warnRow("Du har en chans. Klipper du fel — straff.")
+                warnRow("Ledtråden visas i \(Int(clueShowTime[difficultyIndex])) sekunder innan den försvinner.")
+                warnRow("Du har exakt ett försök. Fel tråd ger direkt straff.")
                 warnRow("Fel tråd kostar dig \(reward.penalty) min.")
-                warnRow("\(wireCount) trådar. Tänk snabbt.")
+                warnRow("\(wireCount) trådar att välja mellan. Tänk snabbt.")
             }
             .padding(16)
             .background(Color.red.opacity(0.07))
@@ -176,6 +184,14 @@ struct BombDefuseView: View {
                 payBadge("+\(reward.normal)m", "precis i tid", .yellow)
                 payBadge("−\(reward.penalty)m", "fel tråd", .red)
             }
+
+            LTInfoCallout(
+                title: "Utbetalning",
+                message: "Tidigt korrekt klipp ger högst ersättning. Om timern hinner till noll räknas det som misslyckande.",
+                icon: "clock.badge.exclamationmark",
+                tint: .yellow
+            )
+            .padding(.horizontal, 32)
 
             Button(action: beginGame) {
                 Text("JAG ÄR REDO")
@@ -295,6 +311,11 @@ struct BombDefuseView: View {
                 .foregroundColor(Color(white: 0.28))
                 .tracking(6)
                 .padding(.bottom, 28)
+
+            Text("Tryck på en tråd för att klippa. Du kan inte ångra valet.")
+                .font(.system(size: 11, design: .monospaced))
+                .foregroundColor(Color(white: 0.42))
+                .padding(.bottom, 12)
 
             // Wires
             GeometryReader { g in

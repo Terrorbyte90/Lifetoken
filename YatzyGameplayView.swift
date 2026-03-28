@@ -20,6 +20,14 @@ struct YatzyGameplayView: View {
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 14) {
                     turnBanner
+                    LTInfoCallout(
+                        title: isCurrentPlayerAI ? "AI tur" : "Din tur",
+                        message: isCurrentPlayerAI
+                            ? "AI analyserar tärningarna och väljer bästa drag på högsta svårighetsnivå."
+                            : "Du har upp till tre kast. Håll tärningar mellan kast för att bygga starkare kombinationer.",
+                        icon: isCurrentPlayerAI ? "cpu.fill" : "dice.fill",
+                        tint: isCurrentPlayerAI ? .orange : .accentGreen
+                    )
                     diceArea
                     if !engine.statusMessage.isEmpty { statusBar }
                     actionButtons

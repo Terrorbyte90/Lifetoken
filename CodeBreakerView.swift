@@ -155,6 +155,14 @@ struct CodeBreakerView: View {
             Spacer()
             terminalHeader
 
+            LTInfoCallout(
+                title: "Mål",
+                message: "Knäck koden innan tid eller försök tar slut. Grön markering betyder rätt symbol på rätt plats, gul betyder rätt symbol på fel plats.",
+                icon: "lock.open.trianglebadge.exclamationmark",
+                tint: Color(red: 0.2, green: 0.9, blue: 0.2)
+            )
+            .padding(.horizontal, 24)
+
             VStack(alignment: .leading, spacing: 12) {
                 termLine("> SÄKERHETSNIVÅ: \(difficultyLabel)", .green)
                 termLine("> KOD: \(codeLen) TECKEN (1-\(symCount)\(difficulty == 3 ? "+A-F" : ""))", .green)
@@ -203,6 +211,13 @@ struct CodeBreakerView: View {
             HStack {
                 terminalHeader
                 Spacer()
+                Text("\(rows.count)/\(maxAttempt)")
+                    .font(.system(size: 12, weight: .bold, design: .monospaced))
+                    .foregroundColor(Color(red:0.1,green:0.6,blue:0.1))
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 5)
+                    .background(Color(red:0.04,green:0.12,blue:0.04))
+                    .clipShape(Capsule())
                 Text("\(timeLeft)s")
                     .font(.system(size: 20, weight: .black, design: .monospaced))
                     .foregroundColor(timeLeft < 15 ? .red : Color(red:0.2,green:0.9,blue:0.2))
@@ -240,6 +255,15 @@ struct CodeBreakerView: View {
                     withAnimation { proxy.scrollTo("input", anchor: .bottom) }
                 }
             }
+
+            LTInfoCallout(
+                title: "Tips",
+                message: "Jobba systematiskt: ändra en symbol åt gången när du fått flera gröna/gula träffar.",
+                icon: "lightbulb.max.fill",
+                tint: Color(red:0.95,green:0.85,blue:0.1)
+            )
+            .padding(.horizontal, 20)
+            .padding(.bottom, 10)
 
             // Symbol picker
             symbolPicker

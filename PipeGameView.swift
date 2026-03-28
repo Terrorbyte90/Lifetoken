@@ -277,6 +277,14 @@ struct PipeGameView: View {
                     .tracking(6)
             }
 
+            LTInfoCallout(
+                title: "Så spelar du",
+                message: "Rotera rören tills inloppet till vänster kopplas till utloppet till höger. När du tror att nätet håller, starta flödet.",
+                icon: "arrow.triangle.branch",
+                tint: Color(red: 0.1, green: 0.9, blue: 0.6)
+            )
+            .padding(.horizontal, 28)
+
             // Info grid
             VStack(spacing: 0) {
                 infoRow("Rutnät", "\(gridSize)×\(gridSize)", icon: "grid")
@@ -392,6 +400,15 @@ struct PipeGameView: View {
             .padding(.horizontal, 18)
             .padding(.top, 54)
             .padding(.bottom, 12)
+
+            LTInfoCallout(
+                title: "Kontroll",
+                message: "Tryck på en ruta för att rotera röret 90°. Starta flödet när du är nöjd med kopplingen.",
+                icon: "hand.tap.fill",
+                tint: Color(red: 0.1, green: 0.8, blue: 1.0)
+            )
+            .padding(.horizontal, 16)
+            .padding(.bottom, 10)
 
             // Inlet/outlet labels
             HStack {
@@ -541,6 +558,15 @@ struct PipeGameView: View {
                 .font(.system(size: 12, design: .monospaced))
                 .foregroundColor(Color(white: 0.45))
                 .padding(.bottom, 28)
+
+            LTInfoCallout(
+                title: won ? "Systemstatus" : "Analys",
+                message: won ? "Du byggde en komplett ledning mellan in- och utlopp inom tidsgränsen." : "En eller flera länkar var brutna. Kontrollera att båda sidor av varje koppling möts.",
+                icon: won ? "checkmark.shield.fill" : "exclamationmark.triangle.fill",
+                tint: won ? Color(red: 0.1, green: 0.9, blue: 0.6) : .orange
+            )
+            .padding(.horizontal, 28)
+            .padding(.bottom, 16)
 
             if won && earned > 0 {
                 Text("+\(TimeEngine.shortFormatted(earned))")
