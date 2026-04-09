@@ -73,6 +73,9 @@ struct DashboardView: View {
     @State private var showTimeMarket  = false
     @State private var showZoneMap     = false
     @State private var showMissions    = false
+    @State private var showDailyChallenge = false
+    @State private var showAchievements = false
+    @State private var showStatistics = false
     @State private var showBank        = false
     @State private var showStepBet     = false
     @State private var showNightMarket = false
@@ -121,6 +124,9 @@ struct DashboardView: View {
                     )
                     .padding(.horizontal)
                     salaryCard
+                    dailyChallengeCard
+                    achievementsCard
+                    statisticsCard
                     dashboardGuidanceCard
                     pvpSection
                     zoneChatCard
@@ -144,6 +150,9 @@ struct DashboardView: View {
         .sheet(isPresented: $showTimeMarket)          { TimeMarketView() }
         .fullScreenCover(isPresented: $showZoneMap)     { NavigationStack { ZoneVisual() } }
         .sheet(isPresented: $showMissions)              { MissionsView() }
+        .sheet(isPresented: $showDailyChallenge)        { DailyChallengeView() }
+        .sheet(isPresented: $showAchievements)          { AchievementBadgeView() }
+        .sheet(isPresented: $showStatistics)            { StatisticsView() }
         .fullScreenCover(isPresented: $showBank)        { BankView() }
         .sheet(isPresented: $showStepBet)              { StepBetView() }
         .fullScreenCover(isPresented: $showNightMarket) { NightMarketView() }
@@ -340,6 +349,96 @@ struct DashboardView: View {
         .padding(.horizontal)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Livsbalans: \(clockLabel.lowercased()). \(TimeEngine.formatted(engine.balance)) återstår.")
+    }
+
+    // MARK: - Daily Challenge Card
+
+    private var dailyChallengeCard: some View {
+        Button { showDailyChallenge = true } label: {
+            HStack(spacing: LTSpacing.md) {
+                Image(systemName: "trophy.fill")
+                    .font(.system(size: 20))
+                    .foregroundColor(.yellow)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("DAGLIG UTMANING")
+                        .font(LTFont.caption())
+                        .foregroundColor(.white.opacity(0.4))
+                        .tracking(2)
+                    Text("Klar dagens utmaning och få tid")
+                        .font(LTFont.body(12))
+                        .foregroundColor(.white.opacity(0.8))
+                }
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(.white.opacity(0.3))
+            }
+            .padding(LTSpacing.md)
+            .ltCard(color: .yellow, opacity: 0.08, radius: LTRadius.sm, borderOpacity: 0.2)
+        }
+    }
+
+    // MARK: - Achievements Card
+
+    private var achievementsCard: some View {
+        Button { showAchievements = true } label: {
+            HStack(spacing: LTSpacing.md) {
+                Image(systemName: "star.circle.fill")
+                    .font(.system(size: 20))
+                    .foregroundColor(.purple)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("PRESTATIONER")
+                        .font(LTFont.caption())
+                        .foregroundColor(.white.opacity(0.4))
+                        .tracking(2)
+                    Text("Lås upp achievements och få belöningar")
+                        .font(LTFont.body(12))
+                        .foregroundColor(.white.opacity(0.8))
+                }
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(.white.opacity(0.3))
+            }
+            .padding(LTSpacing.md)
+            .ltCard(color: .purple, opacity: 0.08, radius: LTRadius.sm, borderOpacity: 0.2)
+        }
+    }
+
+    // MARK: - Statistics Card
+
+    private var statisticsCard: some View {
+        Button { showStatistics = true } label: {
+            HStack(spacing: LTSpacing.md) {
+                Image(systemName: "chart.line.uptrend.xyaxis")
+                    .font(.system(size: 20))
+                    .foregroundColor(.cyan)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("STATISTIK")
+                        .font(LTFont.caption())
+                        .foregroundColor(.white.opacity(0.4))
+                        .tracking(2)
+                    Text("Se dina framsteg och trender")
+                        .font(LTFont.body(12))
+                        .foregroundColor(.white.opacity(0.8))
+                }
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(.white.opacity(0.3))
+            }
+            .padding(LTSpacing.md)
+            .ltCard(color: .cyan, opacity: 0.08, radius: LTRadius.sm, borderOpacity: 0.2)
+        }
     }
 
     // MARK: - Salary Card
