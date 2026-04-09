@@ -26,6 +26,8 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         _ = GameState.shared
         _ = InflationManager.shared
         _ = MarketManager.shared
+        _ = ChallengeManager.shared
+        _ = AchievementManager.shared
 
         // Request notification permission
         UNUserNotificationCenter.current().delegate = self
