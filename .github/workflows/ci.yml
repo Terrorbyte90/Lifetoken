@@ -12,8 +12,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Select Xcode
-        run: sudo xcode-select -s /Applications/Xcode_16.3.app
+      - name: Install xcpretty
+        run: gem install xcpretty --no-document --quiet
 
       - name: Build
         run: |
@@ -23,7 +23,7 @@ jobs:
             -scheme "LifeToken" \
             -destination "platform=iOS Simulator,name=iPhone 16" \
             CODE_SIGNING_ALLOWED=NO \
-            | xcpretty
+            2>&1 | tee /tmp/xcodebuild.log | xcpretty --color false || (cat /tmp/xcodebuild.log | grep -A 5 "error:" | tail -40 && exit 1)
 
       - name: Test
         run: |
@@ -33,5 +33,5 @@ jobs:
             -scheme "LifeToken" \
             -destination "platform=iOS Simulator,name=iPhone 16" \
             CODE_SIGNING_ALLOWED=NO \
-            | xcpretty
+            2>&1 | xcpretty --color false
         continue-on-error: true
