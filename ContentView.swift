@@ -1,63 +1,6 @@
 import SwiftUI
 import AVKit
 
-// MARK: - ZoneChatMessage
-
-struct ZoneChatMessage: Identifiable, Codable {
-    let id: String
-    let username: String
-    let text: String
-    let timestamp: Date
-    let zone: String
-}
-
-// MARK: - ZoneChatManager
-
-class ZoneChatManager: ObservableObject {
-    static let shared = ZoneChatManager()
-    @Published var messages: [ZoneChatMessage] = []
-    private let key = "zone_chat_v1"
-    private var refreshTimer: Timer?
-
-    private init() { loadMessages(); startRefresh() }
-
-    func loadMessages() {
-        let zone = GameState.shared.currentZone.name
-        guard let data = UserDefaults.standard.data(forKey: key),
-              let all = try? JSONDecoder().decode([ZoneChatMessage].self, from: data)
-        else { messages = []; return }
-        messages = Array(all.filter { $0.zone == zone }.suffix(50).reversed())
-    }
-
-    func send(_ text: String) {
-        let trimmed = text.trimmingCharacters(in: .whitespaces)
-        guard !trimmed.isEmpty else { return }
-        let zone = GameState.shared.currentZone.name
-        let msg = ZoneChatMessage(
-            id: UUID().uuidString,
-            username: UserDefaults.standard.string(forKey: "username") ?? "Spelare",
-            text: trimmed, timestamp: Date(), zone: zone
-        )
-        var all: [ZoneChatMessage] = []
-        if let data = UserDefaults.standard.data(forKey: key),
-           let existing = try? JSONDecoder().decode([ZoneChatMessage].self, from: data) {
-            all = existing
-        }
-        all.append(msg)
-        if all.count > 200 { all = Array(all.suffix(200)) }
-        if let data = try? JSONEncoder().encode(all) {
-            UserDefaults.standard.set(data, forKey: key)
-        }
-        loadMessages()
-    }
-
-    private func startRefresh() {
-        refreshTimer = Timer.scheduledTimer(withTimeInterval: 15, repeats: true) { [weak self] _ in
-            self?.loadMessages()
-        }
-    }
-}
-
 // MARK: - DashboardView
 
 struct DashboardView: View {
@@ -90,6 +33,8 @@ struct DashboardView: View {
     // Topplista
     @State private var topListIndex = 0
     @State private var liveTopPlayers: [ServerUser] = []
+    @State private var topListTimer = Timer.publish(every: 5, on: .main, in: .common).autoconnect()
+    @ObservedObject private var missionsManager = MissionsManager.shared
 
     private let microTexts = [
         "Du arbetar för att leva. Inte tvärtom.",
@@ -455,7 +400,7 @@ struct DashboardView: View {
         .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.yellow.opacity(0.12), lineWidth: 1))
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .padding(.horizontal)
-        .onReceive(Timer.publish(every: 5, on: .main, in: .common).autoconnect()) { _ in
+        .onReceive(topListTimer) { _ in
             withAnimation { topListIndex = (topListIndex + 1) % topListCycleTexts.count }
         }
         .task(id: gameState.currentZone.name) {
@@ -526,33 +471,55 @@ struct DashboardView: View {
     // MARK: - Missions Card
 
     private var missionsCard: some View {
-        Button { showMissions = true } label: {
+        let readyCount = missionsManager.missions.filter { $0.isReady }.count
+        let activeCount = missionsManager.missions.filter { $0.progressFraction > 0 && !$0.isClaimed }.count
+        return Button { showMissions = true } label: {
             HStack(spacing: 14) {
                 ZStack {
                     Circle().fill(Color.purple.opacity(0.15)).frame(width: 44, height: 44)
-                    Image(systemName: "checklist")
+                    Image(systemName: readyCount > 0 ? "checklist.checked" : "checklist")
                         .font(.system(size: 20))
-                        .foregroundColor(.purple.opacity(0.8))
+                        .foregroundColor(readyCount > 0 ? .purple : .purple.opacity(0.8))
+                        .symbolEffect(.bounce, value: readyCount)
+                    if readyCount > 0 {
+                        Circle()
+                            .fill(LTPalette.neonGreen)
+                            .frame(width: 14, height: 14)
+                            .overlay(
+                                Text("\(readyCount)")
+                                    .font(.system(size: 9, weight: .black, design: .monospaced))
+                                    .foregroundColor(.black)
+                            )
+                            .offset(x: 14, y: -14)
+                    }
                 }
                 VStack(alignment: .leading, spacing: 3) {
                     Text("UPPDRAG")
                         .font(.system(size: 11, weight: .black, design: .monospaced))
-                        .foregroundColor(.white.opacity(0.45))
+                        .foregroundColor(readyCount > 0 ? .purple : .white.opacity(0.45))
                         .tracking(2)
-                    Text("Tryck för att visa aktiva uppdrag")
-                        .font(.system(size: 10, design: .monospaced))
-                        .foregroundColor(.white.opacity(0.5))
+                    if readyCount > 0 {
+                        Text("\(readyCount) uppdrag klara att hämta!")
+                            .font(.system(size: 10, design: .monospaced))
+                            .foregroundColor(LTPalette.neonGreen.opacity(0.85))
+                    } else {
+                        Text("\(activeCount) aktiva uppdrag")
+                            .font(.system(size: 10, design: .monospaced))
+                            .foregroundColor(.white.opacity(0.5))
+                    }
                 }
                 Spacer()
                 Image(systemName: "chevron.right")
                     .foregroundColor(.white.opacity(0.25))
             }
             .padding(14)
-            .background(Color.purple.opacity(0.07))
-            .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.purple.opacity(0.18), lineWidth: 1))
+            .background(readyCount > 0 ? Color.purple.opacity(0.12) : Color.purple.opacity(0.07))
+            .overlay(RoundedRectangle(cornerRadius: 12).stroke(
+                readyCount > 0 ? Color.purple.opacity(0.45) : Color.purple.opacity(0.18), lineWidth: 1
+            ))
             .clipShape(RoundedRectangle(cornerRadius: 12))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(LTPressEffect())
         .padding(.horizontal)
     }
 
