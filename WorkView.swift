@@ -128,11 +128,22 @@ class WorkManager: ObservableObject {
             var earnings = job.baseEarnings
             let zone = GameState.shared.currentZone
 
+            // Streak-bonus: 3 jobb i rad utan avbrott/avkortning ger +15% bonus
+            let streakBonus: Double
+            if riskRoll < jobType.riskPercentage {
+                MissionsManager.incrementProgress("job_streak", by: -999) // reset
+                streakBonus = 0
+            } else {
+                MissionsManager.incrementProgress("job_streak", by: 1)
+                let streak = UserDefaults.standard.double(forKey: "job_streak")
+                streakBonus = streak >= 3 ? 0.15 : 0
+            }
+
             if riskRoll < jobType.riskPercentage {
                 let loseFactor = Double.random(in: 0.2...0.5)
                 earnings *= (1 - loseFactor)
                 let taxed = earnings * (1 - zone.taxRate)
-                let boosted = taxed * BoostManager.shared.boosterMultiplier()
+                let boosted = taxed * BoostManager.shared.boosterMultiplier() * (1 + streakBonus)
                 TimeEngine.shared.addTime(boosted)
                 GameState.shared.recordEarning(boosted)
                 // Skatten till Gregor
@@ -145,7 +156,7 @@ class WorkManager: ObservableObject {
                 lastCompletedJobMessage = "Händelse! \(jobType.name) avkortad.\nIntjänat: \(TimeEngine.shortFormatted(boosted)) (efter skatt + risk)"
             } else {
                 let taxed = earnings * (1 - zone.taxRate)
-                let boosted = taxed * BoostManager.shared.boosterMultiplier()
+                let boosted = taxed * BoostManager.shared.boosterMultiplier() * (1 + streakBonus)
                 TimeEngine.shared.addTime(boosted)
                 GameState.shared.recordEarning(boosted)
                 // Skatten till Gregor
@@ -155,7 +166,8 @@ class WorkManager: ObservableObject {
                     BoardManager.shared.recordTaxCollection(taxAmount)
                 }
                 TransactionLedger.shared.record(label: jobType.name, amount: boosted)
-                lastCompletedJobMessage = "\(jobType.name) klar!\nIntjänat: \(TimeEngine.shortFormatted(boosted)) (efter skatt)"
+                let streakMsg = streakBonus > 0 ? " ⚡ Streak-bonus +\(Int(streakBonus * 100))%" : ""
+                lastCompletedJobMessage = "\(jobType.name) klar!\nIntjänat: \(TimeEngine.shortFormatted(boosted)) (efter skatt)\(streakMsg)"
             }
 
             MissionsManager.incrementProgress("jobs_completed", by: 1)

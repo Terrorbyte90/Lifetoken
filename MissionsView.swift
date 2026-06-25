@@ -96,6 +96,12 @@ class MissionsManager: ObservableObject {
         Mission(id: "nightmarket_buy", title: "Natthandel",      description: "Köp en vara på Nattmarknaden.",
                 category: .social,  icon: "moon.stars.fill",     rewardSeconds: 3600,
                 targetValue: 1,     progressKey: "nightmarket_purchases", isCompleted: false, isClaimed: false),
+        Mission(id: "casino_streak_3", title: "Kasino-streak", description: "Vinn 3 kasinospel i rad utan förlust.",
+                category: .social,  icon: "flame.fill",          rewardSeconds: 14400,
+                targetValue: 3,     progressKey: "casino_win_streak", isCompleted: false, isClaimed: false),
+        Mission(id: "death_survivor",  title: "Andra chansen", description: "Återuppstå från dödläget 5 gånger.",
+                category: .social,  icon: "arrow.uturn.backward.circle.fill", rewardSeconds: 21600,
+                targetValue: 5,     progressKey: "rebirths_total", isCompleted: false, isClaimed: false),
     ]
 
     private init() {
@@ -375,13 +381,26 @@ struct MissionCard: View {
 
     var body: some View {
         HStack(spacing: LTSpacing.md) {
-            // Icon container
+            // Icon container med progress-ring
             ZStack {
-                RoundedRectangle(cornerRadius: LTRadius.xs)
-                    .fill(accentColor.opacity(mission.isClaimed ? 0.06 : 0.14))
-                    .frame(width: 44, height: 44)
+                Circle()
+                    .stroke(Color.white.opacity(0.08), lineWidth: 2)
+                    .frame(width: 48, height: 48)
+                Circle()
+                    .trim(from: 0, to: mission.progressFraction)
+                    .stroke(
+                        LinearGradient(
+                            colors: [accentColor, accentColor.opacity(0.5)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        style: StrokeStyle(lineWidth: 2, lineCap: .round)
+                    )
+                    .rotationEffect(.degrees(-90))
+                    .frame(width: 48, height: 48)
+                    .animation(LTAnimation.springSmooth, value: mission.progressFraction)
                 Image(systemName: mission.icon)
-                    .font(.system(size: 18, weight: .semibold))
+                    .font(.system(size: 16, weight: .semibold))
                     .foregroundColor(mission.isClaimed ? accentColor.opacity(0.4) : accentColor)
                     .shadow(color: accentColor.opacity(mission.isClaimed ? 0 : 0.6), radius: 5)
             }

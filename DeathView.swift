@@ -135,9 +135,14 @@ struct LockedScreen: View {
                     Circle()
                         .stroke(Color.red.opacity(0.25), lineWidth: 1)
                         .frame(width: 100, height: 100)
+                    Circle()
+                        .stroke(Color.red.opacity(0.12), lineWidth: 1)
+                        .frame(width: 130, height: 130)
+                        .blur(radius: 2)
                     Image(systemName: "xmark.circle")
                         .font(.system(size: 52))
                         .foregroundColor(Color.red.opacity(0.7))
+                        .shadow(color: .red.opacity(0.5), radius: 14)
                 }
                 .padding(.bottom, 32)
 
@@ -174,6 +179,9 @@ struct LockedScreen: View {
                         .font(.system(size: 44, weight: .black, design: .monospaced))
                         .foregroundColor(.white.opacity(0.6))
                         .monospacedDigit()
+                        .shadow(color: .red.opacity(0.35), radius: 10)
+                        .scaleEffect(timeRemaining > 0 ? 1.0 : 1.05)
+                        .animation(.easeInOut(duration: 1).repeatForever(autoreverses: true), value: timeRemaining > 0)
 
                     Text("Du kan börja om om \(formattedCountdown)")
                         .font(.system(size: 11, design: .monospaced))
@@ -184,8 +192,7 @@ struct LockedScreen: View {
 
                 if timeRemaining <= 0 {
                     Button {
-                        engine.clearDeath()
-                        engine.balance = 3600
+                        engine.rebirth()
                     } label: {
                         Text("ÅTERUPPSTÅ")
                             .font(.system(size: 14, weight: .black, design: .monospaced))
@@ -203,7 +210,7 @@ struct LockedScreen: View {
             .opacity(opacity)
         }
         .onAppear {
-            message = deathMessages.randomElement()!
+            message = deathMessages.randomElement() ?? deathMessages[0]
             timeRemaining = max(0, engine.timeUntilRebirth)
             withAnimation(.easeIn(duration: 1.5)) { opacity = 1 }
             startGlitch()

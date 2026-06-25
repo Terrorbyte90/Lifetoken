@@ -465,17 +465,26 @@ struct CasinoHubView: View {
             }
             .padding(12)
             .background(
-                LinearGradient(
-                    colors: [Color.orange.opacity(0.15), Color.orange.opacity(0.05)],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
+                ZStack {
+                    LinearGradient(
+                        colors: [Color.orange.opacity(0.15), Color.orange.opacity(0.05)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                    LinearGradient(
+                        colors: [Color.white.opacity(0.06), .clear],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: 14))
+                }
             )
             .clipShape(RoundedRectangle(cornerRadius: 14))
             .overlay(
                 RoundedRectangle(cornerRadius: 14)
                     .stroke(Color.orange.opacity(0.35), lineWidth: 1)
             )
+            .shadow(color: Color.orange.opacity(0.2), radius: 14, y: 5)
         }
         .buttonStyle(LTPressEffect(scale: 0.98))
     }
@@ -604,14 +613,29 @@ struct CasinoHubView: View {
             }
             .padding(14)
             .background(
-                LinearGradient(colors: gradient, startPoint: .topLeading, endPoint: .bottomTrailing)
+                ZStack {
+                    LinearGradient(colors: gradient, startPoint: .topLeading, endPoint: .bottomTrailing)
+                    LinearGradient(
+                        colors: [Color.white.opacity(0.08), .clear],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: 18))
+                }
             )
             .clipShape(RoundedRectangle(cornerRadius: 18))
             .overlay(
                 RoundedRectangle(cornerRadius: 18)
-                    .stroke(accent.opacity(0.3), lineWidth: 1)
+                    .stroke(
+                        LinearGradient(
+                            colors: [accent.opacity(0.5), accent.opacity(0.1)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 1
+                    )
             )
-            .shadow(color: accent.opacity(0.12), radius: 10, y: 5)
+            .shadow(color: accent.opacity(0.18), radius: 12, y: 5)
         }
         .buttonStyle(LTPressEffect(scale: 0.95))
         .accessibilityLabel(title)

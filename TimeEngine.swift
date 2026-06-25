@@ -47,6 +47,18 @@ class TimeEngine: ObservableObject {
         isTimedOut = false
     }
 
+    /// Återuppståndelse — trådsäker återställning av saldo efter dödsläget.
+    /// Går via applyBalanceState så keychain sparas, zoner utvärderas, och
+    /// tickTimer/inte hinner läsa ett halvskrivet värde.
+    func rebirth(to seconds: TimeInterval = 3600) {
+        withMainThread {
+            self.clearDeath()
+            self.applyBalanceState(seconds)
+            self.setTemporaryServerCorrectionSkip()
+        }
+        Task { await ServerSync.shared.syncBalance(seconds) }
+    }
+
     private let service = "com.lifetoken.engine"
     private let balanceKey = "lifetoken_balance_v2"
     private let lastSyncKey = "lifetoken_lastsync_v2"
