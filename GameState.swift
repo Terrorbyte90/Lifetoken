@@ -63,13 +63,20 @@ class GameState: ObservableObject {
     private func awardStreakBonus() {
         let bonus: TimeInterval
         switch loginStreakDays {
-        case 1:   bonus = 3600          // 1h
-        case 3:   bonus = 14400         // 4h
-        case 7:   bonus = 43200         // 12h
-        case 14:  bonus = 172800        // 2 days
-        case 30:  bonus = 604800        // 1 week
-        case 90:  bonus = 2592000       // 30 days
-        default:  bonus = loginStreakDays > 90 ? 86400 : 1800  // 1d or 30m
+        case 1:    bonus = 3_600            // 1h  — first return
+        case 2:    bonus = 5_400            // 1.5h
+        case 3:    bonus = 14_400           // 4h  — milestone
+        case 4:    bonus = 7_200            // 2h
+        case 5:    bonus = 10_800           // 3h
+        case 6:    bonus = 10_800           // 3h
+        case 7:    bonus = 43_200           // 12h — 1-week milestone
+        case 8...13:  bonus = 18_000        // 5h  — steady weekly
+        case 14:   bonus = 172_800          // 2d  — 2-week milestone
+        case 15...29: bonus = 28_800        // 8h  — building toward month
+        case 30:   bonus = 604_800          // 1 week — 1-month milestone
+        case 31...89: bonus = 43_200        // 12h — sustained play
+        case 90:   bonus = 2_592_000        // 30d — 3-month milestone
+        default:   bonus = loginStreakDays > 90 ? 86_400 : 3_600  // 1d or 1h
         }
         TimeEngine.shared.addTime(bonus)
         streakBonusMessage = "Streak dag \(loginStreakDays): +\(TimeEngine.shortFormatted(bonus))"

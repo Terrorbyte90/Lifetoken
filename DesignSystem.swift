@@ -455,3 +455,53 @@ struct LTEmptyStateCard: View {
         .ltCard(color: tint, opacity: 0.05, radius: LTRadius.md, borderOpacity: 0.16)
     }
 }
+
+// MARK: - Badge
+
+struct LTBadge: View {
+    let count: Int
+    var color: Color = LTPalette.neonGreen
+    var textColor: Color = .black
+
+    var body: some View {
+        if count > 0 {
+            ZStack {
+                Circle()
+                    .fill(color)
+                    .frame(width: count > 9 ? 18 : 14, height: 14)
+                Text(count > 99 ? "99+" : "\(count)")
+                    .font(.system(size: 8, weight: .black, design: .monospaced))
+                    .foregroundColor(textColor)
+            }
+            .shadow(color: color.opacity(0.5), radius: 4)
+        }
+    }
+}
+
+// MARK: - Progress Bar
+
+struct LTProgressBar: View {
+    let fraction: Double
+    var tint: Color = LTPalette.neonGreen
+    var height: CGFloat = 4
+
+    var body: some View {
+        GeometryReader { geo in
+            ZStack(alignment: .leading) {
+                Capsule()
+                    .fill(Color.white.opacity(0.06))
+                    .frame(height: height)
+                Capsule()
+                    .fill(LinearGradient(
+                        colors: [tint.opacity(0.7), tint],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    ))
+                    .frame(width: geo.size.width * CGFloat(min(fraction, 1.0)), height: height)
+                    .shadow(color: tint.opacity(0.4), radius: 3)
+                    .animation(LTAnimation.springSmooth, value: fraction)
+            }
+        }
+        .frame(height: height)
+    }
+}

@@ -28,15 +28,22 @@ class InvestmentManager: ObservableObject {
     private var crashTimer: Timer?
 
     static func dailyRate(for zone: ZoneProfile) -> Double {
-        switch zone.name {
-        case "Halvmörkret":   return 0.003
-        case "Gränslandet":   return 0.005
-        case "Stigarnas Dal": return 0.008
-        case "Uppgången":     return 0.012
-        case "Tröskeln":      return 0.018
-        case "Vakttornet":    return 0.025
-        case "Evigheten":     return 0.035
-        default:              return 0.003
+        switch zone.index {
+        case 0:    return 0.001   // Askan        — startzon, minimal avkastning
+        case 1:    return 0.002   // Spillrorna
+        case 2:    return 0.002   // Betongen
+        case 3:    return 0.003   // Dimman
+        case 4:    return 0.003   // Halvmörkret
+        case 5:    return 0.005   // Gränslandet
+        case 6:    return 0.008   // Stigarnas Dal
+        case 7:    return 0.012   // Uppgången
+        case 8:    return 0.018   // Tröskeln
+        case 9:    return 0.022   // Klarljuset
+        case 10:   return 0.025   // Vakttornet
+        case 11:   return 0.030   // Valvet
+        case 12:   return 0.032   // Kronan
+        case 13:   return 0.035   // Evigheten
+        default:   return 0.001
         }
     }
 
