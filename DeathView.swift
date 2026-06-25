@@ -96,6 +96,8 @@ struct LockedScreen: View {
     @State private var glitchOffset: CGFloat = 0
     @State private var opacity: Double = 0
     @State private var glitchTimer: Timer? = nil
+    @State private var rebirthButtonScale: CGFloat = 1.0
+    @State private var rebirthsTotal: Int = UserDefaults.standard.integer(forKey: "rebirths_total")
 
     private let deathMessages = [
         "Din tid rann ut.\nSystemet bryr sig inte.",
@@ -190,19 +192,69 @@ struct LockedScreen: View {
                 }
                 .padding(.bottom, 48)
 
+                // Progress-bar mot återuppståndelse (visuell återkoppling)
+                VStack(spacing: 6) {
+                    GeometryReader { geo in
+                        ZStack(alignment: .leading) {
+                            Capsule()
+                                .fill(Color.white.opacity(0.06))
+                                .frame(height: 3)
+                            Capsule()
+                                .fill(
+                                    LinearGradient(
+                                        colors: [Color.red.opacity(0.7), Color.red],
+                                        startPoint: .leading, endPoint: .trailing
+                                    )
+                                )
+                                .frame(width: geo.size.width * rebirthProgress, height: 3)
+                                .shadow(color: .red.opacity(0.5), radius: 4)
+                                .animation(LTAnimation.springSmooth, value: rebirthProgress)
+                        }
+                    }
+                    .frame(height: 3)
+                    .padding(.horizontal, 40)
+
+                    Text("\(Int(rebirthProgress * 100))% mot återuppståndelse")
+                        .font(.system(size: 9, weight: .bold, design: .monospaced))
+                        .foregroundColor(.white.opacity(0.25))
+                        .tracking(1)
+                }
+                .padding(.bottom, 24)
+
                 if timeRemaining <= 0 {
                     Button {
-                        engine.rebirth()
+                        triggerRebirth()
                     } label: {
-                        Text("ÅTERUPPSTÅ")
-                            .font(.system(size: 14, weight: .black, design: .monospaced))
-                            .foregroundColor(.black)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 16)
-                            .background(Color.red.opacity(0.8))
-                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                        HStack(spacing: 8) {
+                            Image(systemName: "arrow.uturn.backward.circle.fill")
+                                .font(.system(size: 16, weight: .bold))
+                            Text("ÅTERUPPSTÅ")
+                                .font(.system(size: 14, weight: .black, design: .monospaced))
+                                .tracking(2)
+                        }
+                        .foregroundColor(.black)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16)
+                        .background(
+                            LinearGradient(
+                                colors: [Color(red: 1.0, green: 0.30, blue: 0.30), Color(red: 0.85, green: 0.10, blue: 0.10)],
+                                startPoint: .top, endPoint: .bottom
+                            )
+                        )
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12)
+                                .stroke(Color.red.opacity(0.6), lineWidth: 1)
+                        )
+                        .shadow(color: .red.opacity(0.6), radius: 14)
                     }
                     .padding(.horizontal, 40)
+                    .scaleEffect(rebirthButtonScale)
+                    .onAppear {
+                        withAnimation(.easeInOut(duration: 1.4).repeatForever(autoreverses: true)) {
+                            rebirthButtonScale = 1.04
+                        }
+                    }
                 }
 
                 Spacer()
@@ -230,6 +282,21 @@ struct LockedScreen: View {
         let m = remaining % 3600 / 60
         let s = remaining % 60
         return String(format: "%02d:%02d:%02d", h, m, s)
+    }
+
+    /// Visuell progress mot återuppståndelse (0–1)
+    private var rebirthProgress: Double {
+        let total: TimeInterval = 86400 // 24h spärr
+        return min(1.0, max(0, 1.0 - (timeRemaining / total)))
+    }
+
+    private func triggerRebirth() {
+        // Spåra antal återuppståndelser — driver mission 'death_survivor'
+        let prev = UserDefaults.standard.integer(forKey: "rebirths_total")
+        UserDefaults.standard.set(prev + 1, forKey: "rebirths_total")
+        MissionsManager.incrementProgress("rebirths_total", by: 1)
+        rebirthsTotal = prev + 1
+        engine.rebirth()
     }
 
     private func startGlitch() {

@@ -125,7 +125,7 @@ class WorkManager: ObservableObject {
     private func completeJob(_ job: ActiveJob) {
         if let jobType = allJobs.first(where: { $0.id == job.jobId }) {
             let riskRoll = Double.random(in: 0...1)
-            var earnings = job.baseEarnings
+            var earnings = job.baseEarnings * TimeOfDayEngine.shared.currentPhase.workMultiplier
             let zone = GameState.shared.currentZone
 
             // Streak-bonus: 3 jobb i rad utan avbrott/avkortning ger +15% bonus

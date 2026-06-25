@@ -71,7 +71,10 @@ class TimeEngine: ObservableObject {
     private var onboardingDrainMultiplier: TimeInterval {
         UserDefaults.standard.bool(forKey: "hasLaunched") ? 1.0 : 0.1
     }
-    private var effectiveDrainRate: TimeInterval { currentDrainRate * onboardingDrainMultiplier }
+    private var effectiveDrainRate: TimeInterval {
+        let phaseMult = TimeOfDayEngine.shared.currentPhase.drainRateMultiplier
+        return currentDrainRate * onboardingDrainMultiplier * phaseMult
+    }
 
     /// Prevents the next server sync from rolling back a manual balance reset
     var skipServerCorrection: Bool = false

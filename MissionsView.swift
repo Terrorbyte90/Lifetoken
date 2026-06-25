@@ -41,6 +41,38 @@ class MissionsManager: ObservableObject {
     private let claimedKey = "claimed_missions"
     private var uptimeTimer: Timer?
 
+    // Dagliga uppdrag — återställs vid Stockholm-midnatt
+    private let dailyResetKey = "missions_daily_reset_date"
+    // Veckovisa uppdrag — återställs varje måndag
+    private let weeklyResetKey = "missions_weekly_reset_date"
+
+    private let dailyMissions: [Mission] = [
+        Mission(id: "daily_walk_5k",   title: "Dagens steg: 5 000",  description: "Gå 5 000 steg idag.",
+                category: .work,    icon: "figure.walk",         rewardSeconds: 3600,
+                targetValue: 5000,  progressKey: "hk_today_steps_raw", isCompleted: false, isClaimed: false),
+        Mission(id: "daily_3jobs",     title: "Dagens flit: 3 jobb",  description: "Slutför 3 jobb idag.",
+                category: .work,    icon: "hammer.fill",         rewardSeconds: 5400,
+                targetValue: 3,     progressKey: "daily_jobs_completed", isCompleted: false, isClaimed: false),
+        Mission(id: "daily_1casino",   title: "Ett kasinobesök",      description: "Spela ett kasinospel idag.",
+                category: .casino,  icon: "dice.fill",           rewardSeconds: 1800,
+                targetValue: 1,     progressKey: "daily_casino_plays", isCompleted: false, isClaimed: false),
+        Mission(id: "daily_mindful10", title: "Mindful kvart",        description: "10 min mindfulness idag.",
+                category: .work,    icon: "brain.head.profile",  rewardSeconds: 3600,
+                targetValue: 10,    progressKey: "hk_today_mindful_raw", isCompleted: false, isClaimed: false),
+    ]
+
+    private let weeklyMissions: [Mission] = [
+        Mission(id: "weekly_50k_steps",  title: "Veckans steg: 50 000", description: "Gå 50 000 steg denna vecka.",
+                category: .work,    icon: "figure.walk.circle.fill", rewardSeconds: 43200,
+                targetValue: 50000, progressKey: "weekly_steps_accumulated", isCompleted: false, isClaimed: false),
+        Mission(id: "weekly_5_logins",   title: "5 inloggningar",       description: "Logga in 5 olika dagar denna vecka.",
+                category: .social,  icon: "calendar",              rewardSeconds: 36000,
+                targetValue: 5,     progressKey: "weekly_login_days", isCompleted: false, isClaimed: false),
+        Mission(id: "weekly_10_jobs",    title: "Veckans flit: 10 jobb", description: "Slutför 10 jobb denna vecka.",
+                category: .work,    icon: "hammer.fill",            rewardSeconds: 86400,
+                targetValue: 10,    progressKey: "weekly_jobs_completed", isCompleted: false, isClaimed: false),
+    ]
+
     private let allMissions: [Mission] = [
         // Survival
         Mission(id: "survive_1d",   title: "Överlev en dag",     description: "Ha mer än 0 sekunder efter 24h.",
@@ -105,13 +137,72 @@ class MissionsManager: ObservableObject {
     ]
 
     private init() {
+        performResetsIfNeeded()
+        seedDailyProgressKeys()
         loadMissions()
         startUptimeTracking()
     }
 
+    /// Återställer dagliga/veckovisa uppdrag vid ny Stockholm-dag eller ny vecka
+    private func performResetsIfNeeded() {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = IncomeManager.stockholmTZ
+        let today = cal.startOfDay(for: Date())
+        let todayKey = IncomeManager.shared.todayStringInStockholm()
+
+        // Daily reset
+        if let lastDaily = UserDefaults.standard.object(forKey: dailyResetKey) as? Date {
+            let lastDay = cal.startOfDay(for: lastDaily)
+            if lastDay != today {
+                // Ny dag — rensa dagliga progress-nycklar
+                for key in ["daily_jobs_completed", "daily_casino_plays"] {
+                    UserDefaults.standard.set(0, forKey: key)
+                }
+                // Hälsa hämtas från HealthKit live — nollställs automatiskt per dag
+                // Klarmarkeringar för dailyMissions rensas
+                let claimed = UserDefaults.standard.stringArray(forKey: claimedKey) ?? []
+                let filtered = claimed.filter { id in
+                    !dailyMissions.contains { $0.id == id }
+                }
+                UserDefaults.standard.set(filtered, forKey: claimedKey)
+            }
+        }
+        UserDefaults.standard.set(today, forKey: dailyResetKey)
+        UserDefaults.standard.set(todayKey, forKey: "missions_daily_date_string")
+
+        // Weekly reset (måndag = veckostart)
+        let weekStart = cal.dateInterval(of: .weekOfYear, for: today)?.start ?? today
+        if let lastWeekly = UserDefaults.standard.object(forKey: weeklyResetKey) as? Date {
+            let lastWeekStart = cal.dateInterval(of: .weekOfYear, for: lastWeekly)?.start ?? lastWeekly
+            if lastWeekStart != weekStart {
+                for key in ["weekly_steps_accumulated", "weekly_login_days", "weekly_jobs_completed"] {
+                    UserDefaults.standard.set(0, forKey: key)
+                }
+                let claimed = UserDefaults.standard.stringArray(forKey: claimedKey) ?? []
+                let filtered = claimed.filter { id in
+                    !weeklyMissions.contains { $0.id == id }
+                }
+                UserDefaults.standard.set(filtered, forKey: claimedKey)
+            }
+        }
+        UserDefaults.standard.set(weekStart, forKey: weeklyResetKey)
+    }
+
+    /// Nollställer/säkerställer daily-nycklar som inte redan finns
+    private func seedDailyProgressKeys() {
+        let keys = ["daily_jobs_completed", "daily_casino_plays",
+                    "weekly_steps_accumulated", "weekly_login_days", "weekly_jobs_completed"]
+        for key in keys {
+            if !UserDefaults.standard.object(forKey: key).isSome {
+                UserDefaults.standard.set(0, forKey: key)
+            }
+        }
+    }
+
     func loadMissions() {
         let claimed = Set(UserDefaults.standard.stringArray(forKey: claimedKey) ?? [])
-        missions = allMissions.map { m in
+        let combined = allMissions + dailyMissions + weeklyMissions
+        missions = combined.map { m in
             var updated = m
             updated.isClaimed = claimed.contains(m.id)
             updated.isCompleted = m.progress >= m.targetValue
