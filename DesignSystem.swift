@@ -182,6 +182,47 @@ struct LTPressEffect: ButtonStyle {
     }
 }
 
+/// Premium card: ultraThinMaterial blur + gradient sheen + soft shadow.
+/// Använd för hero-kort, featured games och viktiga action-kort.
+struct LTPremiumCardModifier: ViewModifier {
+    var color: Color = .white
+    var radius: CGFloat = LTRadius.lg
+    var glow: Bool = true
+
+    func body(content: Content) -> some View {
+        content
+            .background(
+                ZStack {
+                    RoundedRectangle(cornerRadius: radius)
+                        .fill(.ultraThinMaterial)
+                    LinearGradient(
+                        colors: [
+                            color.opacity(0.18),
+                            color.opacity(0.04),
+                            Color.black.opacity(0.15)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: radius))
+                }
+            )
+            .clipShape(RoundedRectangle(cornerRadius: radius))
+            .overlay(
+                RoundedRectangle(cornerRadius: radius)
+                    .stroke(
+                        LinearGradient(
+                            colors: [color.opacity(0.45), color.opacity(0.08)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 1
+                    )
+            )
+            .shadow(color: glow ? color.opacity(0.18) : .clear, radius: 14, x: 0, y: 5)
+    }
+}
+
 /// Reduced-motion-safe animation helper
 extension View {
     @ViewBuilder
@@ -209,6 +250,10 @@ extension View {
 
     func ltAccentCard(color: Color, radius: CGFloat = LTRadius.md) -> some View {
         modifier(LTAccentCardModifier(color: color, radius: radius))
+    }
+
+    func ltPremiumCard(color: Color = .white, radius: CGFloat = LTRadius.lg, glow: Bool = true) -> some View {
+        modifier(LTPremiumCardModifier(color: color, radius: radius, glow: glow))
     }
 }
 
