@@ -57,6 +57,7 @@ struct DashboardView: View {
                 VStack(spacing: 14) {
                     topHeader
                     clockSection
+                    dayPhaseCard
                     if engine.balance > 0 && engine.balance < 86400 { lowBalanceBanner }
                     if inflation.isWarning { inflationBanner }
                     ZoneVideoInfoCard(
@@ -157,6 +158,10 @@ struct DashboardView: View {
             }
 
             Spacer()
+
+            // Day-phase badge — visar Stockholmstid + dygnsfas
+            DayPhaseBadge(phase: TimeOfDayEngine.shared.currentPhase, compact: true)
+                .help(TimeOfDayEngine.shared.currentPhase.subtitle)
 
             // Server online indicator
             Circle()
@@ -285,6 +290,83 @@ struct DashboardView: View {
         .padding(.horizontal)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Livsbalans: \(clockLabel.lowercased()). \(TimeEngine.formatted(engine.balance)) återstår.")
+    }
+
+    // MARK: - Day Phase Card
+
+    private var dayPhaseCard: some View {
+        let phase = TimeOfDayEngine.shared.currentPhase
+        return HStack(spacing: LTSpacing.md) {
+            // Ikon med glow
+            ZStack {
+                Circle()
+                    .fill(phase.accentColor.opacity(0.18))
+                    .frame(width: 44, height: 44)
+                Circle()
+                    .stroke(phase.accentColor.opacity(0.45), lineWidth: 1)
+                    .frame(width: 44, height: 44)
+                Image(systemName: phase.icon)
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundColor(phase.accentColor)
+                    .shadow(color: phase.accentColor.opacity(0.6), radius: 6)
+            }
+
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(spacing: 6) {
+                    Text(phase.displayName)
+                        .font(LTFont.heading(13))
+                        .foregroundColor(.white)
+                        .tracking(1.5)
+                    Text(TimeOfDayEngine.shared.clockText)
+                        .font(LTFont.caption(9))
+                        .foregroundColor(.white.opacity(0.35))
+                        .tracking(1)
+                }
+                Text(phase.subtitle)
+                    .font(LTFont.body(10))
+                    .foregroundColor(.white.opacity(0.55))
+                    .fixedSize(horizontal: false, vertical: true)
+                Text(TimeOfDayEngine.shared.nextPhaseLabel)
+                    .font(LTFont.caption(8))
+                    .foregroundColor(phase.accentColor.opacity(0.85))
+                    .tracking(1)
+                    .padding(.top, 1)
+            }
+
+            Spacer(minLength: 0)
+
+            // Compact perks
+            VStack(alignment: .trailing, spacing: 3) {
+                if phase.workMultiplier > 1 {
+                    Text("jobb ×\(String(format: "%.2f", phase.workMultiplier))")
+                        .font(LTFont.caption(8))
+                        .foregroundColor(.cyan)
+                }
+                if phase.casinoRewardMultiplier > 1 {
+                    Text("kasino ×\(String(format: "%.2f", phase.casinoRewardMultiplier))")
+                        .font(LTFont.caption(8))
+                        .foregroundColor(.purple)
+                }
+                if phase.drainRateMultiplier < 1 {
+                    Text("drain ×\(String(format: "%.2f", phase.drainRateMultiplier))")
+                        .font(LTFont.caption(8))
+                        .foregroundColor(.green)
+                }
+            }
+        }
+        .padding(.horizontal, LTSpacing.lg)
+        .padding(.vertical, LTSpacing.md)
+        .ltCard(
+            color: phase.accentColor,
+            opacity: 0.06,
+            radius: LTRadius.md,
+            borderOpacity: 0.22,
+            shadowColor: phase.accentColor.opacity(0.15),
+            shadowRadius: 10
+        )
+        .padding(.horizontal)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(phase.displayName). \(phase.subtitle). Nästa fas om \(TimeOfDayEngine.shared.nextPhaseLabel).")
     }
 
     // MARK: - Salary Card

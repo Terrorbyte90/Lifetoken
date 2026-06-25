@@ -134,13 +134,20 @@ class IncomeManager: ObservableObject {
 
     func refreshAll() {
         let zone = GameState.shared.currentZone
+        let phase = TimeOfDayEngine.shared.currentPhase
+        // Dygnsfas-mekanik:
+        //   Gryningsljus: steglön ×1.20, total hälsolön ×1.10
+        //   Dagsljus:     total hälsolön ×1.05
+        //   Djupnatt:     total hälsolön ×0.85
+        let phaseHealthMult = phase.healthIncomeMultiplier
+        let phaseStepMult   = phase.stepBonusMultiplier
 
         // Steg: 0.5s per steg, ingen cap
         HealthKitManager.shared.fetchTodayStepCount { steps in
             DispatchQueue.main.async {
                 self.dailySteps = steps
                 let raw = Double(steps) * Self.stepRate
-                self.todayBreakdown.stepsSeconds = raw * zone.stepBonusMultiplier
+                self.todayBreakdown.stepsSeconds = raw * zone.stepBonusMultiplier * phaseStepMult
                 self.earnedSeconds = self.todayBreakdown.total
             }
         }
@@ -205,7 +212,10 @@ class IncomeManager: ObservableObject {
 
         let zone = GameState.shared.currentZone
         let boostMult = BoostManager.shared.boosterMultiplier()
-        let gross    = todayBreakdown.total * boostMult
+        // Dygnsfas-bonus appliceras på hela bruttoinkomsten vid utbetalning.
+        // phaseHealthMult sätts av TimeOfDayEngine baserat på Stockholmstid.
+        let phaseMult = TimeOfDayEngine.shared.currentPhase.healthIncomeMultiplier
+        let gross    = todayBreakdown.total * boostMult * phaseMult
         let afterTax = gross * (1.0 - zone.taxRate)
         let net      = InflationManager.shared.deflatedEarnings(afterTax)
 
@@ -275,7 +285,8 @@ class IncomeManager: ObservableObject {
     var projectedDailyIncome: TimeInterval {
         let zone = GameState.shared.currentZone
         let boostMult = BoostManager.shared.boosterMultiplier()
-        let gross = todayBreakdown.total * boostMult * (1.0 - zone.taxRate)
+        let phaseMult = TimeOfDayEngine.shared.currentPhase.healthIncomeMultiplier
+        let gross = todayBreakdown.total * boostMult * phaseMult * (1.0 - zone.taxRate)
         return InflationManager.shared.deflatedEarnings(gross)
     }
 
@@ -291,7 +302,8 @@ class IncomeManager: ObservableObject {
         let projected = rate * 86400
         let zone = GameState.shared.currentZone
         let boostMult = BoostManager.shared.boosterMultiplier()
-        let gross = projected * boostMult * (1.0 - zone.taxRate)
+        let phaseMult = TimeOfDayEngine.shared.currentPhase.healthIncomeMultiplier
+        let gross = projected * boostMult * phaseMult * (1.0 - zone.taxRate)
         return InflationManager.shared.deflatedEarnings(gross)
     }
 
