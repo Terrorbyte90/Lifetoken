@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-test:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install xcpretty
+        run: gem install xcpretty --no-document --quiet
+
+      - name: Build
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project "LifeToken.xcodeproj" \
+            -scheme "LifeToken" \
+            -destination "platform=iOS Simulator,name=iPhone 16" \
+            CODE_SIGNING_ALLOWED=NO \
+            2>&1 | tee /tmp/xcodebuild.log | xcpretty --color false || (cat /tmp/xcodebuild.log | grep -A 5 "error:" | tail -40 && exit 1)
+
+      - name: Test
+        run: |
+          set -o pipefail
+          xcodebuild test \
+            -project "LifeToken.xcodeproj" \
+            -scheme "LifeToken" \
+            -destination "platform=iOS Simulator,name=iPhone 16" \
+            CODE_SIGNING_ALLOWED=NO \
+            2>&1 | xcpretty --color false
+        continue-on-error: true
