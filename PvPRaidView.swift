@@ -332,7 +332,8 @@ class PvPRaidManager: ObservableObject {
         let scenario: RaidScenario
         switch outcome {
         case .success:
-            scenario = successScenarios.randomElement()!
+            guard let selectedScenario = successScenarios.randomElement() else { return }
+            scenario = selectedScenario
             let grossPayout = record.stake * 2
             let houseFee = grossPayout * 0.05
             let netPayout = grossPayout - houseFee
@@ -343,12 +344,14 @@ class PvPRaidManager: ObservableObject {
             TransactionLedger.shared.record(label: "Rån — vinst", amount: resolvedTimeDelta)
             MissionsManager.incrementProgress("pvp_raids_won")
         case .failure:
-            scenario = failureScenarios.randomElement()!
+            guard let selectedScenario = failureScenarios.randomElement() else { return }
+            scenario = selectedScenario
             record.status = .lost
             resolvedTimeDelta = -record.stake
             TransactionLedger.shared.record(label: "Rån — förlust", amount: resolvedTimeDelta)
         case .backfire:
-            scenario = backfireScenarios.randomElement()!
+            guard let selectedScenario = backfireScenarios.randomElement() else { return }
+            scenario = selectedScenario
             // Förlorar insatsen PLUS 10% av balansen (upp till stakebeloppet)
             let extraPenalty = min(TimeEngine.shared.balance * 0.10, record.stake)
             if extraPenalty > 0 {

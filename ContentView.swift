@@ -425,16 +425,10 @@ struct DashboardView: View {
     ]
 
     private var toplistaSection: some View {
-        let displayPlayers: [(name: String, advantage: String)] = liveTopPlayers.isEmpty
-            ? [
-                ("Viktor_H",  "+15% av allas inkomst"),
-                ("Malin_88",  "+8% av allas inkomst"),
-                ("ZeroKing",  "+4% av allas inkomst")
-            ]
-            : liveTopPlayers.prefix(3).map { user in
-                let balance = TimeEngine.shortFormatted(user.timeBalance ?? 0)
-                return (user.username, "~\(balance)")
-            }
+        let displayPlayers: [(name: String, advantage: String, balance: String)] = liveTopPlayers.prefix(3).map { user in
+            let balance = user.timeBalance ?? 0
+            return (user.username, "Tid kvar", TimeEngine.shortFormatted(balance))
+        }
 
         return VStack(alignment: .leading, spacing: 10) {
             Text(topListCycleTexts[topListIndex])
@@ -452,29 +446,40 @@ struct DashboardView: View {
                 Spacer()
             }
 
-            ForEach(Array(displayPlayers.enumerated()), id: \.offset) { i, player in
-                HStack(spacing: 10) {
-                    Text("#\(i + 1)")
-                        .font(.system(size: 14, weight: .black, design: .monospaced))
-                        .foregroundColor(i == 0 ? .yellow : i == 1 ? Color(white: 0.75) : Color(red: 0.8, green: 0.5, blue: 0.2))
-                        .frame(width: 30)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(player.name)
-                            .font(.system(size: 12, weight: .bold, design: .monospaced))
-                            .foregroundColor(.white)
-                        Text(player.advantage)
-                            .font(.system(size: 9, design: .monospaced))
-                            .foregroundColor(.green.opacity(0.65))
+            if displayPlayers.isEmpty {
+                LTEmptyStateCard(
+                    icon: "person.3",
+                    title: "Ingen topplista ännu",
+                    message: "Topplistan visas när servern har hämtat spelare i din zon.",
+                    tint: .yellow
+                )
+            } else {
+                ForEach(Array(displayPlayers.enumerated()), id: \.offset) { i, player in
+                    HStack(spacing: 10) {
+                        Text("#\(i + 1)")
+                            .font(.system(size: 14, weight: .black, design: .monospaced))
+                            .foregroundColor(i == 0 ? .yellow : i == 1 ? Color(white: 0.75) : Color(red: 0.8, green: 0.5, blue: 0.2))
+                            .frame(width: 30)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(player.name)
+                                .font(.system(size: 12, weight: .bold, design: .monospaced))
+                                .foregroundColor(.white)
+                            Text(player.advantage)
+                                .font(.system(size: 9, design: .monospaced))
+                                .foregroundColor(.green.opacity(0.65))
+                        }
+                        Spacer()
+                        Text(player.balance)
+                            .font(.system(size: 11, weight: .bold, design: .monospaced))
+                            .foregroundColor(.white.opacity(0.5))
                     }
-                    Spacer()
-                    Text("??:??:??")
-                        .font(.system(size: 11, weight: .bold, design: .monospaced))
-                        .foregroundColor(.white.opacity(0.5))
+                    .padding(.vertical, 6)
+                    .padding(.horizontal, 10)
+                    .background(Color.white.opacity(0.04))
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("Plats \(i + 1), \(player.name), \(player.balance) tid kvar")
                 }
-                .padding(.vertical, 6)
-                .padding(.horizontal, 10)
-                .background(Color.white.opacity(0.04))
-                .clipShape(RoundedRectangle(cornerRadius: 8))
             }
         }
         .padding(14)
