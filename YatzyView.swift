@@ -207,7 +207,11 @@ class YatzyAI {
         guard !available.isEmpty else { return .chans }
 
         let trailing = myTotalScore < opponentScore - 15
-        var best: (YatzyCategory, Double) = (available.first!, -1e9)
+        // `available` is guarded above, but avoid a force unwrap here because
+        // this decision function is also called from recovery paths while a
+        // round is being reset.
+        guard let firstAvailable = available.first else { return .chans }
+        var best: (YatzyCategory, Double) = (firstAvailable, -1e9)
 
         for cat in available {
             var val = categoryAdjustedValue(cat: cat, dice: dice, myUpperScore: myUpperScore, trailing: trailing)
