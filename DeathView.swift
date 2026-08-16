@@ -29,7 +29,7 @@ struct DeathView: View {
     }
 
     private func setupGameOverVideo() {
-        guard let url = Bundle.main.url(forResource: "Gameover", withExtension: "mp4") else {
+        guard let url = Bundle.main.url(forResource: "Gameover", withExtension: "mp4", subdirectory: "Media.bundle/Media") else {
             // Ingen video hittad — hoppa direkt till spärrad skärm
             showLockedScreen = true
             return

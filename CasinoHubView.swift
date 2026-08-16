@@ -37,7 +37,7 @@ struct CasinoVideoCard: View {
         }
         .clipShape(RoundedRectangle(cornerRadius: 16))
         .onAppear {
-            guard let url = Bundle.main.url(forResource: "Casino", withExtension: "mp4") else { return }
+            guard let url = Bundle.main.url(forResource: "Casino", withExtension: "mp4", subdirectory: "Media.bundle/Media") else { return }
             let p = AVPlayer(url: url)
             p.actionAtItemEnd = .none
             NotificationCenter.default.addObserver(
