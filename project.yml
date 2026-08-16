@@ -1,0 +1,39 @@
+name: LifeToken
+options:
+  bundleIdPrefix: com.terrorbyte
+  deploymentTarget:
+    iOS: "18.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: 5.0
+    MARKETING_VERSION: 1.0
+    CURRENT_PROJECT_VERSION: 1
+    DEVELOPMENT_TEAM: G648H762LD
+    CODE_SIGN_STYLE: Automatic
+targets:
+  LifeToken:
+    type: application
+    platform: iOS
+    sources:
+      - path: .
+        excludes:
+          - project.yml
+          - LifeToken.xcodeproj
+          - "*.mp4"
+          - "*.mov"
+          - ".git/**"
+    resources:
+      - Assets.xcassets
+      - LifeToken.xcdatamodeld
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.terrorbyte.LifeToken
+        INFOPLIST_FILE: Info.plist
+        CODE_SIGN_ENTITLEMENTS: LifeToken.entitlements
+        SWIFT_OBJC_BRIDGING_HEADER: ""
+        TARGETED_DEVICE_FAMILY: "1,2"
+        SUPPORTS_MACCATALYST: false
+    scheme:
+      gatherCoverageData: false
+      testTargets: []

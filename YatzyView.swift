@@ -570,11 +570,16 @@ struct YatzyView: View {
                     .overlay(RoundedRectangle(cornerRadius: LTRadius.xs)
                         .stroke(aiHolds[i] ? Color.red.opacity(0.6) : Color.red.opacity(0.15),
                                 lineWidth: aiHolds[i] ? 2 : 1))
-                    .accessibilityLabel("AI tärning \(aiDice[i]). \(aiHolds[i] ? "Hållen" : "")")
+                    .accessibilityLabel(aiDieAccessibilityLabel(at: i))
             }
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel("AI:s tärningar: \(aiDice.map { "\($0)" }.joined(separator: ", "))")
+    }
+
+    private func aiDieAccessibilityLabel(at index: Int) -> String {
+        let heldState = aiHolds[index] ? "Hållen" : "Ej hållen"
+        return "AI tärning \(aiDice[index]). \(heldState)"
     }
 
     private var rollButton: some View {
