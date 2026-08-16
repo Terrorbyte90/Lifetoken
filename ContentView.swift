@@ -844,8 +844,8 @@ struct ZoneVideoInfoCard: View {
     private func setupPlayer() {
         let num = zone.index + 1
         let name = "zon\(num)"
-        let url = Bundle.main.url(forResource: name, withExtension: "mp4")
-               ?? Bundle.main.url(forResource: name, withExtension: "mov")
+        let url = Bundle.main.url(forResource: name, withExtension: "mp4", subdirectory: "Media.bundle/Media")
+               ?? Bundle.main.url(forResource: name, withExtension: "mov", subdirectory: "Media.bundle/Media")
         guard let url else { return }
         let p = AVPlayer(url: url)
         p.actionAtItemEnd = .none

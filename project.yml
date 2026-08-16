@@ -22,10 +22,12 @@ targets:
           - LifeToken.xcodeproj
           - "*.mp4"
           - "*.mov"
+          - Media/**
           - ".git/**"
     resources:
       - Assets.xcassets
       - LifeToken.xcdatamodeld
+      - Media.bundle
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.terrorbyte.LifeToken
