@@ -7,179 +7,181 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		01CE323EBFB7C50CF303277B /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = "TEMP_0C54D181-1162-46C0-8A5D-FC01CD8CA720" /* PrivacyInfo.xcprivacy */; };
-		0289A50556B813ED046B5BE7 /* MultiplayerYatzyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_4BC2311F-FAC2-4BAF-A1B9-CFB554F8E525" /* MultiplayerYatzyView.swift */; };
-		07EDCE017A320226A777B4C4 /* SocialTransferViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_A94777B9-BB19-4651-A40D-A4A135D267BA" /* SocialTransferViews.swift */; };
-		0AFA2552CFF533DC6F0FBC59 /* OnboardingEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_2067DAD8-36D1-4221-BCAD-167761435AB7" /* OnboardingEngine.swift */; };
-		0C21154CB220CDAF8EBE4097 /* TimeEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_B797E3AA-2AC7-47DF-B3F4-847F9F5F5145" /* TimeEngine.swift */; };
-		0D489200C5D92CB34E23E9D0 /* CrashView.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_A75A08FB-3A77-4C97-B9E3-DFB11E9445AF" /* CrashView.swift */; };
-		0F24A0BCEAFF5BA800F5791F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = "TEMP_38233A4E-0C24-4420-ABC5-EA27DCD361C5" /* Assets.xcassets */; };
-		104B21E6535B9DFB463623D4 /* LotteryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_C196A486-C73A-4BE4-AC8F-E80FB28ADF1E" /* LotteryView.swift */; };
-		1111904B289D9B8933B125A5 /* PokerEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_4FA07517-57FF-4F25-865C-2C74525AC51F" /* PokerEngine.swift */; };
-		11C6C80D53D95E67ED1690C7 /* WorkComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_C34C8BFB-284B-450A-93B4-5F94DA02E367" /* WorkComponents.swift */; };
-		14EBBE4C646FDAFDC6EFB3C7 /* MissionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_F2D0287B-682F-4488-B2A4-EC47752192A9" /* MissionsView.swift */; };
-		152AE7EAD83064E9245F1DB5 /* AdminPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_00AFA3B6-8F43-4B4B-BAA6-48713F3143DD" /* AdminPanelView.swift */; };
-		176E2D68978A6C4925E409D7 /* CasinoParticleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_F4188133-57E3-4863-B3D2-7DD28017F3AD" /* CasinoParticleView.swift */; };
-		19AAEE9FECCC9E8CAFFD167E /* TimeMarketView.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_6C6A0335-FF0B-432E-ADEE-EDD976E30B1A" /* TimeMarketView.swift */; };
-		19F4E49CBF4FA0EC63BD6242 /* FactionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_59528FD0-8216-4FD8-8371-F965CCB08F5D" /* FactionManager.swift */; };
-		1ED2A241432D828D23FA3415 /* Intro.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_75A776B7-835C-4CFA-9B46-B3F24506889D" /* Intro.swift */; };
-		256D2AB2BE68AFF79770CB6C /* AccountSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_D511E932-CA71-4421-B8CC-E3C4BF5BC291" /* AccountSettingsView.swift */; };
-		25D7DDB843BA57F60C7184A6 /* MiniJobsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_D7452B86-70EE-419F-8196-F88949AAF3EA" /* MiniJobsView.swift */; };
+		08FCC8889AE2839C8EAA53B6 /* OnboardingEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_9D419AEA-5F1B-4016-85D1-63B4070EF861" /* OnboardingEngine.swift */; };
+		0C1EEBF3D193507D4F5D437C /* SortingGameView.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_CE6D3F8D-4863-4E27-AB2C-3456ABA3F3AE" /* SortingGameView.swift */; };
+		0C9B16CD786E66CFC0DB3D48 /* TimeMarketView.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_A547E193-10EB-4EBF-BC35-56004FE24752" /* TimeMarketView.swift */; };
+		0EA5DB5061A0784E0CEEDA80 /* ZoneVisual.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_533ED8F3-5878-4254-8033-07FED2FC6FA1" /* ZoneVisual.swift */; };
+		10FC8FC22957725161C97F2D /* FactionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_C8D96F18-504A-4FFF-8FD7-430FD20F3BF4" /* FactionView.swift */; };
+		112B607B495C057FE39DB7BA /* StepBetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_CFA03FC0-CBE4-4122-AE3A-3AA8F4D38968" /* StepBetView.swift */; };
+		12AAE8C235D3BA84D699FC16 /* ServerSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_7023DA12-1299-4747-B957-39D6CB660A76" /* ServerSync.swift */; };
+		1462F5279AB0D10A61FA5411 /* CasinoParticleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_D2CF4E29-3FBE-45B3-A8E1-2E036F3150C8" /* CasinoParticleView.swift */; };
+		14B5526D1F0194A64AC1671C /* CasinoHubView.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_B55156EF-0DCF-4D9B-8666-2D177D9B38E6" /* CasinoHubView.swift */; };
+		1536D6E2FEA47CC3CC03D020 /* DeathView.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_56A837A4-16DF-4E2A-92C6-79E76EF56D31" /* DeathView.swift */; };
+		171937C23185C3F93546C85E /* InflationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_968B365A-4703-4306-A80F-F4E3BD4A8D30" /* InflationManager.swift */; };
+		1C893475114C556D02EF16AE /* RouletteGameView.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_88BEA876-2C75-4BD8-BB24-153DD6A3D008" /* RouletteGameView.swift */; };
+		1DA6E602D213DD0C4B18ECB8 /* YatzyGameOverView.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_EE7579F0-3DC5-40D7-B703-E44D049A8151" /* YatzyGameOverView.swift */; };
+		1FAFD34FE5CB8DE8944A89C8 /* ZoneLoreView.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_E17C2653-A826-4F10-A823-DC1F2D5A9858" /* ZoneLoreView.swift */; };
+		2248F2785DAD12B6E31C46AF /* YatzyLobbyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_B200DD5D-CE8A-4806-A0EA-669E4C16036B" /* YatzyLobbyView.swift */; };
 		25E0E2B2F78541FBB07CF75A /* ci.yml in Resources */ = {isa = PBXBuildFile; fileRef = E44913577EBF7F5E080E37C1 /* ci.yml */; };
-		3048FDA188060D47C235167B /* EventEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_A951DF7F-B57F-4F9A-8928-6A6B018964FB" /* EventEngine.swift */; };
-		39CEF55821A78AA95886E565 /* LeaderboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_9920D119-77FC-48D8-9F0B-3C30920EC10D" /* LeaderboardView.swift */; };
-		41D12823C70CEF57B18C11D7 /* ZoneProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_74B9B447-D967-4F72-BACB-03E0081F5099" /* ZoneProfile.swift */; };
-		4667EB8635353E7E54B32AD1 /* PipeGameView.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_76EE60EC-00F2-4B92-B968-48885D9CE253" /* PipeGameView.swift */; };
-		480C454A764C779A0F847FF2 /* YatzyPlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_53ACB24D-C376-41AA-9ADF-8B1BAE97035C" /* YatzyPlayerView.swift */; };
-		4ACE69DC675A177EDA5D32AA /* HealthKitmanager.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_58C20BA6-1E29-4D50-901F-2E1DE91777C4" /* HealthKitmanager.swift */; };
-		4C6373B99DB42C1B7174F1D7 /* CodeBreakerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_21C65D53-5D86-478C-B7E5-0798A9CA8D2D" /* CodeBreakerView.swift */; };
-		4EF8E4A9737E4261F082EFCF /* YatzyGameOverView.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_63545141-6621-4B9F-A743-13341522CEF7" /* YatzyGameOverView.swift */; };
-		51948F1062B09562C917F755 /* LifeToken.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_AECED120-E87C-40E6-8A27-24C702089324" /* LifeToken.xcdatamodeld */; };
-		5D32B69774C9BE9B8BCAB5DD /* ZoneLoreView.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_5A60EDFA-0AED-41A1-A631-5F641E4CA67F" /* ZoneLoreView.swift */; };
-		603F9855C1538928B6F7CFFF /* ZoneManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_17677547-903C-44F7-BCCC-1E25326B62C1" /* ZoneManager.swift */; };
-		64C979EFFAAFE7E4CD4C5F05 /* ServerSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_6894DA13-C0C5-4FE3-9273-C90782B1F4CA" /* ServerSync.swift */; };
-		689433D69BA7DCB7F61D169D /* IncomeManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_DE76222A-DE57-4C03-855A-F6A71988C33A" /* IncomeManager.swift */; };
-		6B113FDABD59C20B3E29851A /* NewsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_A26EC0C0-8900-481C-86D5-57AE16154339" /* NewsManager.swift */; };
-		70DA6F0C5F6705FC4D565B29 /* InvestmentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_87ED5DA2-4974-4891-A927-787A244BF092" /* InvestmentView.swift */; };
-		77C69BED75BBFBA326F3C1BC /* PokerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_11D9822E-0FAB-4DCB-A9A0-0FB0CA61ED94" /* PokerView.swift */; };
-		78E02CD1867103B6FBC35309 /* GazetteShareCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_AA9744F7-C03F-491F-9891-785EF4FB8B9A" /* GazetteShareCard.swift */; };
-		7BFFF80F482A38C01BE219EC /* CryoSleepOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_F0DD5431-3F09-4CF6-96AB-59766DB6B92E" /* CryoSleepOverlay.swift */; };
-		7ED3E8DB7F434CA9DE66A683 /* AdaptiveEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_1F6315AD-EC59-4635-9A46-119E92734C61" /* AdaptiveEngine.swift */; };
-		84109F049CAD2F6B2B45232F /* InflationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_306C0247-5CF1-4DF9-871E-CC2888E8D694" /* InflationManager.swift */; };
-		86130207BE268BCD6AF4A995 /* StepBetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_67E8C1DD-BC0A-4D0E-A3DE-2A753A1860FE" /* StepBetView.swift */; };
-		8710A92AC470250E71E26769 /* NPCMemory.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_3D9B751B-CBF3-4F1F-9A45-A5FADC78B077" /* NPCMemory.swift */; };
-		8E11FB8C3E4D845F6F5323EA /* YatzyGameEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_C0CFDA49-8912-487C-A5F2-CF1EBE6557AB" /* YatzyGameEngine.swift */; };
-		8F7D0A533E9274BB6855E2B3 /* AUDIT_REPORT.md in Resources */ = {isa = PBXBuildFile; fileRef = "TEMP_D499A5A3-0166-4BB3-BF16-8D4FD334C148" /* AUDIT_REPORT.md */; };
-		99AC7A9C6D336B5EEC0E277C /* Persistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_55F668F2-42B1-484A-8DFB-C16F7C67CAB6" /* Persistence.swift */; };
-		9D95FD9A98A3240BFA3F8645 /* LifeTokenApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_FD1AD612-4D56-4BB0-9D60-B5081C151C0F" /* LifeTokenApp.swift */; };
-		9E80FF72F9CD7E27C7E1989E /* NightMarketView.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_7234B15C-57AD-4402-B189-40671D7CC0D5" /* NightMarketView.swift */; };
-		9E85EFD4CD05E463188A0A46 /* InTimeClockView.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_ABCC593E-D2BD-4AF2-9D73-03467E8941C1" /* InTimeClockView.swift */; };
-		A1416D9428AFCD194F070CA3 /* BankView.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_BB29C41A-BB39-4FFB-A900-740485A99818" /* BankView.swift */; };
-		A39DD9DB9B272353096C44CF /* SharedTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_BFB31FEA-4268-4100-BC5A-10366EC8E477" /* SharedTypes.swift */; };
-		A3DBEA194AFDA31DAEB86085 /* ZoneUpgradeFlash.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_15247405-CC8D-4EB0-B60E-94485C288CF0" /* ZoneUpgradeFlash.swift */; };
-		A78EF10204AB53E5CFBD8BA3 /* CasinoHubView.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_3809B5FC-4E98-46BB-901F-7CFE6B96B8BD" /* CasinoHubView.swift */; };
-		B183819EA1651C03F0FE64B6 /* Boostmanager.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_6A5514FE-9556-4933-9C00-1AE353369955" /* Boostmanager.swift */; };
-		B67EDB3BC933E4005FA96E6F /* WorkView.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_B54375DE-B325-4221-951A-A07DE60951A0" /* WorkView.swift */; };
-		B7F73B7FA6F683E314C94257 /* ZoneSystems.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_99237BF5-4DC2-4A4C-B0AE-AC2EC70B9C9A" /* ZoneSystems.swift */; };
-		B8F1E25FE59C2F66CC9F1703 /* PvPRaidView.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_73D50FF0-8F09-4CD8-B7AE-EE4A337D1244" /* PvPRaidView.swift */; };
-		B97D84D4ECEF2E235BDC5914 /* SortingGameView.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_E6297666-E654-43F4-8DF2-829FD0324043" /* SortingGameView.swift */; };
-		BA4555C098763C10E7C85400 /* ZoneVisual.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_A9354A3B-4FB2-4A0A-8BB2-2C4CE6C30BEA" /* ZoneVisual.swift */; };
-		BE624568AA4E6A5CA5CAE3A3 /* BehaviorTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_F7FB7623-362E-4342-8265-7FA7651CE6DC" /* BehaviorTracker.swift */; };
-		BE7099CA1ED3A4C2A5C8C74B /* FactionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_81596563-E82C-4AB7-9C37-E7B199A0C2C3" /* FactionView.swift */; };
-		C139DF47E52186FDF55137F8 /* YatzyAILogic.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_5DFA0385-03AA-4DD5-B4AF-5D16BF7DEAB9" /* YatzyAILogic.swift */; };
-		C1C4E2AE60243CCD1BE6846F /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_E6043EB7-3FF1-4660-9167-5FA15B68FB87" /* ContentView.swift */; };
-		C42BC930DAE27A734365F49D /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = "TEMP_3C04A55C-AC9D-40D2-9D65-DDD938EF53C2" /* README.md */; };
-		C6A589F62EEC9CC1E18B960A /* RouletteGameView.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_93D64439-02CD-4836-8068-C7025E4E178D" /* RouletteGameView.swift */; };
-		C82C899C869936FA37598C5E /* StepBetResultCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_426DC19D-77CC-4CA1-B244-D972CE1515F7" /* StepBetResultCard.swift */; };
-		C90D1FE733756B240D18A87A /* YatzyGameplayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_FF9C750B-9734-4D99-9709-8A60F829D351" /* YatzyGameplayView.swift */; };
-		CAE7E24560C1168FE3EB913A /* DesignSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_255D1DAA-DD59-444E-B184-3E2DF55D1637" /* DesignSystem.swift */; };
-		CAFD575F6FE2E6893721D840 /* YatzyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_CBEF40EA-8D06-4582-98BE-FE01504A06AC" /* YatzyView.swift */; };
-		CDA4C73A828D1D8CA9E4D894 /* GazetteView.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_B615FDA0-0D0C-4368-AE17-9C0C4F24C088" /* GazetteView.swift */; };
-		CF60628B92241BA0A910B4B9 /* ThemeEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_BDFA7747-75A9-48E2-AD2C-A6E971950F4B" /* ThemeEngine.swift */; };
-		D3D10276FC32F6EE812DD3D6 /* GameState.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_8AA7D595-4C31-44BC-ABE7-39F21B73196F" /* GameState.swift */; };
-		DA6FA2016FD07F9172F69E88 /* BombDefuseView.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_4112A5F4-A138-47E8-965A-91593955A4D6" /* BombDefuseView.swift */; };
-		DB10E8611C05EC9BB8322076 /* DeathView.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_C4C09658-2CC0-41A2-8236-A6F0748BFC0F" /* DeathView.swift */; };
-		DE71810D411460EF547D8F91 /* YatzyLobbyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_981693EC-657E-4844-931C-8F8AB82A1332" /* YatzyLobbyView.swift */; };
-		E00AA1C5E201508C8AF7BC82 /* ZoneLore.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_41F5025D-701A-4B1F-829E-3760616B4103" /* ZoneLore.swift */; };
-		EAE8B8F6429EA5B3266A53A8 /* BoardManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_209CE30F-58A6-4554-ACFD-76F875829B1D" /* BoardManager.swift */; };
-		ECBF6CFEFF25E542410B826D /* YatzyScorecardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_FEDCE242-6D42-4AAA-AE4A-9E47BCEAD199" /* YatzyScorecardView.swift */; };
-		EEA7BFB4EF71F5D3AFF87FA6 /* Roulette.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_F311260C-D159-46E2-B6F1-AB2AEB02C901" /* Roulette.swift */; };
-		F1396106BBFF3ED4731800A2 /* BlackjackView.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_D5CF833A-AE30-47B3-B1F2-7E463E4CAC5E" /* BlackjackView.swift */; };
-		F18FF57B812AACDC41F11825 /* NotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_BC9AA2D9-BA30-47FB-A5A6-281A1952B785" /* NotificationManager.swift */; };
-		F36EE244745B3E35D1E9E879 /* SocialView.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_AF83BD5D-09D6-43BA-9DA7-32F91B79C1AC" /* SocialView.swift */; };
-		F708FA01324DD976E24B9C7F /* ZoneOperationsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_02F9F621-B895-4668-82FA-53483FC8DB29" /* ZoneOperationsView.swift */; };
-		FBA53A24CE8331FA272212A8 /* TimingGameView.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_3DB70B5F-5211-439E-AFD1-D6879DBD09B6" /* TimingGameView.swift */; };
-		FC89E555C365E652F85DE991 /* Media.bundle in Resources */ = {isa = PBXBuildFile; fileRef = "TEMP_EB6A1788-BE5B-484D-9C3E-6DE713FBEC55" /* Media.bundle */; };
+		26A22D71BE35648CD3CA81B1 /* PokerEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_8E6C1FD8-1CDA-4E30-8FB3-4A912FF26FCE" /* PokerEngine.swift */; };
+		29003A4724A0D0573DBB8AC1 /* YatzyPlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_DCD5C2D5-52D9-4D7C-97C2-1CDD34509562" /* YatzyPlayerView.swift */; };
+		2DA6B2F44E67E6CECED5688B /* NewsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_A0710E3A-760A-488F-B489-7BE81666598E" /* NewsManager.swift */; };
+		31B6BD0BBA20FBBF8F4F71EE /* BoardManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_251DB6DC-97A0-4A66-98F8-9171BA896C06" /* BoardManager.swift */; };
+		330F58971CF9B4A65A118BCE /* AdaptiveEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_9CB2C08E-98EB-44DB-B681-D247005863CA" /* AdaptiveEngine.swift */; };
+		3645E702BCE5FFAB0016FDB5 /* Boostmanager.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_D446EBE6-8D6B-4480-BB18-C85EFFAE1F23" /* Boostmanager.swift */; };
+		3A727E3C7A38965266500EA5 /* BlackjackView.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_2E900E09-DDDB-4920-894E-9866F5F1B274" /* BlackjackView.swift */; };
+		3C4CC27551739849C226E3A6 /* WorkView.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_4BBFADD7-AF04-46D2-AAF4-C06DADD88E1D" /* WorkView.swift */; };
+		40A88BE83CE56F7E467100DC /* ZoneUpgradeFlash.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_C62744FC-3CD1-4954-87F5-9377396A9098" /* ZoneUpgradeFlash.swift */; };
+		485C5CC83E118CDA8C9E0C39 /* MultiplayerYatzyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_07200A2A-3E36-4A3A-8433-48E9C282909E" /* MultiplayerYatzyView.swift */; };
+		4ADEA3DCF387316F6E30D2F9 /* YatzyAILogic.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_80FA6E81-4CE5-4AF0-B0AA-0FDED74E1237" /* YatzyAILogic.swift */; };
+		4E1C504271B18FAD2DA88388 /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = "TEMP_3809A9D8-307A-44BA-B7F5-9701E5F33139" /* README.md */; };
+		4EDB697019AA6F5245EFD572 /* WorkComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_F6BC482F-53EC-46C4-831C-8BB651866120" /* WorkComponents.swift */; };
+		50F5EEF6D450ABE1FF188FFE /* PvPRaidView.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_6FB60BA4-D29D-4F05-B320-68569FDB8849" /* PvPRaidView.swift */; };
+		51871195C9DF900FD40DC6FC /* WorldHomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_36C52729-C655-42CF-9FCE-4DAC6290EB5D" /* WorldHomeView.swift */; };
+		540DE139BDF98F093D543ED0 /* ZoneProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_15634E51-FEFB-47FC-ADBC-08FFD6C1189D" /* ZoneProfile.swift */; };
+		5D12443A7ABA0F4B85DAB015 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = "TEMP_08E3E22F-A959-4119-A988-5E2A1C9D31DA" /* Assets.xcassets */; };
+		6441B9BFC735994B9A04BDB3 /* NightMarketView.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_ADBA718A-78E0-4E89-A52C-5813472FA10C" /* NightMarketView.swift */; };
+		6519A8DDA6672C3C8C8ABA4F /* CodeBreakerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_62BC41F2-F3A2-4420-A77D-AF996D579235" /* CodeBreakerView.swift */; };
+		6659C73AD7F5DA73834432A4 /* CrashView.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_E473C20F-BB22-4D72-89BD-0159B4B9C907" /* CrashView.swift */; };
+		6A5D5F968126D04BCAD6CDF2 /* GazetteView.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_9E5C7841-F9E3-468B-84C4-6B429508FE5E" /* GazetteView.swift */; };
+		6B1D079E39C218038751294E /* Intro.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_4FF02CB6-AC97-4998-A74B-F9052F2400BA" /* Intro.swift */; };
+		6E097145B81B326011C90D80 /* YatzyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_28AF134A-6B8A-4A13-A2CA-EF76F6706D3B" /* YatzyView.swift */; };
+		7477A46DB3D2048D8E345EFC /* GameState.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_7230C9F5-789F-4FDE-B167-02F45D10E127" /* GameState.swift */; };
+		780623993AC0FC24318093D9 /* BombDefuseView.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_47FBA282-F155-4461-924A-9477A13F36EE" /* BombDefuseView.swift */; };
+		781CFD8CA8399657F9AE750B /* NPCMemory.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_0CEEB7CD-AEF8-4F0E-A9A1-CE46571495A6" /* NPCMemory.swift */; };
+		78AB560E7DA75D1093823B64 /* ThemeEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_13DB0063-619B-4677-A1B1-ADF201E43C97" /* ThemeEngine.swift */; };
+		7967E8B2ADD2315D97AD46D0 /* TimingGameView.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_4E63E38D-D2EE-4E84-8461-5FD06E810CC9" /* TimingGameView.swift */; };
+		7B242851B43540D72BFFD106 /* LotteryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_DD015E14-9924-48A3-809C-5B2E3DA17CB2" /* LotteryView.swift */; };
+		7CB21327D64E9ED2FA04DDEF /* LifeTokenApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_9991A05D-60B6-4EC6-A378-6A5A8308AEEF" /* LifeTokenApp.swift */; };
+		7E5571C89FEA87900A53B829 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = "TEMP_69EFE572-9A93-4BEF-8856-31118C89368D" /* PrivacyInfo.xcprivacy */; };
+		80747B33105833CB2DD2A035 /* AccountSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_237ED57C-DF46-4C3C-83BB-8B1B19997833" /* AccountSettingsView.swift */; };
+		8B638D3859C373E771457EEC /* DesignSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_FA22DC52-BAB6-46CD-B379-B52FE10FB59F" /* DesignSystem.swift */; };
+		8E5CBE6B6BA40E26F264F39B /* YatzyGameEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_67186611-9622-4A0C-821D-0120A15E1386" /* YatzyGameEngine.swift */; };
+		9093BF64F36EC63B15AEE36D /* Roulette.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_01A69B5E-BACA-4C4C-8F00-4573B9D93FA1" /* Roulette.swift */; };
+		90C4C2104AA28DEC3ED435FC /* TimeEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_C373A37A-54D0-4E57-8AD6-35CAF9D1FFD9" /* TimeEngine.swift */; };
+		929A03F356576B6E915969EF /* MissionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_44E65E42-D5F0-4B0F-9045-31BE2A732222" /* MissionsView.swift */; };
+		9A8FC10A4A1500E946D799B9 /* EventEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_8005BBDC-07C7-4729-97DF-DD37B388F94D" /* EventEngine.swift */; };
+		9CD3CC57B937F42AFE99F7FF /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_E0B343B2-AB28-4E3C-BD7E-3A8E42CA88A0" /* ContentView.swift */; };
+		9F84972FB6B573FCE2B48456 /* Media.bundle in Resources */ = {isa = PBXBuildFile; fileRef = "TEMP_3410585E-0806-4F75-B3CF-186D9590120C" /* Media.bundle */; };
+		A13E2E50BCDFD11DDC2A3322 /* MiniJobsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_645D00A1-27E8-4DDC-A078-AC3DACCA8C00" /* MiniJobsView.swift */; };
+		A4C034CC502B7C80448CAC04 /* GazetteShareCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_D248CE96-1321-43F3-A24E-599B73C95314" /* GazetteShareCard.swift */; };
+		A828D8C74DA0D153FA60A78C /* BankView.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_0057B6D6-A107-4F53-BF2C-43F640A6122C" /* BankView.swift */; };
+		A9B192A1AB287C054EA4346E /* PipeGameView.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_18DC6E90-79D1-4DCD-B53B-E5B663E70E0B" /* PipeGameView.swift */; };
+		AE29417EBD3EF8B3ED305EDB /* IncomeManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_CCCC3E73-A3A4-4ADF-8E15-C7B56CEC08FE" /* IncomeManager.swift */; };
+		AFFF683D97435251BBE7572C /* PokerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_9D0D91FC-77B6-4FA1-85D8-39E8E3F6E452" /* PokerView.swift */; };
+		B32B9E8DE45187AE37D79C8A /* StepBetResultCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_97D84D1D-FD51-45DA-A6AC-A92A6F092710" /* StepBetResultCard.swift */; };
+		B7540520A863BF93BD7A2614 /* ZoneLore.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_E8AA00CC-7FF8-4FEA-A417-6DF085EBB4EE" /* ZoneLore.swift */; };
+		BA75DB1B75DE50DDE9DED213 /* SocialView.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_0EB6EC52-8DD4-4750-878A-9F677A45C4BC" /* SocialView.swift */; };
+		BA80A786172182E13EAAD698 /* LeaderboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_09DA701E-4016-428C-8CD2-0540CB3F0DAB" /* LeaderboardView.swift */; };
+		C0EFE46C2D41CE6BF0401110 /* NotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_0379C42E-4C85-41D6-A68B-3363B4ED83F2" /* NotificationManager.swift */; };
+		C29EA7901BCCFCCEF5CCD0A1 /* CryoSleepOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_241AF2A5-AFFD-4BF5-AFFC-43CFD49F54F3" /* CryoSleepOverlay.swift */; };
+		C5995BA1768A26934E8858F8 /* ZoneManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_F25A22E5-FEBD-49C9-8DA6-189E7C3EFD5C" /* ZoneManager.swift */; };
+		C610561BDDE15A2D23052C64 /* ZoneSystems.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_1A3CC2D4-ACF0-42F9-86E8-503C5A5ED7DC" /* ZoneSystems.swift */; };
+		C6143E69B28DF760C790078C /* HealthKitmanager.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_216D47D8-FD14-4ACE-8368-776B283DDC10" /* HealthKitmanager.swift */; };
+		C8104E903F074DC7D28DD6CF /* SocialTransferViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_10D9C769-7B15-42D3-BDCC-8AD5B4DECDD0" /* SocialTransferViews.swift */; };
+		CC24A145B259559C63EA0271 /* AdminPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_F2799D5F-18D5-4918-BF01-9A262033B4A4" /* AdminPanelView.swift */; };
+		CCAE65640DA2DEE1296F53EA /* LifeToken.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_D2AAE029-D312-4490-8EE7-0590316B4F6B" /* LifeToken.xcdatamodeld */; };
+		D33CA98444F19B1BBC55565D /* BehaviorTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_176FCE04-C160-40D9-BFAF-B272D4E14D09" /* BehaviorTracker.swift */; };
+		D5ACFCE0F7A35C49304B9DC0 /* AUDIT_REPORT.md in Resources */ = {isa = PBXBuildFile; fileRef = "TEMP_59847BB9-D44B-4793-8DB5-5790F6EFE8DB" /* AUDIT_REPORT.md */; };
+		D65568ECBB4A08FA6441B15A /* Persistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_53879B5C-06C1-4305-9343-A3B74D0D22B4" /* Persistence.swift */; };
+		DA06F2485E6EFDB02A411A8E /* ZoneOperationsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_CC1D59AC-6A5E-442F-A995-92879115A3C5" /* ZoneOperationsView.swift */; };
+		E0C56586643A0FD27AE9AC2D /* SharedTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_A9D86909-C40E-47EE-B56C-3005DE9C9B71" /* SharedTypes.swift */; };
+		E88E0C2F183F1B5B6B2CE810 /* InTimeClockView.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_58B79A72-A1BD-4EAB-9E7D-FD9A72D3D2E7" /* InTimeClockView.swift */; };
+		F35C0F52F25F9DCBCF6520EC /* InvestmentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_58A56071-D09D-4DD4-9ABF-9D3745AACD00" /* InvestmentView.swift */; };
+		F5CAD7F56EA26933CD462A74 /* YatzyScorecardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_99DC8A3B-C02B-49B9-8C6F-8DD2FE1458F0" /* YatzyScorecardView.swift */; };
+		F7B11EE8F597CB3F38381633 /* FactionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_A5E90A61-6E09-4823-A296-9FA83486423F" /* FactionManager.swift */; };
+		F9852A97BCBA1CAB27D1ACCF /* YatzyGameplayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_4D6E76AD-9443-4FEC-B956-D9A836C996FF" /* YatzyGameplayView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		E44913577EBF7F5E080E37C1 /* ci.yml */ = {isa = PBXFileReference; lastKnownFileType = text.yaml; path = ci.yml; sourceTree = "<group>"; };
 		E8C9DED541B2CCB44CDD620F /* LifeToken.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = LifeToken.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		"TEMP_00AFA3B6-8F43-4B4B-BAA6-48713F3143DD" /* AdminPanelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminPanelView.swift; sourceTree = "<group>"; };
-		"TEMP_02F9F621-B895-4668-82FA-53483FC8DB29" /* ZoneOperationsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZoneOperationsView.swift; sourceTree = "<group>"; };
-		"TEMP_0C54D181-1162-46C0-8A5D-FC01CD8CA720" /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
-		"TEMP_11D9822E-0FAB-4DCB-A9A0-0FB0CA61ED94" /* PokerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PokerView.swift; sourceTree = "<group>"; };
-		"TEMP_15247405-CC8D-4EB0-B60E-94485C288CF0" /* ZoneUpgradeFlash.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZoneUpgradeFlash.swift; sourceTree = "<group>"; };
-		"TEMP_17677547-903C-44F7-BCCC-1E25326B62C1" /* ZoneManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZoneManager.swift; sourceTree = "<group>"; };
-		"TEMP_1F6315AD-EC59-4635-9A46-119E92734C61" /* AdaptiveEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdaptiveEngine.swift; sourceTree = "<group>"; };
-		"TEMP_2067DAD8-36D1-4221-BCAD-167761435AB7" /* OnboardingEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingEngine.swift; sourceTree = "<group>"; };
-		"TEMP_209CE30F-58A6-4554-ACFD-76F875829B1D" /* BoardManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoardManager.swift; sourceTree = "<group>"; };
-		"TEMP_21C65D53-5D86-478C-B7E5-0798A9CA8D2D" /* CodeBreakerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodeBreakerView.swift; sourceTree = "<group>"; };
-		"TEMP_255D1DAA-DD59-444E-B184-3E2DF55D1637" /* DesignSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignSystem.swift; sourceTree = "<group>"; };
-		"TEMP_306C0247-5CF1-4DF9-871E-CC2888E8D694" /* InflationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InflationManager.swift; sourceTree = "<group>"; };
-		"TEMP_30EF4305-4A82-4BBE-A6A7-BDAD58115FEB" /* .gitattributes */ = {isa = PBXFileReference; path = .gitattributes; sourceTree = "<group>"; };
-		"TEMP_3809B5FC-4E98-46BB-901F-7CFE6B96B8BD" /* CasinoHubView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CasinoHubView.swift; sourceTree = "<group>"; };
-		"TEMP_38233A4E-0C24-4420-ABC5-EA27DCD361C5" /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		"TEMP_3C04A55C-AC9D-40D2-9D65-DDD938EF53C2" /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
-		"TEMP_3D9B751B-CBF3-4F1F-9A45-A5FADC78B077" /* NPCMemory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NPCMemory.swift; sourceTree = "<group>"; };
-		"TEMP_3DB70B5F-5211-439E-AFD1-D6879DBD09B6" /* TimingGameView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimingGameView.swift; sourceTree = "<group>"; };
-		"TEMP_4112A5F4-A138-47E8-965A-91593955A4D6" /* BombDefuseView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BombDefuseView.swift; sourceTree = "<group>"; };
-		"TEMP_41F5025D-701A-4B1F-829E-3760616B4103" /* ZoneLore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZoneLore.swift; sourceTree = "<group>"; };
-		"TEMP_426DC19D-77CC-4CA1-B244-D972CE1515F7" /* StepBetResultCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StepBetResultCard.swift; sourceTree = "<group>"; };
-		"TEMP_4BC2311F-FAC2-4BAF-A1B9-CFB554F8E525" /* MultiplayerYatzyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MultiplayerYatzyView.swift; sourceTree = "<group>"; };
-		"TEMP_4FA07517-57FF-4F25-865C-2C74525AC51F" /* PokerEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PokerEngine.swift; sourceTree = "<group>"; };
-		"TEMP_53ACB24D-C376-41AA-9ADF-8B1BAE97035C" /* YatzyPlayerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YatzyPlayerView.swift; sourceTree = "<group>"; };
-		"TEMP_55F668F2-42B1-484A-8DFB-C16F7C67CAB6" /* Persistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Persistence.swift; sourceTree = "<group>"; };
-		"TEMP_58C20BA6-1E29-4D50-901F-2E1DE91777C4" /* HealthKitmanager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthKitmanager.swift; sourceTree = "<group>"; };
-		"TEMP_59528FD0-8216-4FD8-8371-F965CCB08F5D" /* FactionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FactionManager.swift; sourceTree = "<group>"; };
-		"TEMP_5A60EDFA-0AED-41A1-A631-5F641E4CA67F" /* ZoneLoreView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZoneLoreView.swift; sourceTree = "<group>"; };
-		"TEMP_5DFA0385-03AA-4DD5-B4AF-5D16BF7DEAB9" /* YatzyAILogic.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YatzyAILogic.swift; sourceTree = "<group>"; };
-		"TEMP_63545141-6621-4B9F-A743-13341522CEF7" /* YatzyGameOverView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YatzyGameOverView.swift; sourceTree = "<group>"; };
-		"TEMP_67E8C1DD-BC0A-4D0E-A3DE-2A753A1860FE" /* StepBetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StepBetView.swift; sourceTree = "<group>"; };
-		"TEMP_6894DA13-C0C5-4FE3-9273-C90782B1F4CA" /* ServerSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerSync.swift; sourceTree = "<group>"; };
-		"TEMP_6A5514FE-9556-4933-9C00-1AE353369955" /* Boostmanager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Boostmanager.swift; sourceTree = "<group>"; };
-		"TEMP_6C6A0335-FF0B-432E-ADEE-EDD976E30B1A" /* TimeMarketView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimeMarketView.swift; sourceTree = "<group>"; };
-		"TEMP_6F83F922-0559-46B0-90E1-6198C936765D" /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
-		"TEMP_7234B15C-57AD-4402-B189-40671D7CC0D5" /* NightMarketView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NightMarketView.swift; sourceTree = "<group>"; };
-		"TEMP_73D50FF0-8F09-4CD8-B7AE-EE4A337D1244" /* PvPRaidView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PvPRaidView.swift; sourceTree = "<group>"; };
-		"TEMP_74B9B447-D967-4F72-BACB-03E0081F5099" /* ZoneProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZoneProfile.swift; sourceTree = "<group>"; };
-		"TEMP_75A776B7-835C-4CFA-9B46-B3F24506889D" /* Intro.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Intro.swift; sourceTree = "<group>"; };
-		"TEMP_76EE60EC-00F2-4B92-B968-48885D9CE253" /* PipeGameView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PipeGameView.swift; sourceTree = "<group>"; };
-		"TEMP_81596563-E82C-4AB7-9C37-E7B199A0C2C3" /* FactionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FactionView.swift; sourceTree = "<group>"; };
-		"TEMP_87ED5DA2-4974-4891-A927-787A244BF092" /* InvestmentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InvestmentView.swift; sourceTree = "<group>"; };
-		"TEMP_8AA7D595-4C31-44BC-ABE7-39F21B73196F" /* GameState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameState.swift; sourceTree = "<group>"; };
-		"TEMP_93D64439-02CD-4836-8068-C7025E4E178D" /* RouletteGameView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouletteGameView.swift; sourceTree = "<group>"; };
-		"TEMP_981693EC-657E-4844-931C-8F8AB82A1332" /* YatzyLobbyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YatzyLobbyView.swift; sourceTree = "<group>"; };
-		"TEMP_9920D119-77FC-48D8-9F0B-3C30920EC10D" /* LeaderboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LeaderboardView.swift; sourceTree = "<group>"; };
-		"TEMP_99237BF5-4DC2-4A4C-B0AE-AC2EC70B9C9A" /* ZoneSystems.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZoneSystems.swift; sourceTree = "<group>"; };
-		"TEMP_A26EC0C0-8900-481C-86D5-57AE16154339" /* NewsManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewsManager.swift; sourceTree = "<group>"; };
-		"TEMP_A75A08FB-3A77-4C97-B9E3-DFB11E9445AF" /* CrashView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrashView.swift; sourceTree = "<group>"; };
-		"TEMP_A9354A3B-4FB2-4A0A-8BB2-2C4CE6C30BEA" /* ZoneVisual.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZoneVisual.swift; sourceTree = "<group>"; };
-		"TEMP_A94777B9-BB19-4651-A40D-A4A135D267BA" /* SocialTransferViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SocialTransferViews.swift; sourceTree = "<group>"; };
-		"TEMP_A951DF7F-B57F-4F9A-8928-6A6B018964FB" /* EventEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventEngine.swift; sourceTree = "<group>"; };
-		"TEMP_AA9744F7-C03F-491F-9891-785EF4FB8B9A" /* GazetteShareCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GazetteShareCard.swift; sourceTree = "<group>"; };
-		"TEMP_ABCC593E-D2BD-4AF2-9D73-03467E8941C1" /* InTimeClockView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InTimeClockView.swift; sourceTree = "<group>"; };
-		"TEMP_AF83BD5D-09D6-43BA-9DA7-32F91B79C1AC" /* SocialView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SocialView.swift; sourceTree = "<group>"; };
-		"TEMP_B54375DE-B325-4221-951A-A07DE60951A0" /* WorkView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkView.swift; sourceTree = "<group>"; };
-		"TEMP_B615FDA0-0D0C-4368-AE17-9C0C4F24C088" /* GazetteView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GazetteView.swift; sourceTree = "<group>"; };
-		"TEMP_B797E3AA-2AC7-47DF-B3F4-847F9F5F5145" /* TimeEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimeEngine.swift; sourceTree = "<group>"; };
-		"TEMP_BB29C41A-BB39-4FFB-A900-740485A99818" /* BankView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BankView.swift; sourceTree = "<group>"; };
-		"TEMP_BC9AA2D9-BA30-47FB-A5A6-281A1952B785" /* NotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationManager.swift; sourceTree = "<group>"; };
-		"TEMP_BDFA7747-75A9-48E2-AD2C-A6E971950F4B" /* ThemeEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeEngine.swift; sourceTree = "<group>"; };
-		"TEMP_BFB31FEA-4268-4100-BC5A-10366EC8E477" /* SharedTypes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedTypes.swift; sourceTree = "<group>"; };
-		"TEMP_C0CFDA49-8912-487C-A5F2-CF1EBE6557AB" /* YatzyGameEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YatzyGameEngine.swift; sourceTree = "<group>"; };
-		"TEMP_C196A486-C73A-4BE4-AC8F-E80FB28ADF1E" /* LotteryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LotteryView.swift; sourceTree = "<group>"; };
-		"TEMP_C34C8BFB-284B-450A-93B4-5F94DA02E367" /* WorkComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkComponents.swift; sourceTree = "<group>"; };
-		"TEMP_C4C09658-2CC0-41A2-8236-A6F0748BFC0F" /* DeathView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeathView.swift; sourceTree = "<group>"; };
-		"TEMP_CBEF40EA-8D06-4582-98BE-FE01504A06AC" /* YatzyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YatzyView.swift; sourceTree = "<group>"; };
-		"TEMP_CF5644A1-D0B6-46DD-9E0D-8FD674FFADE5" /* LifeToken.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = LifeToken.entitlements; sourceTree = "<group>"; };
-		"TEMP_D499A5A3-0166-4BB3-BF16-8D4FD334C148" /* AUDIT_REPORT.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = AUDIT_REPORT.md; sourceTree = "<group>"; };
-		"TEMP_D511E932-CA71-4421-B8CC-E3C4BF5BC291" /* AccountSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountSettingsView.swift; sourceTree = "<group>"; };
-		"TEMP_D5CF833A-AE30-47B3-B1F2-7E463E4CAC5E" /* BlackjackView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlackjackView.swift; sourceTree = "<group>"; };
-		"TEMP_D7452B86-70EE-419F-8196-F88949AAF3EA" /* MiniJobsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MiniJobsView.swift; sourceTree = "<group>"; };
-		"TEMP_DE76222A-DE57-4C03-855A-F6A71988C33A" /* IncomeManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IncomeManager.swift; sourceTree = "<group>"; };
-		"TEMP_E6043EB7-3FF1-4660-9167-5FA15B68FB87" /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
-		"TEMP_E6297666-E654-43F4-8DF2-829FD0324043" /* SortingGameView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SortingGameView.swift; sourceTree = "<group>"; };
-		"TEMP_EB6A1788-BE5B-484D-9C3E-6DE713FBEC55" /* Media.bundle */ = {isa = PBXFileReference; lastKnownFileType = wrapper.cfbundle; path = Media.bundle; sourceTree = "<group>"; };
-		"TEMP_F0DD5431-3F09-4CF6-96AB-59766DB6B92E" /* CryoSleepOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CryoSleepOverlay.swift; sourceTree = "<group>"; };
-		"TEMP_F2D0287B-682F-4488-B2A4-EC47752192A9" /* MissionsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MissionsView.swift; sourceTree = "<group>"; };
-		"TEMP_F311260C-D159-46E2-B6F1-AB2AEB02C901" /* Roulette.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Roulette.swift; sourceTree = "<group>"; };
-		"TEMP_F4188133-57E3-4863-B3D2-7DD28017F3AD" /* CasinoParticleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CasinoParticleView.swift; sourceTree = "<group>"; };
-		"TEMP_F684BF38-EF6D-4B6A-B94F-CAAC4B8A4206" /* LifeToken.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = LifeToken.xcdatamodel; sourceTree = "<group>"; };
-		"TEMP_F7FB7623-362E-4342-8265-7FA7651CE6DC" /* BehaviorTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BehaviorTracker.swift; sourceTree = "<group>"; };
-		"TEMP_FD1AD612-4D56-4BB0-9D60-B5081C151C0F" /* LifeTokenApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LifeTokenApp.swift; sourceTree = "<group>"; };
-		"TEMP_FEDCE242-6D42-4AAA-AE4A-9E47BCEAD199" /* YatzyScorecardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YatzyScorecardView.swift; sourceTree = "<group>"; };
-		"TEMP_FF9C750B-9734-4D99-9709-8A60F829D351" /* YatzyGameplayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YatzyGameplayView.swift; sourceTree = "<group>"; };
+		"TEMP_0057B6D6-A107-4F53-BF2C-43F640A6122C" /* BankView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BankView.swift; sourceTree = "<group>"; };
+		"TEMP_01A69B5E-BACA-4C4C-8F00-4573B9D93FA1" /* Roulette.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Roulette.swift; sourceTree = "<group>"; };
+		"TEMP_0379C42E-4C85-41D6-A68B-3363B4ED83F2" /* NotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationManager.swift; sourceTree = "<group>"; };
+		"TEMP_07200A2A-3E36-4A3A-8433-48E9C282909E" /* MultiplayerYatzyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MultiplayerYatzyView.swift; sourceTree = "<group>"; };
+		"TEMP_08E3E22F-A959-4119-A988-5E2A1C9D31DA" /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		"TEMP_09DA701E-4016-428C-8CD2-0540CB3F0DAB" /* LeaderboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LeaderboardView.swift; sourceTree = "<group>"; };
+		"TEMP_0CEEB7CD-AEF8-4F0E-A9A1-CE46571495A6" /* NPCMemory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NPCMemory.swift; sourceTree = "<group>"; };
+		"TEMP_0EB6EC52-8DD4-4750-878A-9F677A45C4BC" /* SocialView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SocialView.swift; sourceTree = "<group>"; };
+		"TEMP_10D9C769-7B15-42D3-BDCC-8AD5B4DECDD0" /* SocialTransferViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SocialTransferViews.swift; sourceTree = "<group>"; };
+		"TEMP_13DB0063-619B-4677-A1B1-ADF201E43C97" /* ThemeEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeEngine.swift; sourceTree = "<group>"; };
+		"TEMP_15634E51-FEFB-47FC-ADBC-08FFD6C1189D" /* ZoneProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZoneProfile.swift; sourceTree = "<group>"; };
+		"TEMP_176FCE04-C160-40D9-BFAF-B272D4E14D09" /* BehaviorTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BehaviorTracker.swift; sourceTree = "<group>"; };
+		"TEMP_18DC6E90-79D1-4DCD-B53B-E5B663E70E0B" /* PipeGameView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PipeGameView.swift; sourceTree = "<group>"; };
+		"TEMP_1A3CC2D4-ACF0-42F9-86E8-503C5A5ED7DC" /* ZoneSystems.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZoneSystems.swift; sourceTree = "<group>"; };
+		"TEMP_216D47D8-FD14-4ACE-8368-776B283DDC10" /* HealthKitmanager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthKitmanager.swift; sourceTree = "<group>"; };
+		"TEMP_237ED57C-DF46-4C3C-83BB-8B1B19997833" /* AccountSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountSettingsView.swift; sourceTree = "<group>"; };
+		"TEMP_241AF2A5-AFFD-4BF5-AFFC-43CFD49F54F3" /* CryoSleepOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CryoSleepOverlay.swift; sourceTree = "<group>"; };
+		"TEMP_251DB6DC-97A0-4A66-98F8-9171BA896C06" /* BoardManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoardManager.swift; sourceTree = "<group>"; };
+		"TEMP_28AF134A-6B8A-4A13-A2CA-EF76F6706D3B" /* YatzyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YatzyView.swift; sourceTree = "<group>"; };
+		"TEMP_2E900E09-DDDB-4920-894E-9866F5F1B274" /* BlackjackView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlackjackView.swift; sourceTree = "<group>"; };
+		"TEMP_3410585E-0806-4F75-B3CF-186D9590120C" /* Media.bundle */ = {isa = PBXFileReference; lastKnownFileType = wrapper.cfbundle; path = Media.bundle; sourceTree = "<group>"; };
+		"TEMP_36C52729-C655-42CF-9FCE-4DAC6290EB5D" /* WorldHomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorldHomeView.swift; sourceTree = "<group>"; };
+		"TEMP_3809A9D8-307A-44BA-B7F5-9701E5F33139" /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		"TEMP_3D200237-AA59-4115-990B-158FE784F7C4" /* LifeToken.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = LifeToken.entitlements; sourceTree = "<group>"; };
+		"TEMP_44E65E42-D5F0-4B0F-9045-31BE2A732222" /* MissionsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MissionsView.swift; sourceTree = "<group>"; };
+		"TEMP_47FBA282-F155-4461-924A-9477A13F36EE" /* BombDefuseView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BombDefuseView.swift; sourceTree = "<group>"; };
+		"TEMP_4BBFADD7-AF04-46D2-AAF4-C06DADD88E1D" /* WorkView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkView.swift; sourceTree = "<group>"; };
+		"TEMP_4D6E76AD-9443-4FEC-B956-D9A836C996FF" /* YatzyGameplayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YatzyGameplayView.swift; sourceTree = "<group>"; };
+		"TEMP_4E63E38D-D2EE-4E84-8461-5FD06E810CC9" /* TimingGameView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimingGameView.swift; sourceTree = "<group>"; };
+		"TEMP_4FF02CB6-AC97-4998-A74B-F9052F2400BA" /* Intro.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Intro.swift; sourceTree = "<group>"; };
+		"TEMP_533ED8F3-5878-4254-8033-07FED2FC6FA1" /* ZoneVisual.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZoneVisual.swift; sourceTree = "<group>"; };
+		"TEMP_53879B5C-06C1-4305-9343-A3B74D0D22B4" /* Persistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Persistence.swift; sourceTree = "<group>"; };
+		"TEMP_56A837A4-16DF-4E2A-92C6-79E76EF56D31" /* DeathView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeathView.swift; sourceTree = "<group>"; };
+		"TEMP_58A56071-D09D-4DD4-9ABF-9D3745AACD00" /* InvestmentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InvestmentView.swift; sourceTree = "<group>"; };
+		"TEMP_58B79A72-A1BD-4EAB-9E7D-FD9A72D3D2E7" /* InTimeClockView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InTimeClockView.swift; sourceTree = "<group>"; };
+		"TEMP_59847BB9-D44B-4793-8DB5-5790F6EFE8DB" /* AUDIT_REPORT.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = AUDIT_REPORT.md; sourceTree = "<group>"; };
+		"TEMP_62BC41F2-F3A2-4420-A77D-AF996D579235" /* CodeBreakerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodeBreakerView.swift; sourceTree = "<group>"; };
+		"TEMP_645D00A1-27E8-4DDC-A078-AC3DACCA8C00" /* MiniJobsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MiniJobsView.swift; sourceTree = "<group>"; };
+		"TEMP_67186611-9622-4A0C-821D-0120A15E1386" /* YatzyGameEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YatzyGameEngine.swift; sourceTree = "<group>"; };
+		"TEMP_69EFE572-9A93-4BEF-8856-31118C89368D" /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		"TEMP_6FB60BA4-D29D-4F05-B320-68569FDB8849" /* PvPRaidView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PvPRaidView.swift; sourceTree = "<group>"; };
+		"TEMP_7023DA12-1299-4747-B957-39D6CB660A76" /* ServerSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerSync.swift; sourceTree = "<group>"; };
+		"TEMP_7230C9F5-789F-4FDE-B167-02F45D10E127" /* GameState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameState.swift; sourceTree = "<group>"; };
+		"TEMP_786B9778-9D14-4D93-8A9B-A5263A65FDC1" /* LifeToken.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = LifeToken.xcdatamodel; sourceTree = "<group>"; };
+		"TEMP_8005BBDC-07C7-4729-97DF-DD37B388F94D" /* EventEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventEngine.swift; sourceTree = "<group>"; };
+		"TEMP_80FA6E81-4CE5-4AF0-B0AA-0FDED74E1237" /* YatzyAILogic.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YatzyAILogic.swift; sourceTree = "<group>"; };
+		"TEMP_88BEA876-2C75-4BD8-BB24-153DD6A3D008" /* RouletteGameView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouletteGameView.swift; sourceTree = "<group>"; };
+		"TEMP_8E6C1FD8-1CDA-4E30-8FB3-4A912FF26FCE" /* PokerEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PokerEngine.swift; sourceTree = "<group>"; };
+		"TEMP_968B365A-4703-4306-A80F-F4E3BD4A8D30" /* InflationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InflationManager.swift; sourceTree = "<group>"; };
+		"TEMP_97D84D1D-FD51-45DA-A6AC-A92A6F092710" /* StepBetResultCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StepBetResultCard.swift; sourceTree = "<group>"; };
+		"TEMP_9991A05D-60B6-4EC6-A378-6A5A8308AEEF" /* LifeTokenApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LifeTokenApp.swift; sourceTree = "<group>"; };
+		"TEMP_99DC8A3B-C02B-49B9-8C6F-8DD2FE1458F0" /* YatzyScorecardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YatzyScorecardView.swift; sourceTree = "<group>"; };
+		"TEMP_9CB2C08E-98EB-44DB-B681-D247005863CA" /* AdaptiveEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdaptiveEngine.swift; sourceTree = "<group>"; };
+		"TEMP_9D0D91FC-77B6-4FA1-85D8-39E8E3F6E452" /* PokerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PokerView.swift; sourceTree = "<group>"; };
+		"TEMP_9D419AEA-5F1B-4016-85D1-63B4070EF861" /* OnboardingEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingEngine.swift; sourceTree = "<group>"; };
+		"TEMP_9E5C7841-F9E3-468B-84C4-6B429508FE5E" /* GazetteView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GazetteView.swift; sourceTree = "<group>"; };
+		"TEMP_A0710E3A-760A-488F-B489-7BE81666598E" /* NewsManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewsManager.swift; sourceTree = "<group>"; };
+		"TEMP_A547E193-10EB-4EBF-BC35-56004FE24752" /* TimeMarketView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimeMarketView.swift; sourceTree = "<group>"; };
+		"TEMP_A5E90A61-6E09-4823-A296-9FA83486423F" /* FactionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FactionManager.swift; sourceTree = "<group>"; };
+		"TEMP_A9D86909-C40E-47EE-B56C-3005DE9C9B71" /* SharedTypes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedTypes.swift; sourceTree = "<group>"; };
+		"TEMP_ADBA718A-78E0-4E89-A52C-5813472FA10C" /* NightMarketView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NightMarketView.swift; sourceTree = "<group>"; };
+		"TEMP_B200DD5D-CE8A-4806-A0EA-669E4C16036B" /* YatzyLobbyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YatzyLobbyView.swift; sourceTree = "<group>"; };
+		"TEMP_B55156EF-0DCF-4D9B-8666-2D177D9B38E6" /* CasinoHubView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CasinoHubView.swift; sourceTree = "<group>"; };
+		"TEMP_B723C674-0B0F-428E-AC01-5D6618AC5F7F" /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		"TEMP_BFCDFC8A-EB6B-438C-899C-184C6D8CBE74" /* .gitattributes */ = {isa = PBXFileReference; path = .gitattributes; sourceTree = "<group>"; };
+		"TEMP_C373A37A-54D0-4E57-8AD6-35CAF9D1FFD9" /* TimeEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimeEngine.swift; sourceTree = "<group>"; };
+		"TEMP_C62744FC-3CD1-4954-87F5-9377396A9098" /* ZoneUpgradeFlash.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZoneUpgradeFlash.swift; sourceTree = "<group>"; };
+		"TEMP_C8D96F18-504A-4FFF-8FD7-430FD20F3BF4" /* FactionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FactionView.swift; sourceTree = "<group>"; };
+		"TEMP_CC1D59AC-6A5E-442F-A995-92879115A3C5" /* ZoneOperationsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZoneOperationsView.swift; sourceTree = "<group>"; };
+		"TEMP_CCCC3E73-A3A4-4ADF-8E15-C7B56CEC08FE" /* IncomeManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IncomeManager.swift; sourceTree = "<group>"; };
+		"TEMP_CE6D3F8D-4863-4E27-AB2C-3456ABA3F3AE" /* SortingGameView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SortingGameView.swift; sourceTree = "<group>"; };
+		"TEMP_CFA03FC0-CBE4-4122-AE3A-3AA8F4D38968" /* StepBetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StepBetView.swift; sourceTree = "<group>"; };
+		"TEMP_D248CE96-1321-43F3-A24E-599B73C95314" /* GazetteShareCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GazetteShareCard.swift; sourceTree = "<group>"; };
+		"TEMP_D2CF4E29-3FBE-45B3-A8E1-2E036F3150C8" /* CasinoParticleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CasinoParticleView.swift; sourceTree = "<group>"; };
+		"TEMP_D446EBE6-8D6B-4480-BB18-C85EFFAE1F23" /* Boostmanager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Boostmanager.swift; sourceTree = "<group>"; };
+		"TEMP_DCD5C2D5-52D9-4D7C-97C2-1CDD34509562" /* YatzyPlayerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YatzyPlayerView.swift; sourceTree = "<group>"; };
+		"TEMP_DD015E14-9924-48A3-809C-5B2E3DA17CB2" /* LotteryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LotteryView.swift; sourceTree = "<group>"; };
+		"TEMP_E0B343B2-AB28-4E3C-BD7E-3A8E42CA88A0" /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		"TEMP_E17C2653-A826-4F10-A823-DC1F2D5A9858" /* ZoneLoreView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZoneLoreView.swift; sourceTree = "<group>"; };
+		"TEMP_E473C20F-BB22-4D72-89BD-0159B4B9C907" /* CrashView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrashView.swift; sourceTree = "<group>"; };
+		"TEMP_E8AA00CC-7FF8-4FEA-A417-6DF085EBB4EE" /* ZoneLore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZoneLore.swift; sourceTree = "<group>"; };
+		"TEMP_EE7579F0-3DC5-40D7-B703-E44D049A8151" /* YatzyGameOverView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YatzyGameOverView.swift; sourceTree = "<group>"; };
+		"TEMP_F25A22E5-FEBD-49C9-8DA6-189E7C3EFD5C" /* ZoneManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZoneManager.swift; sourceTree = "<group>"; };
+		"TEMP_F2799D5F-18D5-4918-BF01-9A262033B4A4" /* AdminPanelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminPanelView.swift; sourceTree = "<group>"; };
+		"TEMP_F6BC482F-53EC-46C4-831C-8BB651866120" /* WorkComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkComponents.swift; sourceTree = "<group>"; };
+		"TEMP_FA22DC52-BAB6-46CD-B379-B52FE10FB59F" /* DesignSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignSystem.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -215,94 +217,95 @@
 			path = .github;
 			sourceTree = "<group>";
 		};
-		"TEMP_632FAA7E-C3DB-45BD-A826-5E7C44006727" /* . */ = {
+		"TEMP_4818FF4E-BC36-4A30-82A3-0F9678746732" /* . */ = {
 			isa = PBXGroup;
 			children = (
-				"TEMP_B54375DE-B325-4221-951A-A07DE60951A0" /* WorkView.swift */,
-				"TEMP_15247405-CC8D-4EB0-B60E-94485C288CF0" /* ZoneUpgradeFlash.swift */,
-				"TEMP_99237BF5-4DC2-4A4C-B0AE-AC2EC70B9C9A" /* ZoneSystems.swift */,
-				"TEMP_C4C09658-2CC0-41A2-8236-A6F0748BFC0F" /* DeathView.swift */,
-				"TEMP_F7FB7623-362E-4342-8265-7FA7651CE6DC" /* BehaviorTracker.swift */,
-				"TEMP_93D64439-02CD-4836-8068-C7025E4E178D" /* RouletteGameView.swift */,
-				"TEMP_00AFA3B6-8F43-4B4B-BAA6-48713F3143DD" /* AdminPanelView.swift */,
-				"TEMP_59528FD0-8216-4FD8-8371-F965CCB08F5D" /* FactionManager.swift */,
-				"TEMP_3DB70B5F-5211-439E-AFD1-D6879DBD09B6" /* TimingGameView.swift */,
-				"TEMP_FEDCE242-6D42-4AAA-AE4A-9E47BCEAD199" /* YatzyScorecardView.swift */,
-				"TEMP_C196A486-C73A-4BE4-AC8F-E80FB28ADF1E" /* LotteryView.swift */,
-				"TEMP_981693EC-657E-4844-931C-8F8AB82A1332" /* YatzyLobbyView.swift */,
-				"TEMP_F4188133-57E3-4863-B3D2-7DD28017F3AD" /* CasinoParticleView.swift */,
-				"TEMP_B797E3AA-2AC7-47DF-B3F4-847F9F5F5145" /* TimeEngine.swift */,
-				"TEMP_11D9822E-0FAB-4DCB-A9A0-0FB0CA61ED94" /* PokerView.swift */,
-				"TEMP_1F6315AD-EC59-4635-9A46-119E92734C61" /* AdaptiveEngine.swift */,
-				"TEMP_55F668F2-42B1-484A-8DFB-C16F7C67CAB6" /* Persistence.swift */,
-				"TEMP_9920D119-77FC-48D8-9F0B-3C30920EC10D" /* LeaderboardView.swift */,
-				"TEMP_BC9AA2D9-BA30-47FB-A5A6-281A1952B785" /* NotificationManager.swift */,
-				"TEMP_CBEF40EA-8D06-4582-98BE-FE01504A06AC" /* YatzyView.swift */,
-				"TEMP_38233A4E-0C24-4420-ABC5-EA27DCD361C5" /* Assets.xcassets */,
-				"TEMP_A951DF7F-B57F-4F9A-8928-6A6B018964FB" /* EventEngine.swift */,
-				"TEMP_4112A5F4-A138-47E8-965A-91593955A4D6" /* BombDefuseView.swift */,
-				"TEMP_81596563-E82C-4AB7-9C37-E7B199A0C2C3" /* FactionView.swift */,
-				"TEMP_306C0247-5CF1-4DF9-871E-CC2888E8D694" /* InflationManager.swift */,
-				"TEMP_63545141-6621-4B9F-A743-13341522CEF7" /* YatzyGameOverView.swift */,
-				"TEMP_255D1DAA-DD59-444E-B184-3E2DF55D1637" /* DesignSystem.swift */,
-				"TEMP_BDFA7747-75A9-48E2-AD2C-A6E971950F4B" /* ThemeEngine.swift */,
-				"TEMP_21C65D53-5D86-478C-B7E5-0798A9CA8D2D" /* CodeBreakerView.swift */,
-				"TEMP_76EE60EC-00F2-4B92-B968-48885D9CE253" /* PipeGameView.swift */,
-				"TEMP_D511E932-CA71-4421-B8CC-E3C4BF5BC291" /* AccountSettingsView.swift */,
-				"TEMP_53ACB24D-C376-41AA-9ADF-8B1BAE97035C" /* YatzyPlayerView.swift */,
-				"TEMP_A9354A3B-4FB2-4A0A-8BB2-2C4CE6C30BEA" /* ZoneVisual.swift */,
-				"TEMP_C34C8BFB-284B-450A-93B4-5F94DA02E367" /* WorkComponents.swift */,
-				"TEMP_3809B5FC-4E98-46BB-901F-7CFE6B96B8BD" /* CasinoHubView.swift */,
-				"TEMP_3C04A55C-AC9D-40D2-9D65-DDD938EF53C2" /* README.md */,
-				"TEMP_6A5514FE-9556-4933-9C00-1AE353369955" /* Boostmanager.swift */,
-				"TEMP_E6297666-E654-43F4-8DF2-829FD0324043" /* SortingGameView.swift */,
-				"TEMP_6C6A0335-FF0B-432E-ADEE-EDD976E30B1A" /* TimeMarketView.swift */,
-				"TEMP_EB6A1788-BE5B-484D-9C3E-6DE713FBEC55" /* Media.bundle */,
-				"TEMP_41F5025D-701A-4B1F-829E-3760616B4103" /* ZoneLore.swift */,
-				"TEMP_73D50FF0-8F09-4CD8-B7AE-EE4A337D1244" /* PvPRaidView.swift */,
-				"TEMP_74B9B447-D967-4F72-BACB-03E0081F5099" /* ZoneProfile.swift */,
-				"TEMP_A94777B9-BB19-4651-A40D-A4A135D267BA" /* SocialTransferViews.swift */,
-				"TEMP_67E8C1DD-BC0A-4D0E-A3DE-2A753A1860FE" /* StepBetView.swift */,
-				"TEMP_75A776B7-835C-4CFA-9B46-B3F24506889D" /* Intro.swift */,
-				"TEMP_2067DAD8-36D1-4221-BCAD-167761435AB7" /* OnboardingEngine.swift */,
-				"TEMP_5DFA0385-03AA-4DD5-B4AF-5D16BF7DEAB9" /* YatzyAILogic.swift */,
-				"TEMP_ABCC593E-D2BD-4AF2-9D73-03467E8941C1" /* InTimeClockView.swift */,
-				"TEMP_4FA07517-57FF-4F25-865C-2C74525AC51F" /* PokerEngine.swift */,
-				"TEMP_3D9B751B-CBF3-4F1F-9A45-A5FADC78B077" /* NPCMemory.swift */,
-				"TEMP_D499A5A3-0166-4BB3-BF16-8D4FD334C148" /* AUDIT_REPORT.md */,
-				"TEMP_0C54D181-1162-46C0-8A5D-FC01CD8CA720" /* PrivacyInfo.xcprivacy */,
-				"TEMP_30EF4305-4A82-4BBE-A6A7-BDAD58115FEB" /* .gitattributes */,
-				"TEMP_AA9744F7-C03F-491F-9891-785EF4FB8B9A" /* GazetteShareCard.swift */,
-				"TEMP_C0CFDA49-8912-487C-A5F2-CF1EBE6557AB" /* YatzyGameEngine.swift */,
-				"TEMP_AECED120-E87C-40E6-8A27-24C702089324" /* LifeToken.xcdatamodeld */,
-				"TEMP_8AA7D595-4C31-44BC-ABE7-39F21B73196F" /* GameState.swift */,
-				"TEMP_58C20BA6-1E29-4D50-901F-2E1DE91777C4" /* HealthKitmanager.swift */,
-				"TEMP_7234B15C-57AD-4402-B189-40671D7CC0D5" /* NightMarketView.swift */,
-				"TEMP_209CE30F-58A6-4554-ACFD-76F875829B1D" /* BoardManager.swift */,
-				"TEMP_87ED5DA2-4974-4891-A927-787A244BF092" /* InvestmentView.swift */,
-				"TEMP_BFB31FEA-4268-4100-BC5A-10366EC8E477" /* SharedTypes.swift */,
-				"TEMP_BB29C41A-BB39-4FFB-A900-740485A99818" /* BankView.swift */,
-				"TEMP_FD1AD612-4D56-4BB0-9D60-B5081C151C0F" /* LifeTokenApp.swift */,
-				"TEMP_02F9F621-B895-4668-82FA-53483FC8DB29" /* ZoneOperationsView.swift */,
-				"TEMP_AF83BD5D-09D6-43BA-9DA7-32F91B79C1AC" /* SocialView.swift */,
-				"TEMP_D5CF833A-AE30-47B3-B1F2-7E463E4CAC5E" /* BlackjackView.swift */,
-				"TEMP_A75A08FB-3A77-4C97-B9E3-DFB11E9445AF" /* CrashView.swift */,
-				"TEMP_B615FDA0-0D0C-4368-AE17-9C0C4F24C088" /* GazetteView.swift */,
-				"TEMP_D7452B86-70EE-419F-8196-F88949AAF3EA" /* MiniJobsView.swift */,
-				"TEMP_DE76222A-DE57-4C03-855A-F6A71988C33A" /* IncomeManager.swift */,
-				"TEMP_F2D0287B-682F-4488-B2A4-EC47752192A9" /* MissionsView.swift */,
-				"TEMP_17677547-903C-44F7-BCCC-1E25326B62C1" /* ZoneManager.swift */,
-				"TEMP_426DC19D-77CC-4CA1-B244-D972CE1515F7" /* StepBetResultCard.swift */,
-				"TEMP_5A60EDFA-0AED-41A1-A631-5F641E4CA67F" /* ZoneLoreView.swift */,
-				"TEMP_A26EC0C0-8900-481C-86D5-57AE16154339" /* NewsManager.swift */,
-				"TEMP_4BC2311F-FAC2-4BAF-A1B9-CFB554F8E525" /* MultiplayerYatzyView.swift */,
-				"TEMP_E6043EB7-3FF1-4660-9167-5FA15B68FB87" /* ContentView.swift */,
-				"TEMP_F0DD5431-3F09-4CF6-96AB-59766DB6B92E" /* CryoSleepOverlay.swift */,
-				"TEMP_FF9C750B-9734-4D99-9709-8A60F829D351" /* YatzyGameplayView.swift */,
-				"TEMP_6F83F922-0559-46B0-90E1-6198C936765D" /* Info.plist */,
-				"TEMP_F311260C-D159-46E2-B6F1-AB2AEB02C901" /* Roulette.swift */,
-				"TEMP_6894DA13-C0C5-4FE3-9273-C90782B1F4CA" /* ServerSync.swift */,
-				"TEMP_CF5644A1-D0B6-46DD-9E0D-8FD674FFADE5" /* LifeToken.entitlements */,
+				"TEMP_4BBFADD7-AF04-46D2-AAF4-C06DADD88E1D" /* WorkView.swift */,
+				"TEMP_C62744FC-3CD1-4954-87F5-9377396A9098" /* ZoneUpgradeFlash.swift */,
+				"TEMP_1A3CC2D4-ACF0-42F9-86E8-503C5A5ED7DC" /* ZoneSystems.swift */,
+				"TEMP_56A837A4-16DF-4E2A-92C6-79E76EF56D31" /* DeathView.swift */,
+				"TEMP_176FCE04-C160-40D9-BFAF-B272D4E14D09" /* BehaviorTracker.swift */,
+				"TEMP_88BEA876-2C75-4BD8-BB24-153DD6A3D008" /* RouletteGameView.swift */,
+				"TEMP_F2799D5F-18D5-4918-BF01-9A262033B4A4" /* AdminPanelView.swift */,
+				"TEMP_A5E90A61-6E09-4823-A296-9FA83486423F" /* FactionManager.swift */,
+				"TEMP_4E63E38D-D2EE-4E84-8461-5FD06E810CC9" /* TimingGameView.swift */,
+				"TEMP_99DC8A3B-C02B-49B9-8C6F-8DD2FE1458F0" /* YatzyScorecardView.swift */,
+				"TEMP_DD015E14-9924-48A3-809C-5B2E3DA17CB2" /* LotteryView.swift */,
+				"TEMP_B200DD5D-CE8A-4806-A0EA-669E4C16036B" /* YatzyLobbyView.swift */,
+				"TEMP_D2CF4E29-3FBE-45B3-A8E1-2E036F3150C8" /* CasinoParticleView.swift */,
+				"TEMP_C373A37A-54D0-4E57-8AD6-35CAF9D1FFD9" /* TimeEngine.swift */,
+				"TEMP_9D0D91FC-77B6-4FA1-85D8-39E8E3F6E452" /* PokerView.swift */,
+				"TEMP_9CB2C08E-98EB-44DB-B681-D247005863CA" /* AdaptiveEngine.swift */,
+				"TEMP_53879B5C-06C1-4305-9343-A3B74D0D22B4" /* Persistence.swift */,
+				"TEMP_36C52729-C655-42CF-9FCE-4DAC6290EB5D" /* WorldHomeView.swift */,
+				"TEMP_09DA701E-4016-428C-8CD2-0540CB3F0DAB" /* LeaderboardView.swift */,
+				"TEMP_0379C42E-4C85-41D6-A68B-3363B4ED83F2" /* NotificationManager.swift */,
+				"TEMP_28AF134A-6B8A-4A13-A2CA-EF76F6706D3B" /* YatzyView.swift */,
+				"TEMP_08E3E22F-A959-4119-A988-5E2A1C9D31DA" /* Assets.xcassets */,
+				"TEMP_8005BBDC-07C7-4729-97DF-DD37B388F94D" /* EventEngine.swift */,
+				"TEMP_47FBA282-F155-4461-924A-9477A13F36EE" /* BombDefuseView.swift */,
+				"TEMP_C8D96F18-504A-4FFF-8FD7-430FD20F3BF4" /* FactionView.swift */,
+				"TEMP_968B365A-4703-4306-A80F-F4E3BD4A8D30" /* InflationManager.swift */,
+				"TEMP_EE7579F0-3DC5-40D7-B703-E44D049A8151" /* YatzyGameOverView.swift */,
+				"TEMP_FA22DC52-BAB6-46CD-B379-B52FE10FB59F" /* DesignSystem.swift */,
+				"TEMP_13DB0063-619B-4677-A1B1-ADF201E43C97" /* ThemeEngine.swift */,
+				"TEMP_62BC41F2-F3A2-4420-A77D-AF996D579235" /* CodeBreakerView.swift */,
+				"TEMP_18DC6E90-79D1-4DCD-B53B-E5B663E70E0B" /* PipeGameView.swift */,
+				"TEMP_237ED57C-DF46-4C3C-83BB-8B1B19997833" /* AccountSettingsView.swift */,
+				"TEMP_DCD5C2D5-52D9-4D7C-97C2-1CDD34509562" /* YatzyPlayerView.swift */,
+				"TEMP_533ED8F3-5878-4254-8033-07FED2FC6FA1" /* ZoneVisual.swift */,
+				"TEMP_F6BC482F-53EC-46C4-831C-8BB651866120" /* WorkComponents.swift */,
+				"TEMP_B55156EF-0DCF-4D9B-8666-2D177D9B38E6" /* CasinoHubView.swift */,
+				"TEMP_3809A9D8-307A-44BA-B7F5-9701E5F33139" /* README.md */,
+				"TEMP_D446EBE6-8D6B-4480-BB18-C85EFFAE1F23" /* Boostmanager.swift */,
+				"TEMP_CE6D3F8D-4863-4E27-AB2C-3456ABA3F3AE" /* SortingGameView.swift */,
+				"TEMP_A547E193-10EB-4EBF-BC35-56004FE24752" /* TimeMarketView.swift */,
+				"TEMP_3410585E-0806-4F75-B3CF-186D9590120C" /* Media.bundle */,
+				"TEMP_E8AA00CC-7FF8-4FEA-A417-6DF085EBB4EE" /* ZoneLore.swift */,
+				"TEMP_6FB60BA4-D29D-4F05-B320-68569FDB8849" /* PvPRaidView.swift */,
+				"TEMP_15634E51-FEFB-47FC-ADBC-08FFD6C1189D" /* ZoneProfile.swift */,
+				"TEMP_10D9C769-7B15-42D3-BDCC-8AD5B4DECDD0" /* SocialTransferViews.swift */,
+				"TEMP_CFA03FC0-CBE4-4122-AE3A-3AA8F4D38968" /* StepBetView.swift */,
+				"TEMP_4FF02CB6-AC97-4998-A74B-F9052F2400BA" /* Intro.swift */,
+				"TEMP_9D419AEA-5F1B-4016-85D1-63B4070EF861" /* OnboardingEngine.swift */,
+				"TEMP_80FA6E81-4CE5-4AF0-B0AA-0FDED74E1237" /* YatzyAILogic.swift */,
+				"TEMP_58B79A72-A1BD-4EAB-9E7D-FD9A72D3D2E7" /* InTimeClockView.swift */,
+				"TEMP_8E6C1FD8-1CDA-4E30-8FB3-4A912FF26FCE" /* PokerEngine.swift */,
+				"TEMP_0CEEB7CD-AEF8-4F0E-A9A1-CE46571495A6" /* NPCMemory.swift */,
+				"TEMP_59847BB9-D44B-4793-8DB5-5790F6EFE8DB" /* AUDIT_REPORT.md */,
+				"TEMP_69EFE572-9A93-4BEF-8856-31118C89368D" /* PrivacyInfo.xcprivacy */,
+				"TEMP_BFCDFC8A-EB6B-438C-899C-184C6D8CBE74" /* .gitattributes */,
+				"TEMP_D248CE96-1321-43F3-A24E-599B73C95314" /* GazetteShareCard.swift */,
+				"TEMP_67186611-9622-4A0C-821D-0120A15E1386" /* YatzyGameEngine.swift */,
+				"TEMP_D2AAE029-D312-4490-8EE7-0590316B4F6B" /* LifeToken.xcdatamodeld */,
+				"TEMP_7230C9F5-789F-4FDE-B167-02F45D10E127" /* GameState.swift */,
+				"TEMP_216D47D8-FD14-4ACE-8368-776B283DDC10" /* HealthKitmanager.swift */,
+				"TEMP_ADBA718A-78E0-4E89-A52C-5813472FA10C" /* NightMarketView.swift */,
+				"TEMP_251DB6DC-97A0-4A66-98F8-9171BA896C06" /* BoardManager.swift */,
+				"TEMP_58A56071-D09D-4DD4-9ABF-9D3745AACD00" /* InvestmentView.swift */,
+				"TEMP_A9D86909-C40E-47EE-B56C-3005DE9C9B71" /* SharedTypes.swift */,
+				"TEMP_0057B6D6-A107-4F53-BF2C-43F640A6122C" /* BankView.swift */,
+				"TEMP_9991A05D-60B6-4EC6-A378-6A5A8308AEEF" /* LifeTokenApp.swift */,
+				"TEMP_CC1D59AC-6A5E-442F-A995-92879115A3C5" /* ZoneOperationsView.swift */,
+				"TEMP_0EB6EC52-8DD4-4750-878A-9F677A45C4BC" /* SocialView.swift */,
+				"TEMP_2E900E09-DDDB-4920-894E-9866F5F1B274" /* BlackjackView.swift */,
+				"TEMP_E473C20F-BB22-4D72-89BD-0159B4B9C907" /* CrashView.swift */,
+				"TEMP_9E5C7841-F9E3-468B-84C4-6B429508FE5E" /* GazetteView.swift */,
+				"TEMP_645D00A1-27E8-4DDC-A078-AC3DACCA8C00" /* MiniJobsView.swift */,
+				"TEMP_CCCC3E73-A3A4-4ADF-8E15-C7B56CEC08FE" /* IncomeManager.swift */,
+				"TEMP_44E65E42-D5F0-4B0F-9045-31BE2A732222" /* MissionsView.swift */,
+				"TEMP_F25A22E5-FEBD-49C9-8DA6-189E7C3EFD5C" /* ZoneManager.swift */,
+				"TEMP_97D84D1D-FD51-45DA-A6AC-A92A6F092710" /* StepBetResultCard.swift */,
+				"TEMP_E17C2653-A826-4F10-A823-DC1F2D5A9858" /* ZoneLoreView.swift */,
+				"TEMP_A0710E3A-760A-488F-B489-7BE81666598E" /* NewsManager.swift */,
+				"TEMP_07200A2A-3E36-4A3A-8433-48E9C282909E" /* MultiplayerYatzyView.swift */,
+				"TEMP_E0B343B2-AB28-4E3C-BD7E-3A8E42CA88A0" /* ContentView.swift */,
+				"TEMP_241AF2A5-AFFD-4BF5-AFFC-43CFD49F54F3" /* CryoSleepOverlay.swift */,
+				"TEMP_4D6E76AD-9443-4FEC-B956-D9A836C996FF" /* YatzyGameplayView.swift */,
+				"TEMP_B723C674-0B0F-428E-AC01-5D6618AC5F7F" /* Info.plist */,
+				"TEMP_01A69B5E-BACA-4C4C-8F00-4573B9D93FA1" /* Roulette.swift */,
+				"TEMP_7023DA12-1299-4747-B957-39D6CB660A76" /* ServerSync.swift */,
+				"TEMP_3D200237-AA59-4115-990B-158FE784F7C4" /* LifeToken.entitlements */,
 				CA21D7AB6D5D1BC5C02D0004 /* .github */,
 			);
 			name = .;
@@ -369,11 +372,11 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				8F7D0A533E9274BB6855E2B3 /* AUDIT_REPORT.md in Resources */,
-				0F24A0BCEAFF5BA800F5791F /* Assets.xcassets in Resources */,
-				FC89E555C365E652F85DE991 /* Media.bundle in Resources */,
-				01CE323EBFB7C50CF303277B /* PrivacyInfo.xcprivacy in Resources */,
-				C42BC930DAE27A734365F49D /* README.md in Resources */,
+				D5ACFCE0F7A35C49304B9DC0 /* AUDIT_REPORT.md in Resources */,
+				5D12443A7ABA0F4B85DAB015 /* Assets.xcassets in Resources */,
+				9F84972FB6B573FCE2B48456 /* Media.bundle in Resources */,
+				7E5571C89FEA87900A53B829 /* PrivacyInfo.xcprivacy in Resources */,
+				4E1C504271B18FAD2DA88388 /* README.md in Resources */,
 				25E0E2B2F78541FBB07CF75A /* ci.yml in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -385,83 +388,84 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				256D2AB2BE68AFF79770CB6C /* AccountSettingsView.swift in Sources */,
-				7ED3E8DB7F434CA9DE66A683 /* AdaptiveEngine.swift in Sources */,
-				152AE7EAD83064E9245F1DB5 /* AdminPanelView.swift in Sources */,
-				A1416D9428AFCD194F070CA3 /* BankView.swift in Sources */,
-				BE624568AA4E6A5CA5CAE3A3 /* BehaviorTracker.swift in Sources */,
-				F1396106BBFF3ED4731800A2 /* BlackjackView.swift in Sources */,
-				EAE8B8F6429EA5B3266A53A8 /* BoardManager.swift in Sources */,
-				DA6FA2016FD07F9172F69E88 /* BombDefuseView.swift in Sources */,
-				B183819EA1651C03F0FE64B6 /* Boostmanager.swift in Sources */,
-				A78EF10204AB53E5CFBD8BA3 /* CasinoHubView.swift in Sources */,
-				176E2D68978A6C4925E409D7 /* CasinoParticleView.swift in Sources */,
-				4C6373B99DB42C1B7174F1D7 /* CodeBreakerView.swift in Sources */,
-				C1C4E2AE60243CCD1BE6846F /* ContentView.swift in Sources */,
-				0D489200C5D92CB34E23E9D0 /* CrashView.swift in Sources */,
-				7BFFF80F482A38C01BE219EC /* CryoSleepOverlay.swift in Sources */,
-				DB10E8611C05EC9BB8322076 /* DeathView.swift in Sources */,
-				CAE7E24560C1168FE3EB913A /* DesignSystem.swift in Sources */,
-				3048FDA188060D47C235167B /* EventEngine.swift in Sources */,
-				19F4E49CBF4FA0EC63BD6242 /* FactionManager.swift in Sources */,
-				BE7099CA1ED3A4C2A5C8C74B /* FactionView.swift in Sources */,
-				D3D10276FC32F6EE812DD3D6 /* GameState.swift in Sources */,
-				78E02CD1867103B6FBC35309 /* GazetteShareCard.swift in Sources */,
-				CDA4C73A828D1D8CA9E4D894 /* GazetteView.swift in Sources */,
-				4ACE69DC675A177EDA5D32AA /* HealthKitmanager.swift in Sources */,
-				9E85EFD4CD05E463188A0A46 /* InTimeClockView.swift in Sources */,
-				689433D69BA7DCB7F61D169D /* IncomeManager.swift in Sources */,
-				84109F049CAD2F6B2B45232F /* InflationManager.swift in Sources */,
-				1ED2A241432D828D23FA3415 /* Intro.swift in Sources */,
-				70DA6F0C5F6705FC4D565B29 /* InvestmentView.swift in Sources */,
-				39CEF55821A78AA95886E565 /* LeaderboardView.swift in Sources */,
-				51948F1062B09562C917F755 /* LifeToken.xcdatamodeld in Sources */,
-				9D95FD9A98A3240BFA3F8645 /* LifeTokenApp.swift in Sources */,
-				104B21E6535B9DFB463623D4 /* LotteryView.swift in Sources */,
-				25D7DDB843BA57F60C7184A6 /* MiniJobsView.swift in Sources */,
-				14EBBE4C646FDAFDC6EFB3C7 /* MissionsView.swift in Sources */,
-				0289A50556B813ED046B5BE7 /* MultiplayerYatzyView.swift in Sources */,
-				8710A92AC470250E71E26769 /* NPCMemory.swift in Sources */,
-				6B113FDABD59C20B3E29851A /* NewsManager.swift in Sources */,
-				9E80FF72F9CD7E27C7E1989E /* NightMarketView.swift in Sources */,
-				F18FF57B812AACDC41F11825 /* NotificationManager.swift in Sources */,
-				0AFA2552CFF533DC6F0FBC59 /* OnboardingEngine.swift in Sources */,
-				99AC7A9C6D336B5EEC0E277C /* Persistence.swift in Sources */,
-				4667EB8635353E7E54B32AD1 /* PipeGameView.swift in Sources */,
-				1111904B289D9B8933B125A5 /* PokerEngine.swift in Sources */,
-				77C69BED75BBFBA326F3C1BC /* PokerView.swift in Sources */,
-				B8F1E25FE59C2F66CC9F1703 /* PvPRaidView.swift in Sources */,
-				EEA7BFB4EF71F5D3AFF87FA6 /* Roulette.swift in Sources */,
-				C6A589F62EEC9CC1E18B960A /* RouletteGameView.swift in Sources */,
-				64C979EFFAAFE7E4CD4C5F05 /* ServerSync.swift in Sources */,
-				A39DD9DB9B272353096C44CF /* SharedTypes.swift in Sources */,
-				07EDCE017A320226A777B4C4 /* SocialTransferViews.swift in Sources */,
-				F36EE244745B3E35D1E9E879 /* SocialView.swift in Sources */,
-				B97D84D4ECEF2E235BDC5914 /* SortingGameView.swift in Sources */,
-				C82C899C869936FA37598C5E /* StepBetResultCard.swift in Sources */,
-				86130207BE268BCD6AF4A995 /* StepBetView.swift in Sources */,
-				CF60628B92241BA0A910B4B9 /* ThemeEngine.swift in Sources */,
-				0C21154CB220CDAF8EBE4097 /* TimeEngine.swift in Sources */,
-				19AAEE9FECCC9E8CAFFD167E /* TimeMarketView.swift in Sources */,
-				FBA53A24CE8331FA272212A8 /* TimingGameView.swift in Sources */,
-				11C6C80D53D95E67ED1690C7 /* WorkComponents.swift in Sources */,
-				B67EDB3BC933E4005FA96E6F /* WorkView.swift in Sources */,
-				C139DF47E52186FDF55137F8 /* YatzyAILogic.swift in Sources */,
-				8E11FB8C3E4D845F6F5323EA /* YatzyGameEngine.swift in Sources */,
-				4EF8E4A9737E4261F082EFCF /* YatzyGameOverView.swift in Sources */,
-				C90D1FE733756B240D18A87A /* YatzyGameplayView.swift in Sources */,
-				DE71810D411460EF547D8F91 /* YatzyLobbyView.swift in Sources */,
-				480C454A764C779A0F847FF2 /* YatzyPlayerView.swift in Sources */,
-				ECBF6CFEFF25E542410B826D /* YatzyScorecardView.swift in Sources */,
-				CAFD575F6FE2E6893721D840 /* YatzyView.swift in Sources */,
-				E00AA1C5E201508C8AF7BC82 /* ZoneLore.swift in Sources */,
-				5D32B69774C9BE9B8BCAB5DD /* ZoneLoreView.swift in Sources */,
-				603F9855C1538928B6F7CFFF /* ZoneManager.swift in Sources */,
-				F708FA01324DD976E24B9C7F /* ZoneOperationsView.swift in Sources */,
-				41D12823C70CEF57B18C11D7 /* ZoneProfile.swift in Sources */,
-				B7F73B7FA6F683E314C94257 /* ZoneSystems.swift in Sources */,
-				A3DBEA194AFDA31DAEB86085 /* ZoneUpgradeFlash.swift in Sources */,
-				BA4555C098763C10E7C85400 /* ZoneVisual.swift in Sources */,
+				80747B33105833CB2DD2A035 /* AccountSettingsView.swift in Sources */,
+				330F58971CF9B4A65A118BCE /* AdaptiveEngine.swift in Sources */,
+				CC24A145B259559C63EA0271 /* AdminPanelView.swift in Sources */,
+				A828D8C74DA0D153FA60A78C /* BankView.swift in Sources */,
+				D33CA98444F19B1BBC55565D /* BehaviorTracker.swift in Sources */,
+				3A727E3C7A38965266500EA5 /* BlackjackView.swift in Sources */,
+				31B6BD0BBA20FBBF8F4F71EE /* BoardManager.swift in Sources */,
+				780623993AC0FC24318093D9 /* BombDefuseView.swift in Sources */,
+				3645E702BCE5FFAB0016FDB5 /* Boostmanager.swift in Sources */,
+				14B5526D1F0194A64AC1671C /* CasinoHubView.swift in Sources */,
+				1462F5279AB0D10A61FA5411 /* CasinoParticleView.swift in Sources */,
+				6519A8DDA6672C3C8C8ABA4F /* CodeBreakerView.swift in Sources */,
+				9CD3CC57B937F42AFE99F7FF /* ContentView.swift in Sources */,
+				6659C73AD7F5DA73834432A4 /* CrashView.swift in Sources */,
+				C29EA7901BCCFCCEF5CCD0A1 /* CryoSleepOverlay.swift in Sources */,
+				1536D6E2FEA47CC3CC03D020 /* DeathView.swift in Sources */,
+				8B638D3859C373E771457EEC /* DesignSystem.swift in Sources */,
+				9A8FC10A4A1500E946D799B9 /* EventEngine.swift in Sources */,
+				F7B11EE8F597CB3F38381633 /* FactionManager.swift in Sources */,
+				10FC8FC22957725161C97F2D /* FactionView.swift in Sources */,
+				7477A46DB3D2048D8E345EFC /* GameState.swift in Sources */,
+				A4C034CC502B7C80448CAC04 /* GazetteShareCard.swift in Sources */,
+				6A5D5F968126D04BCAD6CDF2 /* GazetteView.swift in Sources */,
+				C6143E69B28DF760C790078C /* HealthKitmanager.swift in Sources */,
+				E88E0C2F183F1B5B6B2CE810 /* InTimeClockView.swift in Sources */,
+				AE29417EBD3EF8B3ED305EDB /* IncomeManager.swift in Sources */,
+				171937C23185C3F93546C85E /* InflationManager.swift in Sources */,
+				6B1D079E39C218038751294E /* Intro.swift in Sources */,
+				F35C0F52F25F9DCBCF6520EC /* InvestmentView.swift in Sources */,
+				BA80A786172182E13EAAD698 /* LeaderboardView.swift in Sources */,
+				CCAE65640DA2DEE1296F53EA /* LifeToken.xcdatamodeld in Sources */,
+				7CB21327D64E9ED2FA04DDEF /* LifeTokenApp.swift in Sources */,
+				7B242851B43540D72BFFD106 /* LotteryView.swift in Sources */,
+				A13E2E50BCDFD11DDC2A3322 /* MiniJobsView.swift in Sources */,
+				929A03F356576B6E915969EF /* MissionsView.swift in Sources */,
+				485C5CC83E118CDA8C9E0C39 /* MultiplayerYatzyView.swift in Sources */,
+				781CFD8CA8399657F9AE750B /* NPCMemory.swift in Sources */,
+				2DA6B2F44E67E6CECED5688B /* NewsManager.swift in Sources */,
+				6441B9BFC735994B9A04BDB3 /* NightMarketView.swift in Sources */,
+				C0EFE46C2D41CE6BF0401110 /* NotificationManager.swift in Sources */,
+				08FCC8889AE2839C8EAA53B6 /* OnboardingEngine.swift in Sources */,
+				D65568ECBB4A08FA6441B15A /* Persistence.swift in Sources */,
+				A9B192A1AB287C054EA4346E /* PipeGameView.swift in Sources */,
+				26A22D71BE35648CD3CA81B1 /* PokerEngine.swift in Sources */,
+				AFFF683D97435251BBE7572C /* PokerView.swift in Sources */,
+				50F5EEF6D450ABE1FF188FFE /* PvPRaidView.swift in Sources */,
+				9093BF64F36EC63B15AEE36D /* Roulette.swift in Sources */,
+				1C893475114C556D02EF16AE /* RouletteGameView.swift in Sources */,
+				12AAE8C235D3BA84D699FC16 /* ServerSync.swift in Sources */,
+				E0C56586643A0FD27AE9AC2D /* SharedTypes.swift in Sources */,
+				C8104E903F074DC7D28DD6CF /* SocialTransferViews.swift in Sources */,
+				BA75DB1B75DE50DDE9DED213 /* SocialView.swift in Sources */,
+				0C1EEBF3D193507D4F5D437C /* SortingGameView.swift in Sources */,
+				B32B9E8DE45187AE37D79C8A /* StepBetResultCard.swift in Sources */,
+				112B607B495C057FE39DB7BA /* StepBetView.swift in Sources */,
+				78AB560E7DA75D1093823B64 /* ThemeEngine.swift in Sources */,
+				90C4C2104AA28DEC3ED435FC /* TimeEngine.swift in Sources */,
+				0C9B16CD786E66CFC0DB3D48 /* TimeMarketView.swift in Sources */,
+				7967E8B2ADD2315D97AD46D0 /* TimingGameView.swift in Sources */,
+				4EDB697019AA6F5245EFD572 /* WorkComponents.swift in Sources */,
+				3C4CC27551739849C226E3A6 /* WorkView.swift in Sources */,
+				51871195C9DF900FD40DC6FC /* WorldHomeView.swift in Sources */,
+				4ADEA3DCF387316F6E30D2F9 /* YatzyAILogic.swift in Sources */,
+				8E5CBE6B6BA40E26F264F39B /* YatzyGameEngine.swift in Sources */,
+				1DA6E602D213DD0C4B18ECB8 /* YatzyGameOverView.swift in Sources */,
+				F9852A97BCBA1CAB27D1ACCF /* YatzyGameplayView.swift in Sources */,
+				2248F2785DAD12B6E31C46AF /* YatzyLobbyView.swift in Sources */,
+				29003A4724A0D0573DBB8AC1 /* YatzyPlayerView.swift in Sources */,
+				F5CAD7F56EA26933CD462A74 /* YatzyScorecardView.swift in Sources */,
+				6E097145B81B326011C90D80 /* YatzyView.swift in Sources */,
+				B7540520A863BF93BD7A2614 /* ZoneLore.swift in Sources */,
+				1FAFD34FE5CB8DE8944A89C8 /* ZoneLoreView.swift in Sources */,
+				C5995BA1768A26934E8858F8 /* ZoneManager.swift in Sources */,
+				DA06F2485E6EFDB02A411A8E /* ZoneOperationsView.swift in Sources */,
+				540DE139BDF98F093D543ED0 /* ZoneProfile.swift in Sources */,
+				C610561BDDE15A2D23052C64 /* ZoneSystems.swift in Sources */,
+				40A88BE83CE56F7E467100DC /* ZoneUpgradeFlash.swift in Sources */,
+				0EA5DB5061A0784E0CEEDA80 /* ZoneVisual.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -657,12 +661,12 @@
 /* End XCConfigurationList section */
 
 /* Begin XCVersionGroup section */
-		"TEMP_AECED120-E87C-40E6-8A27-24C702089324" /* LifeToken.xcdatamodeld */ = {
+		"TEMP_D2AAE029-D312-4490-8EE7-0590316B4F6B" /* LifeToken.xcdatamodeld */ = {
 			isa = XCVersionGroup;
 			children = (
-				"TEMP_F684BF38-EF6D-4B6A-B94F-CAAC4B8A4206" /* LifeToken.xcdatamodel */,
+				"TEMP_786B9778-9D14-4D93-8A9B-A5263A65FDC1" /* LifeToken.xcdatamodel */,
 			);
-			currentVersion = "TEMP_F684BF38-EF6D-4B6A-B94F-CAAC4B8A4206" /* LifeToken.xcdatamodel */;
+			currentVersion = "TEMP_786B9778-9D14-4D93-8A9B-A5263A65FDC1" /* LifeToken.xcdatamodel */;
 			path = LifeToken.xcdatamodeld;
 			sourceTree = "<group>";
 			versionGroupType = wrapper.xcdatamodel;

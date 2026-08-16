@@ -978,17 +978,17 @@ struct MainTabView: View {
 
     var body: some View {
         TabView(selection: $selectedTab) {
-            DashboardView()
+            WorldHomeView()
                 .tabItem { Label("Hem", systemImage: "clock.fill") }
                 .tag(0)
-            WorkView()
-                .tabItem { Label("Arbete", systemImage: "hammer.fill") }
-                .tag(1)
-            CasinoHubView()
-                .tabItem { Label("Kasino", systemImage: "suit.spade.fill") }
-                .tag(2)
             ZoneOperationsView()
-                .tabItem { Label("Zoncentral", systemImage: "building.2.crop.circle.fill") }
+                .tabItem { Label("Världen", systemImage: "map.fill") }
+                .tag(1)
+            WorkView()
+                .tabItem { Label("Överlev", systemImage: "hammer.fill") }
+                .tag(2)
+            CasinoHubView()
+                .tabItem { Label("Risk", systemImage: "suit.spade.fill") }
                 .tag(3)
             SocialView()
                 .tabItem { Label("Social", systemImage: "person.2.fill") }
