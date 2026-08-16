@@ -981,17 +981,17 @@ struct MainTabView: View {
             WorldHomeView()
                 .tabItem { Label("Hem", systemImage: "clock.fill") }
                 .tag(0)
-            ZoneOperationsView()
-                .tabItem { Label("Världen", systemImage: "map.fill") }
+            PlayHubView()
+                .tabItem { Label("Spela", systemImage: "gamecontroller.fill") }
                 .tag(1)
-            WorkView()
-                .tabItem { Label("Överlev", systemImage: "hammer.fill") }
+            WorldHubView()
+                .tabItem { Label("Världen", systemImage: "map.fill") }
                 .tag(2)
-            CasinoHubView()
-                .tabItem { Label("Risk", systemImage: "suit.spade.fill") }
-                .tag(3)
             SocialView()
-                .tabItem { Label("Social", systemImage: "person.2.fill") }
+                .tabItem { Label("Socialt", systemImage: "person.2.fill") }
+                .tag(3)
+            ProfileHubView()
+                .tabItem { Label("Profil", systemImage: "person.crop.circle.fill") }
                 .tag(4)
         }
         .tint(LTPalette.neonGreen)
