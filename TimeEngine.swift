@@ -54,6 +54,7 @@ class TimeEngine: ObservableObject {
 
     private var tickTimer: Timer?
     private var ntpTimer: Timer?
+    private var lastTickDate: Date?
     private var lastVerifiedTime: Date?
     private var currentDrainRate: TimeInterval = 1.0  // seconds drained per real second
     private var onboardingDrainMultiplier: TimeInterval {
@@ -194,23 +195,23 @@ class TimeEngine: ObservableObject {
 
     func startTicking() {
         tickTimer?.invalidate()
+        lastTickDate = Date()
         tickTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
             guard let self = self else { return }
             DispatchQueue.main.async {
-                // Tidsstopp pauses the drain
-                guard !BoostManager.shared.tidsstoppIsActive else { return }
-                let drain = self.effectiveDrainRate
-                self.balance = max(0, self.balance - drain)
-                self.isTimedOut = self.balance <= 0
-                ZoneManager.shared.evaluateZoneChange(currentTime: self.balance)
-                // Utlös dödsregistrering första gången saldot når noll
-                if self.balance <= 0 && !self.hasDied && !self.isDead {
-                    self.hasDied = true
-                    self.recordDeath()
-                }
+                // Use elapsed wall-clock time so delayed timers do not create or lose time.
+                // Paused intervals are deliberately excluded from the next tick.
+                let now = Date()
+                let elapsed = max(0, now.timeIntervalSince(self.lastTickDate ?? now))
+                self.lastTickDate = now
+                guard !BoostManager.shared.tidsstoppIsActive,
+                      !self.cryoSleepActive,
+                      elapsed > 0 else { return }
+                self.applyBalanceState(self.balance - elapsed * self.effectiveDrainRate,
+                                       persist: false, scheduleWarnings: false)
                 // Save every 30 seconds to avoid excessive Keychain writes
-                if Int(self.balance) % 30 == 0 {
-                    self.saveToKeychain(balance: self.balance, timestamp: Date())
+                if Int(self.balance) % 30 == 0 || self.balance <= 0 {
+                    self.saveToKeychain(balance: self.balance, timestamp: now)
                 }
             }
         }
