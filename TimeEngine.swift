@@ -137,6 +137,7 @@ class TimeEngine: ObservableObject {
     }
 
     private func applyBalanceState(_ newBalance: TimeInterval, persist: Bool = true, scheduleWarnings: Bool = true) {
+        guard newBalance.isFinite else { return }
         balance = max(0, newBalance)
         isTimedOut = balance <= 0
         ZoneManager.shared.evaluateZoneChange(currentTime: balance)
@@ -299,16 +300,18 @@ class TimeEngine: ObservableObject {
 
     /// Add time to balance (earnings, rewards, casino wins)
     func addTime(_ seconds: TimeInterval) {
-        guard seconds > 0 else { return }
+        guard seconds.isFinite, seconds > 0 else { return }
         withMainThread {
-            self.applyBalanceState(self.balance + seconds)
+            let newBalance = self.balance + seconds
+            guard newBalance.isFinite, newBalance >= self.balance else { return }
+            self.applyBalanceState(newBalance)
         }
     }
 
     /// Deduct time (purchases, zone migration, casino losses, taxes)
     @discardableResult
     func deductTime(_ seconds: TimeInterval) -> Bool {
-        guard seconds > 0 else { return true }
+        guard seconds.isFinite, seconds > 0 else { return false }
         return withMainThread {
             guard self.balance >= seconds else { return false }
             self.applyBalanceState(self.balance - seconds)
@@ -325,6 +328,7 @@ class TimeEngine: ObservableObject {
 
     /// Set drain rate (zone-based, called by ZoneManager)
     func setDrainRate(_ rate: TimeInterval) {
+        guard rate.isFinite, rate > 0 else { return }
         currentDrainRate = rate
         saveToKeychain(balance: balance, timestamp: Date())
     }
