@@ -186,7 +186,7 @@ class TimeEngine: ObservableObject {
         currentDrainRate = savedDrain
 
         // Apply offline drain — clock never stops (onboarding uses reduced drain)
-        let drained = elapsed * effectiveDrainRate
+        let drained = cryoSleepActive ? 0 : elapsed * effectiveDrainRate
         balance = max(0, savedBalance - drained)
         isTimedOut = balance <= 0
         // Synka hasDied med det persisterade dödsläget
