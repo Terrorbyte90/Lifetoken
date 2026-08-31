@@ -55,6 +55,7 @@ class TimeEngine: ObservableObject {
     private var tickTimer: Timer?
     private var ntpTimer: Timer?
     private var lastTickDate: Date?
+    private var lastPersistenceDate: Date?
     private var lastVerifiedTime: Date?
     private var currentDrainRate: TimeInterval = 1.0  // seconds drained per real second
     private var onboardingDrainMultiplier: TimeInterval {
@@ -122,6 +123,7 @@ class TimeEngine: ObservableObject {
             addQuery[kSecValueData as String] = encoded
             SecItemAdd(addQuery as CFDictionary, nil)
         }
+        lastPersistenceDate = timestamp
     }
 
     @discardableResult
@@ -179,6 +181,7 @@ class TimeEngine: ObservableObject {
         let lastSync = Date(timeIntervalSince1970: savedTimestamp)
         let now = Date()
         let elapsed = now.timeIntervalSince(lastSync)
+        lastPersistenceDate = lastSync
         currentDrainRate = savedDrain
 
         // Apply offline drain — clock never stops (onboarding uses reduced drain)
@@ -209,8 +212,8 @@ class TimeEngine: ObservableObject {
                       elapsed > 0 else { return }
                 self.applyBalanceState(self.balance - elapsed * self.effectiveDrainRate,
                                        persist: false, scheduleWarnings: false)
-                // Save every 30 seconds to avoid excessive Keychain writes
-                if Int(self.balance) % 30 == 0 || self.balance <= 0 {
+                // Save by elapsed time, not balance rounding (fractional ticks rarely hit an exact multiple).
+                if self.lastPersistenceDate.map({ now.timeIntervalSince($0) >= 30 }) ?? true || self.balance <= 0 {
                     self.saveToKeychain(balance: self.balance, timestamp: now)
                 }
             }
