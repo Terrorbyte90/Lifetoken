@@ -200,6 +200,11 @@ class SocialManager: ObservableObject, @unchecked Sendable {
     }
 
     func transferToServerUser(_ user: ServerUser, amount: TimeInterval) {
+        guard amount.isFinite, amount > 0 else {
+            alertMessage = "Ange ett giltigt tidsbelopp."
+            showAlert = true
+            return
+        }
         guard TimeEngine.shared.deductTime(amount) else {
             alertMessage = "Otillräcklig tid för överföring."
             showAlert = true

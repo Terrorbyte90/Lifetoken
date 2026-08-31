@@ -631,6 +631,9 @@ class ServerSync: ObservableObject, @unchecked Sendable {
     }
 
     func transferTime(toUserId: String, amount: TimeInterval) async throws {
+        guard !toUserId.isEmpty, amount.isFinite, amount > 0 else {
+            throw URLError(.badURL)
+        }
         let body: [String: Any] = ["targetUserId": toUserId, "amount": amount]
         _ = try await post(path: "/social/transfer", body: body, requireAuth: true)
     }
