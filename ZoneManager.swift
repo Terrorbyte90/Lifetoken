@@ -35,7 +35,8 @@ public class ZoneManager: ObservableObject {
         let current = currentZone
         updateAvailableUpgrade(currentTime: currentTime)
 
-        // Check if we've fallen BELOW the current zone's fallThreshold → downgrade
+        // Downgrade only after the hysteresis floor is crossed. This preserves
+        // voluntary migration and avoids oscillating at the unlock boundary.
         if currentTime < current.fallThresholdSeconds && current.index > 0 {
             // Find the highest zone whose fallThreshold we still meet
             let fallZone = ZoneProfile.allZones.reversed().first {
@@ -82,11 +83,10 @@ public class ZoneManager: ObservableObject {
             return (false, "Otillräcklig tid. Inträde kostar \(needed).")
         }
 
-        // After paying entry, ensure balance stays above fallThreshold
-        // so player doesn't immediately fall back down
-        let afterCost = balance - zone.entryCostSeconds
-        if zone.fallThresholdSeconds > 0 && afterCost < zone.fallThresholdSeconds {
-            let totalNeeded = TimeEngine.shortFormatted(zone.entryCostSeconds + zone.fallThresholdSeconds)
+        // A migration is only valid when the unlock reserve, entry fee and
+        // hysteresis reserve all survive the same atomic transaction.
+        if !zone.canAffordMigration(with: balance) {
+            let totalNeeded = TimeEngine.shortFormatted(zone.unlockRequirementSeconds + zone.entryCostSeconds + zone.fallThresholdSeconds)
             return (false, "Du behöver totalt \(totalNeeded) för att klara inträdet och inte falla tillbaka direkt.")
         }
 

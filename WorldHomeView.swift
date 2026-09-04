@@ -14,6 +14,7 @@ struct WorldHomeView: View {
     @State private var showZones = false
     @State private var showWork = false
     @State private var showRisk = false
+    @State private var showZoneOperations = false
 
     private var zone: ZoneProfile { zoneManager.currentZone }
     private var accent: Color { zone.color }
@@ -36,6 +37,7 @@ struct WorldHomeView: View {
         .sheet(isPresented: $showZones) { NavigationStack { ZoneVisual() } }
         .sheet(isPresented: $showWork) { WorkView() }
         .sheet(isPresented: $showRisk) { CasinoHubView() }
+        .sheet(isPresented: $showZoneOperations) { ZoneOperationsView() }
         .onAppear { setupVideo(); gameState.updateZone() }
         .onDisappear { player?.pause() }
         .onChange(of: zone.index) { _, _ in setupVideo() }
@@ -163,7 +165,13 @@ struct WorldHomeView: View {
         HStack(spacing: 10) {
             worldAction("ÖVERLEV", "hammer.fill", accent) { showWork = true }
             worldAction("ZONER", "map.fill", .white.opacity(0.75)) { showZones = true }
-            worldAction(zone.casinoAccess ? "RISK" : "PROFIL", zone.casinoAccess ? "suit.spade.fill" : "person.fill", zone.casinoAccess ? .red : .white.opacity(0.75)) { showRisk = true }
+            worldAction(zone.casinoAccess ? "RISK" : "ZONCENTRAL", zone.casinoAccess ? "suit.spade.fill" : "building.2.fill", zone.casinoAccess ? .red : .white.opacity(0.75)) {
+                if zone.casinoAccess {
+                    showRisk = true
+                } else {
+                    showZoneOperations = true
+                }
+            }
         }
         .padding(.horizontal, LTSpacing.horizontal)
         .padding(.top, 14)

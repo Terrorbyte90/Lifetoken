@@ -1,6 +1,10 @@
 import Foundation
 import SwiftUI
 
+enum ZoneCapability: String, CaseIterable, Hashable {
+    case world, work, healthIncome, zoneChat, boosts, casino, garden, governance, bank
+}
+
 struct ZoneProfile: Equatable {
     let name: String
     let taxRate: Double
@@ -24,7 +28,30 @@ struct ZoneProfile: Equatable {
     let description: String
     let index: Int
 
-    // MARK: - Zone Definitions (14 zoner per specifikation)
+    /// Stable identifier used by persistence, analytics and server payloads.
+    /// Display names remain Swedish and are intentionally unchanged.
+    var id: ZoneID { normalizeZoneID(name) }
+
+    /// Capabilities are data, not scattered index checks in views/managers.
+    var capabilities: Set<ZoneCapability> {
+        var result: Set<ZoneCapability> = [.world, .work, .healthIncome, .zoneChat]
+        if allowBoosts { result.insert(.boosts) }
+        if casinoAccess { result.insert(.casino) }
+        if index >= 8 { result.insert(.garden) }
+        if index >= 12 { result.insert(.governance) }
+        if index >= 5 { result.insert(.bank) }
+        return result
+    }
+
+    /// Net value of one unit of work after zone tax and inflation.
+    var netWorkMultiplier: Double {
+        max(0, workMultiplier * (1 - taxRate) * (1 - inflationRatePerDay))
+    }
+
+    func canAffordMigration(with balance: TimeInterval) -> Bool {
+        guard entryCostSeconds > 0 else { return balance >= unlockRequirementSeconds }
+        return balance >= unlockRequirementSeconds + entryCostSeconds + fallThresholdSeconds
+    }
 
     static let askan = ZoneProfile(
         name: "Askan",
