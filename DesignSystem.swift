@@ -89,6 +89,17 @@ enum LTAnimation {
     static let fade          = Animation.easeInOut(duration: 0.30)
     /// Slow ambient pulse (repeatForever)
     static let ambientPulse  = Animation.easeInOut(duration: 2.5).repeatForever(autoreverses: true)
+    
+    // Premium Fable-5 animations
+    static let premium    = Animation.spring(response: 0.45, dampingFraction: 0.78)
+    static let hero       = Animation.spring(response: 0.55, dampingFraction: 0.82)
+    static let cardAppear = Animation.spring(response: 0.35, dampingFraction: 0.72)
+    static let tabSwitch  = Animation.spring(response: 0.22, dampingFraction: 0.90)
+    static let ripple     = Animation.easeOut(duration: 0.35)
+    static let glowPulse  = Animation.easeInOut(duration: 1.8).repeatForever(autoreverses: true)
+    static let fadeIn     = Animation.easeIn(duration: 0.25)
+    static let fadeOut    = Animation.easeOut(duration: 0.20)
+    static let scaleIn    = Animation.spring(response: 0.4, dampingFraction: 0.65)
 }
 
 // MARK: - Palette
@@ -111,6 +122,26 @@ enum LTPalette {
     static let bg           = Color(red: 0.02, green: 0.03, blue: 0.07)
     static let bgCard       = Color(red: 0.04, green: 0.05, blue: 0.09)
     static let bgElevated   = Color(red: 0.07, green: 0.08, blue: 0.12)
+    
+    // Premium Fable-5 colors
+    static let premiumPurple = Color(red: 0.60, green: 0.40, blue: 1.00)   // starkare violet
+    static let premiumGold   = Color(red: 1.00, green: 0.75, blue: 0.20)   // premium guld
+    static let premiumCyan   = Color(red: 0.10, green: 0.95, blue: 0.95)  // cyan glow
+    static let premiumPink   = Color(red: 1.00, green: 0.30, blue: 0.70)   // neon pink
+    static let deepSpace     = Color(red: 0.01, green: 0.02, blue: 0.05)  // djupaste bg
+    
+    // Zone-specific premium gradients
+    static var neonCyberGradient: LinearGradient {
+        LinearGradient(colors: [neonGreen, auroraCyan], startPoint: .topLeading, endPoint: .bottomTrailing)
+    }
+    
+    static var auroraPremiumGradient: LinearGradient {
+        LinearGradient(colors: [auroraCyan, auroraViolet, auroraPink], startPoint: .top, endPoint: .bottom)
+    }
+    
+    static var goldShimmerGradient: LinearGradient {
+        LinearGradient(colors: [premiumGold, gold, premiumGold.opacity(0.5)], startPoint: .leading, endPoint: .trailing)
+    }
 
     // Strokes
     static func stroke(_ color: Color, _ opacity: Double = 0.25) -> Color {
@@ -457,5 +488,83 @@ struct LTEmptyStateCard: View {
         .padding(.vertical, LTSpacing.xl)
         .padding(.horizontal, LTSpacing.lg)
         .ltCard(color: tint, opacity: 0.05, radius: LTRadius.md, borderOpacity: 0.16)
+    }
+}
+
+// MARK: - Premium Fable-5 Visual Effects
+
+struct LTNeonGlow: ViewModifier {
+    let color: Color
+    var radius: CGFloat = 15
+    var opacity: CGFloat = 0.5
+    
+    func body(content: Content) -> some View {
+        content
+            .shadow(color: color.opacity(opacity), radius: radius)
+            .shadow(color: color.opacity(opacity * 0.6), radius: radius * 0.5)
+    }
+}
+
+struct LTPulsingBorder: ViewModifier {
+    @State private var isPulsing = false
+    let color: Color
+    var lineWidth: CGFloat = 2
+    var scale: CGFloat = 1.05
+    var duration: Double = 1.5
+    
+    func body(content: Content) -> some View {
+        content
+            .overlay(
+                RoundedRectangle(cornerRadius: LTRadius.md)
+                    .stroke(color, lineWidth: lineWidth)
+                    .scaleEffect(isPulsing ? scale : 1.0)
+                    .opacity(isPulsing ? 0.3 : 0.8)
+                    .animation(.easeInOut(duration: duration).repeatForever(autoreverses: true), value: isPulsing)
+            )
+            .onAppear { isPulsing = true }
+    }
+}
+
+struct LTGradientOverlay: ViewModifier {
+    var gradient: LinearGradient = LTPalette.auroraPremiumGradient
+    var opacity: CGFloat = 0.1
+    
+    func body(content: Content) -> some View {
+        content
+            .overlay(gradient.opacity(opacity))
+    }
+}
+
+struct LTStaggerAppear: ViewModifier {
+    let index: Int
+    @State private var isVisible = false
+    
+    func body(content: Content) -> some View {
+        content
+            .opacity(isVisible ? 1 : 0)
+            .scaleEffect(isVisible ? 1 : 0.92)
+            .onAppear {
+                withAnimation(LTAnimation.cardAppear.delay(Double(index) * 0.06)) {
+                    isVisible = true
+                }
+            }
+    }
+}
+
+extension View {
+    func ltNeonGlow(color: Color = LTPalette.neonGreen, radius: CGFloat = 15, opacity: CGFloat = 0.5) -> some View {
+        modifier(LTNeonGlow(color: color, radius: radius, opacity: opacity))
+    }
+    
+    func ltPulsingBorder(color: Color = LTPalette.neonGreen, lineWidth: CGFloat = 2, scale: CGFloat = 1.05, duration: Double = 1.5) -> some View {
+        modifier(LTPulsingBorder(color: color, lineWidth: lineWidth, scale: scale, duration: duration))
+    }
+    
+    func ltGradientOverlay(gradient: LinearGradient = LTPalette.auroraPremiumGradient, opacity: CGFloat = 0.1) -> some View {
+        modifier(LTGradientOverlay(gradient: gradient, opacity: opacity))
+    }
+    
+    func ltStaggerAppear(index: Int) -> some View {
+        modifier(LTStaggerAppear(index: index))
     }
 }
