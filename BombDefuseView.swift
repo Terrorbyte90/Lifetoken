@@ -36,8 +36,9 @@ struct BombDefuseView: View {
         Color(red:0.95,green:0.85,blue:0.1),// gul
         Color(red:0.9,green:0.5,blue:0.1),  // orange
         Color(red:0.7,green:0.2,blue:0.9),  // lila
+        Color(red:0.1,green:0.9,blue:0.9),  // turkos
     ]
-    private let wireNames = ["röda","blåa","gröna","gula","orangea","lila"]
+    private let wireNames = ["röda","blåa","gröna","gula","orangea","lila","turkosa"]
 
     enum Phase { case ready, clueShowing, playing, result(won: Bool, early: Bool, earned: TimeInterval) }
 
@@ -483,7 +484,13 @@ struct BombDefuseView: View {
             // Logical clue
             let n = correct + 1
             if n % 2 == 0 {
-                return "Klipp den tråd vars\nordningsnummer är jämnt\noch \(n == 2 ? "lägst av de jämna" : "det \(n == 4 ? "andra" : "tredje") jämna).")."
+                let extra: String
+                switch n {
+                case 2:  extra = "lägst av de jämna"
+                case 4:  extra = "den andra av de jämna"
+                default: extra = "den tredje av de jämna"
+                }
+                return "Klipp den tråd vars\nordningsnummer är jämnt\n— \(extra) tal."
             } else {
                 return "Antalet trådar du\nlåter vara rör sig från\n\(wireCount - n) (höger) till vänster."
             }
@@ -495,7 +502,7 @@ struct BombDefuseView: View {
                 guard let ascii = c.asciiValue, ascii >= 65, ascii <= 90 else { return c }
                 return Character(UnicodeScalar((Int(ascii) - 65 + 3) % 26 + 65)!)
             }
-            return "ROT3: NOLSS GHQ\n\(String(encoded)) WUÏGHQ."
+            return "ROT3: NOLSS GHQ\n\(String(encoded)) WUÈGHQ."
         }
     }
 
